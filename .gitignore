@@ -1,6 +1,7 @@
 # Gradle build files
 /.gradle/
 /build/
+/bin/
 src/main/resources/docs/
 
 # IDEA files
@@ -29,3 +30,8 @@ CLAUDE.md
 
 # Temp files
 _temp/
+
+# Others
+/.settings/
+.classpath
+.project
