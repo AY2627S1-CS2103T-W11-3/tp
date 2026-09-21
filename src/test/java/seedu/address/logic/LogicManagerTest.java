@@ -71,6 +71,20 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_remarkChanges_savedToStorage() throws Exception {
+        model.addPerson(AMY);
+        JsonAddressBookStorage savedData =
+                new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"));
+
+        logic.execute("remark 1 r/Likes swimming.");
+        assertEquals(new PersonBuilder(AMY).withRemark("Likes swimming.").build(),
+                savedData.readAddressBook().get().getPersonList().get(0));
+
+        logic.execute("remark 1 r/");
+        assertEquals(AMY, savedData.readAddressBook().get().getPersonList().get(0));
+    }
+
+    @Test
     public void execute_storageThrowsIoException_throwsCommandException() {
         assertCommandFailureForExceptionFromStorage(DUMMY_IO_EXCEPTION, String.format(
                 LogicManager.FILE_OPS_ERROR_FORMAT, DUMMY_IO_EXCEPTION.getMessage()));

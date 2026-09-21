@@ -91,9 +91,27 @@ public class PersonTest {
     }
 
     @Test
+    public void constructor_nullRemark_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> new Person(ALICE.getName(), ALICE.getPhone(),
+                ALICE.getEmail(), ALICE.getAddress(), null, ALICE.getTags()));
+    }
+
+    @Test
+    public void remark_preservedByBuilderAndComparedAsData() {
+        Person person = new PersonBuilder(ALICE).withRemark("Likes swimming.").build();
+        Person copy = new PersonBuilder(person).build();
+        assertEquals(new Remark("Likes swimming."), person.getRemark());
+        assertEquals(person, copy);
+        assertEquals(person.hashCode(), copy.hashCode());
+        assertTrue(ALICE.isSamePerson(person));
+        assertFalse(ALICE.equals(person));
+    }
+
+    @Test
     public void toStringMethod() {
         String expected = Person.class.getCanonicalName() + "{name=" + ALICE.getName() + ", phone=" + ALICE.getPhone()
-                + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress() + ", tags=" + ALICE.getTags() + "}";
+                + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress()
+                + ", remark=" + ALICE.getRemark() + ", tags=" + ALICE.getTags() + "}";
         assertEquals(expected, ALICE.toString());
     }
 }
