@@ -19,14 +19,15 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 * Role: Project Advisor
 
-### Andre Liu
+### Jane Doe
 
-<img src="images/andreliu1225.png" width="200px">
+<img src="images/johndoe.png" width="200px">
 
-[[github](http://github.com/AndreLiu1225)]
+[[github](http://github.com/johndoe)]
+[[portfolio](team/johndoe.md)]
 
-* Role: Developer
-* Responsibilities: Full-Stack Development
+* Role: Team Lead
+* Responsibilities: UI
 
 ### Johnny Doe
 
@@ -37,15 +38,15 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Role: Developer
 * Responsibilities: Data
 
-### Jean Doe
+### Leow Han Yang
 
-<img src="images/johndoe.png" width="200px">
+<img src="images/d0pb.png" width="200px">
 
-[[github](http://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
+[[github](http://github.com/d0pb)]
+[[portfolio]()]
 
 * Role: Developer
-* Responsibilities: Dev Ops + Threading
+* Responsibilities: Dev Ops
 
 ### James Doe
 
