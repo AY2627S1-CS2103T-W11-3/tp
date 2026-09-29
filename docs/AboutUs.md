@@ -25,8 +25,8 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 [[github](http://github.com/AndreLiu1225)]
 
-* Role: Team Lead
-* Responsibilities: UI
+* Role: Developer
+* Responsibilities: Full-Stack Development
 
 ### Johnny Doe
 
