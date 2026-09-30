@@ -28,14 +28,14 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Role: Team Lead
 * Responsibilities: UI
 
-### Tauzih Khan
+### Johnny Doe
 
-<img src="images/tauzihkhan" width="200px">
+<img src="images/johndoe.png" width="200px">
 
-[[github](http://github.com/tauzihkhan)]
+[[github](http://github.com/johndoe)] [[portfolio](team/johndoe.md)]
 
-* Role: Team Lead
-* Responsibilities: Model
+* Role: Developer
+* Responsibilities: Data
 
 ### Leow Han Yang
 
