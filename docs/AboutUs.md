@@ -18,19 +18,18 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Role: Developer
 * Responsibilities: Search feature
 
-### Jane Doe
+### Andre Liu
 
-<img src="images/johndoe.png" width="200px">
+<img src="images/andreliu1225.png" width="200px">
 
-[[github](http://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
+[[github](http://github.com/andreliu1225)]
 
-* Role: Team Lead
-* Responsibilities: UI
+* Role: Developer
+* Responsibilities: Full-Stack Development
 
 ### Tauzih Khan
 
-<img src="images/tauzihkhan" width="200px">
+<img src="images/tauzihkhan.png" width="200px">
 
 [[github](http://github.com/tauzihkhan)]
 
@@ -42,7 +41,6 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 <img src="images/d0pb.png" width="200px">
 
 [[github](http://github.com/d0pb)]
-[[portfolio]()]
 
 * Role: Developer
 * Responsibilities: Dev Ops
