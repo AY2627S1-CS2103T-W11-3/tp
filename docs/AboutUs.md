@@ -9,50 +9,47 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 ## Project team
 
-### John Doe
+### Abhijit Jayaraman
 
-<img src="images/johndoe.png" width="200px">
+<img src="images/jit1604.png" width="200px">
 
-[[homepage](http://www.comp.nus.edu.sg/~damithch)]
-[[github](https://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
+[[github](https://github.com/jit1604)]
 
-* Role: Project Advisor
+* Role: Developer
+* Responsibilities: Search feature
 
 ### Andre Liu
 
 <img src="images/andreliu1225.png" width="200px">
 
-[[github](http://github.com/AndreLiu1225)]
+[[github](http://github.com/andreliu1225)]
 
 * Role: Developer
 * Responsibilities: Full-Stack Development
 
 ### Tauzih Khan
 
-<img src="images/tauzihkhan" width="200px">
+<img src="images/tauzihkhan.png" width="200px">
 
 [[github](http://github.com/tauzihkhan)]
 
 * Role: Team Lead
 * Responsibilities: Model
 
-### Jean Doe
+### Leow Han Yang
 
-<img src="images/johndoe.png" width="200px">
+<img src="images/d0pb.png" width="200px">
 
-[[github](http://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
+[[github](http://github.com/d0pb)]
 
 * Role: Developer
-* Responsibilities: Dev Ops + Threading
+* Responsibilities: Dev Ops
 
-### James Doe
+### Bawa Dhruv Munish
 
-<img src="images/johndoe.png" width="200px">
+<img src="images/dhruvbawa.png" width="200px">
 
-[[github](http://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
+[[github](http://github.com/DhruvBawa)]
 
 * Role: Developer
 * Responsibilities: UI
