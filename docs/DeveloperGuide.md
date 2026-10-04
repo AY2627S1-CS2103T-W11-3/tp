@@ -338,8 +338,26 @@ These requirements incorporate the product constraints in the [course project co
 
 ### Glossary
 
-* **Mainstream OS**: Windows, Linux, Unix, or macOS
-* **Private contact detail**: A contact detail that is not meant to be shared with others
+| Term | Definition |
+| --- | --- |
+| AB4 | The desktop contact manager for National University of Singapore (NUS) students developed in this project, based on AddressBook Level 3 (AB3). |
+| Address book | The collection of contact records managed by one AB4 instance and persisted in its contact data file. |
+| Contact (person) | A record about someone the user wants to remember or contact. “Person” is the equivalent term used in the inherited code and parts of this guide; it does not refer to the application user. |
+| Contact information | Details used to reach a contact, such as a phone number, email address, or postal address. |
+| Relationship context | Information that helps the user remember how they know a contact, such as a shared module, student organisation, project, or event. It can be recorded using tags and notes. |
+| Tag | A short label attached to a contact to categorise them or record shared context, such as `CS2103T` or `friend`. A contact can have multiple tags. |
+| Note | Free-text information attached to a contact to record details or relationship context that a short tag does not adequately express. |
+| User | The person operating AB4 to manage their contacts; the target user is an NUS student who prefers typing commands. |
+| CLI (Command Line Interface) | A text-based interaction method. In AB4, users type commands into the command box inside the application window. |
+| GUI (Graphical User Interface) | The application's visual interface, including the command box, displayed contact list, and command feedback. |
+| Displayed list / filtered list | The contacts currently shown in the GUI. This can be the whole address book or a subset selected by a search. |
+| Index | The positive integer shown next to a contact in the displayed list. It identifies that contact for commands acting on the current list and is not a permanent contact identifier. |
+| Mainstream OS / supported operating systems | Windows, macOS, and Linux, subject to the Java and JavaFX compatibility requirements above. This term does not imply support for every operating-system version or processor architecture. |
+| JAR (Java Archive) | The packaged Java application distributed to users and launched with a Java runtime. |
+| JSON (JavaScript Object Notation) | The structured text format used to store AB4 contact data and user preferences. |
+| Private contact detail | Any information about a contact that the user does not intend to share with others, including sensitive content in tags or notes. The term does not imply that AB4 currently hides or encrypts such information. |
+| MSS (Main Success Scenario) | The sequence of steps in a use case in which the actor achieves the intended outcome without taking an extension path. |
+| Undo / redo | Undo restores the state before an earlier change; redo reapplies an undone change. These terms describe the proposed feature in this guide. |
 
 --------------------------------------------------------------------------------------------------------------------
 
