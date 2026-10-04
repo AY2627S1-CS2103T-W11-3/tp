@@ -259,15 +259,23 @@ _{Explain here how the data archiving feature will be implemented}_
 
 ### Product scope
 
-**Target user profile**:
+**Target user profile**: ***NUS Student***
 
-* has a need to manage a significant number of contacts
+* has a need to organise and categorise a large number of contacts acquired through various settings, such as hackathons, networking events, and school activities.
+* needs the flexibility to store contacts using different types of information, such as email addresses or phone numbers, while allowing for missing information.
+* needs a way to record additional context about contacts, such as details from previous conversations or interactions.
 * prefers desktop apps over other types of applications
 * can type fast
 * prefers typing to mouse interactions
 * is reasonably comfortable using CLI apps
 
-**Value proposition**: Manage contacts faster than with a typical mouse-driven GUI application.
+**Value proposition**: 
+
+* manages contacts faster than with a typical mouse-driven GUI application.
+* enables categorisation of contacts by creating tags, allowing NUS students to group large number of contacts into meaningful groups. This is especially important given that NUS students meet many people through various settings like hackathons and CCAs.
+* enables filtering and searching of contacts via tags, making it easier to find relevant contacts without remembering their details exactly.
+* supports storing of multiple types of contact information, such as email addresses and phone numbers, for flexible contact management.
+* allows storing of additional context about contacts, such as details from previous conversations and interactions.
 
 
 ### User stories
@@ -277,13 +285,32 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | Priority | As a …​                                    | I want to …​                     | So that I can…​                                                        |
 | -------- | ------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------- |
 | `* * *`  | new user                                   | see usage instructions         | refer to instructions when I forget how to use the App                 |
-| `* * *`  | user                                       | add a new person               |                                                                        |
-| `* * *`  | user                                       | delete a person                | remove entries that I no longer need                                   |
-| `* * *`  | user                                       | find a person by name          | locate details of persons without having to go through the entire list |
-| `* *`    | user                                       | hide private contact details   | minimize chance of someone else seeing them by accident                |
-| `*`      | user with many persons in the address book | sort persons by name           | locate a person easily                                                 |
-
-*{More to be added}*
+| `* * *`  | student                                       | add a new person               |                                                                        |
+| `* * *`  | student                                       | store different types of contact information, such as phone numbers and email addresses               | contact people through different methods                                                                       |
+| `* * *`  | student                                   | add a contact even when some contact information is unavailable         | save useful contacts without needing complete information                 |
+| `* * *`  | student                                       | delete a person                | remove entries that I no longer need                                   |
+| `* * *`  | student                                       | edit a contact's information                | keep their details and notes up to date                                   |
+| `* * *`  | student                                       | find a person by name          | locate details of persons without having to go through the entire list |
+| `* *`      | student with many persons in the address book | categorise contacts           | organise the large number of contacts I meet through different situations                                              |
+| `* *`      | student with many persons in the address book | filter contacts by their categories           | quickly find contacts relevant to a particular context, such as a hackathon or school activity                                              |
+| `* *`      | student | add notes to a contact          | record additional context, such as what we previously discussed or where we met                                              |
+| `*`      | student with many persons in the address book | sort persons by name           | locate a person easily                                                 |
+| `*`      | student | view a summary of all tags used across my contacts           | quickly understand how my contacts are categorised and identify relevant groups                                                 |
+| `* * *`      | student who prefers keyboard-driven tools | manage contacts using commands | work quickly without switching between forms |
+| `*`      | student | view all contacts in a tag | manage related people together |
+| `*`      | student | export my local data | keep a backup |
+| `*`      | student | undo my most recent contact-management action | quickly recover from accidental changes |
+| `*`      | student | have the application warn me about possible duplicate contacts | avoid accidentally storing the same person multiple times |
+| `*`      | student | remove outdated tags from a contact | ensure their stored information remains relevant |
+| `*`      | student | search contacts using partial names | find someone even when I do not remember their full name |
+| `*`      | student | combine multiple search filters | narrow down a large list of contacts precisely |
+| `*`      | student | sort contacts by fields such as name or organisation | browse my contacts in a useful order |
+| `*`      | student | mark important contacts as favourites | access frequently contacted people quickly |
+| `*`      | student | view recently added contacts | quickly find people I met recently |
+| `*`      | student | record when I last contacted someone | know how recently we have communicated |
+| `*`      | student | store useful links such as LinkedIn, GitHub, or Telegram profiles for a contact | quickly access their online profiles |
+| `* *`      | student | add or remove contacts from an existing group | allow group membership to change as projects and organisations evolve |
+| `*`      | student | rename a group | update it when a project or team changes its name |
 
 ### Use cases
 
