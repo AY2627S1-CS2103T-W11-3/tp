@@ -259,7 +259,7 @@ _{Explain here how the data archiving feature will be implemented}_
 
 ### Product scope
 
-**Target user profile**: ***University Student***
+**Target user profile**: ***NUS Student***
 
 * has a need to organise and categorise a large number of contacts acquired through various settings, such as hackathons, networking events, and school activities.
 * needs the flexibility to store contacts using different types of information, such as email addresses or phone numbers, while allowing for missing information.
@@ -272,7 +272,8 @@ _{Explain here how the data archiving feature will be implemented}_
 **Value proposition**: 
 
 * manages contacts faster than with a typical mouse-driven GUI application.
-* enables categorisation and filtering of contacts, making it easier to find relevant contacts within a large contact list.
+* enables categorisation of contacts by creating tags, allowing NUS students to group large number of contacts into meaningful groups. This is especially important given that NUS students meet many people through various settings like hackathons and CCAs.
+* enables filtering and searching of contacts via tags, making it easier to find relevant contacts without remembering their details exactly.
 * supports storing of multiple types of contact information, such as email addresses and phone numbers, for flexible contact management.
 * allows storing of additional context about contacts, such as details from previous conversations and interactions.
 
