@@ -23,6 +23,7 @@ import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.ViewCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.person.Note;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.PersonContainsKeywordsPredicate;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
@@ -38,6 +39,20 @@ public class AddressBookParserTest {
         Person person = new PersonBuilder().build();
         AddCommand command = (AddCommand) parser.parseCommand(PersonUtil.getAddCommand(person));
         assertEquals(new AddCommand(person), command);
+    }
+
+    @Test
+    public void parseCommand_addWithNote() throws Exception {
+        Person person = new PersonBuilder().withNote("Known through a dating app").build();
+        AddCommand command = (AddCommand) parser.parseCommand(PersonUtil.getAddCommand(person));
+        assertEquals(new AddCommand(person), command);
+    }
+
+    @Test
+    public void parseCommand_addWithTrailingLineBreakInNote_throwsNoteParseException() {
+        Person person = new PersonBuilder().withNote("Known through a dating app").build();
+        String command = PersonUtil.getAddCommand(person) + "\n";
+        assertThrows(ParseException.class, Note.MESSAGE_CONSTRAINTS, () -> parser.parseCommand(command));
     }
 
     @Test

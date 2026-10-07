@@ -71,6 +71,23 @@ public class EditCommandTest {
     }
 
     @Test
+    public void execute_editOtherField_noteIsPreserved() {
+        Person personWithNote = new PersonBuilder().withNote("Known through a dating app").build();
+        AddressBook addressBook = new AddressBook();
+        addressBook.addPerson(personWithNote);
+        Model modelWithNote = new ModelManager(addressBook, new UserPrefs());
+        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB).build());
+        Person editedPerson = new PersonBuilder(personWithNote).withPhone(VALID_PHONE_BOB).build();
+
+        Model expectedModel = new ModelManager(new AddressBook(addressBook), new UserPrefs());
+        expectedModel.setPerson(personWithNote, editedPerson);
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+
+        assertCommandSuccess(editCommand, modelWithNote, expectedMessage, expectedModel);
+    }
+
+    @Test
     public void execute_noFieldSpecifiedUnfilteredList_success() {
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptor());
         Person editedPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());

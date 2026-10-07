@@ -14,10 +14,12 @@ import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.core.index.Index;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
 import seedu.address.model.person.Person;
+import seedu.address.testutil.PersonBuilder;
 
 /**
  * Contains integration tests (interaction with the Model) and unit tests for
@@ -80,6 +82,25 @@ public class ViewCommandTest {
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
         assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+    }
+
+    @Test
+    public void execute_personWithNote_success() {
+        Person personWithNote = new PersonBuilder().withNote("Known through a dating app").build();
+        AddressBook addressBook = new AddressBook();
+        addressBook.addPerson(personWithNote);
+        Model modelWithNote = new ModelManager(addressBook, new UserPrefs());
+
+        String expectedMessage = "Name: Amy Bee\n"
+                + "Phone: 85355255\n"
+                + "Email: amy@gmail.com\n"
+                + "Address: 123, Jurong West Ave 6, #08-111\n"
+                + "Note: Known through a dating app\n"
+                + "Tags: Not specified\n"
+                + "\n"
+                + "Showing details for Amy Bee.";
+
+        assertCommandSuccess(new ViewCommand(INDEX_FIRST_PERSON), modelWithNote, expectedMessage, modelWithNote);
     }
 
     @Test

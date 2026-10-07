@@ -61,11 +61,13 @@ public class ViewCommand extends Command {
                 .map(tag -> tag.tagName)
                 .sorted()
                 .collect(Collectors.joining(", "));
+        String note = person.getNote().isEmpty() ? "" : "Note: " + person.getNote() + "\n";
 
         return "Name: " + person.getName() + "\n"
                 + "Phone: " + person.getPhone() + "\n"
                 + "Email: " + person.getEmail() + "\n"
                 + "Address: " + person.getAddress() + "\n"
+                + note
                 + "Tags: " + tags + "\n"
                 + "\n"
                 + "Showing details for " + person.getName() + ".";
