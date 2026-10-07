@@ -25,20 +25,20 @@ import seedu.address.model.person.Person;
  */
 public class ViewCommandTest {
 
-    private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+    private final Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
 
     @Test
     public void execute_validIndexUnfilteredList_success() {
         Person personToView = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         ViewCommand viewCommand = new ViewCommand(INDEX_FIRST_PERSON);
 
-        String expectedMessage = "Name: Dodd Gerhardt\n"
-                + "Phone: 12345678\n"
-                + "Email: ddgerhardt@example.com\n"
-                + "Address: 123, Eden Prairie, Fargo North Dakota\n"
+        String expectedMessage = "Name: Alice Pauline\n"
+                + "Phone: 94351253\n"
+                + "Email: alice@example.com\n"
+                + "Address: 123, Jurong West Ave 6, #08-111\n"
                 + "Tags: friends\n"
                 + "\n"
-                + "Showing details for Dodd Gerhardt.";
+                + "Showing details for Alice Pauline.";
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
