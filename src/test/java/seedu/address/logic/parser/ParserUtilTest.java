@@ -6,6 +6,7 @@ import static seedu.address.logic.parser.ParserUtil.MESSAGE_INVALID_INDEX;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Set;
 
@@ -52,6 +53,27 @@ public class ParserUtilTest {
 
         // Leading and trailing whitespaces
         assertEquals(INDEX_FIRST_PERSON, ParserUtil.parseIndex("  1  "));
+    }
+
+    @Test
+    public void parsePositiveInteger_validInput_returnsUnboundedInteger() throws Exception {
+        assertEquals(BigInteger.ONE, ParserUtil.parsePositiveInteger(" \t1\t "));
+        for (String input : new String[] {"2147483647", "2147483648", "9".repeat(1000)}) {
+            assertEquals(new BigInteger(input), ParserUtil.parsePositiveInteger(input));
+        }
+    }
+
+    @Test
+    public void parsePositiveInteger_invalidInput_throwsParseException() {
+        for (String input : new String[] {"", " \t", "0", "01", "-1", "+1", "1.0", "1e3", "abc",
+            "١", "１", "1 2", "1\t2", "\n1", "1\n"}) {
+            assertThrows(ParseException.class, MESSAGE_INVALID_INDEX, () -> ParserUtil.parsePositiveInteger(input));
+        }
+    }
+
+    @Test
+    public void parsePositiveInteger_null_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> ParserUtil.parsePositiveInteger(null));
     }
 
     @Test

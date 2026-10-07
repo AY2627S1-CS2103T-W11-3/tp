@@ -2,6 +2,7 @@ package seedu.address.logic.parser;
 
 import static java.util.Objects.requireNonNull;
 
+import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,6 +35,22 @@ public class ParserUtil {
             throw new ParseException(MESSAGE_INVALID_INDEX);
         }
         return Index.fromOneBased(Integer.parseInt(trimmedIndex));
+    }
+
+    /**
+     * Parses a positive ASCII integer without leading zeros or an int size limit.
+     * Leading and trailing spaces and tabs are ignored. Callers validate argument count
+     * and translate the error into command-specific usage messages.
+     *
+     * @throws ParseException if the value is not a positive ASCII integer
+     */
+    public static BigInteger parsePositiveInteger(String value) throws ParseException {
+        requireNonNull(value);
+        String trimmedValue = value.replaceAll("^[ \t]+|[ \t]+$", "");
+        if (!trimmedValue.matches("[1-9][0-9]*")) {
+            throw new ParseException(MESSAGE_INVALID_INDEX);
+        }
+        return new BigInteger(trimmedValue);
     }
 
     /**
