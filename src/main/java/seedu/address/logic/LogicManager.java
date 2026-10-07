@@ -9,9 +9,11 @@ import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.CommandResult;
+import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.person.Person;
 import seedu.address.storage.Storage;
@@ -24,6 +26,9 @@ public class LogicManager implements Logic {
 
     public static final String FILE_OPS_PERMISSION_ERROR_FORMAT =
             "Could not save data to file %s due to insufficient permissions to write to the file or the folder.";
+
+    public static final String DELETE_SAVE_ERROR =
+            "Could not save changes. Contact was not deleted. Please try again.";
 
     private final Logger logger = LogsCenter.getLogger(LogicManager.class);
 
@@ -46,6 +51,9 @@ public class LogicManager implements Logic {
 
         CommandResult commandResult;
         Command command = addressBookParser.parseCommand(commandText);
+        if (command instanceof DeleteCommand deleteCommand) {
+            return executeDelete(deleteCommand);
+        }
         commandResult = command.execute(model);
 
         try {
@@ -57,6 +65,22 @@ public class LogicManager implements Logic {
         }
 
         return commandResult;
+    }
+
+    /**
+     * Saves the candidate collection before publishing a deletion to the observable model.
+     * Command execution is synchronous, so the displayed index remains valid during saving.
+     */
+    private CommandResult executeDelete(DeleteCommand command) throws CommandException {
+        Person target = command.getTargetPerson(model);
+        AddressBook candidate = new AddressBook(model.getAddressBook());
+        candidate.removePerson(target);
+        try {
+            storage.saveAddressBook(candidate);
+        } catch (IOException e) {
+            throw new CommandException(DELETE_SAVE_ERROR, e);
+        }
+        return command.execute(model);
     }
 
     @Override

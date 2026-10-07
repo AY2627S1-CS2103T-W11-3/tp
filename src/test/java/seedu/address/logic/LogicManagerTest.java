@@ -1,6 +1,8 @@
 package seedu.address.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static seedu.address.logic.Messages.MESSAGE_UNKNOWN_COMMAND;
 import static seedu.address.logic.commands.CommandTestUtil.ADDRESS_DESC_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.EMAIL_DESC_AMY;
@@ -8,25 +10,33 @@ import static seedu.address.logic.commands.CommandTestUtil.NAME_DESC_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.PHONE_DESC_AMY;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.AMY;
+import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import javafx.collections.ListChangeListener;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UserPrefs;
+import seedu.address.model.person.NameContainsKeywordsPredicate;
 import seedu.address.model.person.Person;
 import seedu.address.storage.JsonAddressBookStorage;
 import seedu.address.storage.JsonUserPrefsStorage;
@@ -80,6 +90,96 @@ public class LogicManagerTest {
     public void execute_storageThrowsAdException_throwsCommandException() {
         assertCommandFailureForExceptionFromStorage(DUMMY_AD_EXCEPTION, String.format(
                 LogicManager.FILE_OPS_PERMISSION_ERROR_FORMAT, DUMMY_AD_EXCEPTION.getMessage()));
+    }
+
+    @Test
+    public void execute_deleteSaveFailure_preservesDiskAndObservableState() throws Exception {
+        for (boolean existingFile : new boolean[] {true, false}) {
+            for (int failureMode : new int[] {0, 1, 2}) {
+                Path folder = Files.createTempDirectory(temporaryFolder, "delete-failure-");
+                Path destination = folder.resolve("contacts.json");
+                model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+                model.updateFilteredPersonList(new NameContainsKeywordsPredicate(List.of("Meier")));
+                AddressBook original = new AddressBook(model.getAddressBook());
+                List<Person> displayed = List.copyOf(model.getFilteredPersonList());
+                byte[] originalBytes = new byte[0];
+                if (existingFile) {
+                    new JsonAddressBookStorage(destination).saveAddressBook(original);
+                    originalBytes = Files.readAllBytes(destination);
+                }
+                AtomicInteger changes = new AtomicInteger();
+                model.getFilteredPersonList().addListener(
+                        (ListChangeListener<Person>) change -> changes.incrementAndGet());
+                model.getAddressBook().getPersonList().addListener(
+                        (ListChangeListener<Person>) change -> changes.incrementAndGet());
+                JsonAddressBookStorage failingStorage = new JsonAddressBookStorage(destination) {
+                    @Override
+                    protected void writeAddressBook(ReadOnlyAddressBook data, Path temporaryFile) throws IOException {
+                        if (failureMode == 0) {
+                            Files.writeString(temporaryFile, "partial JSON");
+                            throw new IOException("Simulated partial write");
+                        }
+                        super.writeAddressBook(data, temporaryFile);
+                    }
+
+                    @Override
+                    protected void replaceAddressBook(Path temporaryFile, Path target) throws IOException {
+                        if (failureMode == 2) {
+                            throw new AccessDeniedException(target.toString());
+                        }
+                        throw new AtomicMoveNotSupportedException(temporaryFile.toString(), target.toString(),
+                                "Simulated unsupported atomic replacement");
+                    }
+                };
+                logic = new LogicManager(model, new StorageManager(failingStorage,
+                        new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json"))));
+
+                assertThrows(CommandException.class, LogicManager.DELETE_SAVE_ERROR, () -> logic.execute("delete 2"));
+
+                assertEquals(original, model.getAddressBook());
+                assertEquals(displayed, model.getFilteredPersonList());
+                assertEquals(0, changes.get());
+                if (existingFile) {
+                    assertArrayEquals(originalBytes, Files.readAllBytes(destination));
+                } else {
+                    assertFalse(Files.exists(destination));
+                }
+                try (var files = Files.list(folder)) {
+                    assertEquals(existingFile ? 1L : 0L, files.count());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void execute_deleteSuccess_savesOnceBeforePublishingAndReloads() throws Exception {
+        Path destination = temporaryFolder.resolve("delete-success.json");
+        model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+        model.updateFilteredPersonList(new NameContainsKeywordsPredicate(List.of("Meier")));
+        Person target = model.getFilteredPersonList().get(1);
+        AddressBook expected = new AddressBook(model.getAddressBook());
+        expected.removePerson(target);
+        List<Person> remainingResults = List.of(model.getFilteredPersonList().get(0));
+        AtomicInteger saves = new AtomicInteger();
+        JsonAddressBookStorage savingStorage = new JsonAddressBookStorage(destination) {
+            @Override
+            public void saveAddressBook(ReadOnlyAddressBook data) throws IOException {
+                assertEquals(2, model.getFilteredPersonList().size());
+                assertEquals(expected, data);
+                saves.incrementAndGet();
+                super.saveAddressBook(data);
+            }
+        };
+        logic = new LogicManager(model, new StorageManager(savingStorage,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json"))));
+
+        assertEquals("Deleted contact: Daniel Meier (index 2).", logic.execute("delete 2").getFeedbackToUser());
+
+        assertEquals(1, saves.get());
+        assertEquals(expected, model.getAddressBook());
+        assertEquals(remainingResults, model.getFilteredPersonList());
+        assertEquals(expected, new AddressBook(
+                new JsonAddressBookStorage(destination).readAddressBook().orElseThrow()));
     }
 
     @Test

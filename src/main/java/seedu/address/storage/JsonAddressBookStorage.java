@@ -3,14 +3,15 @@ package seedu.address.storage;
 import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.commons.exceptions.IllegalValueException;
-import seedu.address.commons.util.FileUtil;
 import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.ReadOnlyAddressBook;
 
@@ -82,8 +83,33 @@ public class JsonAddressBookStorage {
         requireNonNull(addressBook);
         requireNonNull(filePath);
 
-        FileUtil.createIfMissing(filePath);
-        JsonUtil.saveJsonFile(new JsonSerializableAddressBook(addressBook), filePath);
+        Path destination = filePath.toAbsolutePath();
+        Files.createDirectories(destination.getParent());
+        Path temporaryFile = Files.createTempFile(destination.getParent(), "addressbook-", ".tmp");
+        try {
+            writeAddressBook(addressBook, temporaryFile);
+            replaceAddressBook(temporaryFile, destination);
+        } catch (IOException | RuntimeException e) {
+            try {
+                Files.deleteIfExists(temporaryFile);
+            } catch (IOException cleanupError) {
+                e.addSuppressed(cleanupError);
+            }
+            throw e;
+        }
     }
 
+    /**
+     * Writes a complete candidate to a temporary file without touching the saved address book.
+     */
+    protected void writeAddressBook(ReadOnlyAddressBook addressBook, Path temporaryFile) throws IOException {
+        JsonUtil.saveJsonFile(new JsonSerializableAddressBook(addressBook), temporaryFile);
+    }
+
+    /**
+     * Atomically publishes the candidate. Unsupported atomic moves fail without a non-atomic fallback.
+     */
+    protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
+        Files.move(temporaryFile, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+    }
 }

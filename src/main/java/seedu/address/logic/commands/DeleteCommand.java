@@ -57,6 +57,16 @@ public class DeleteCommand extends Command {
 
     @Override
     public CommandResult execute(Model model) throws CommandException {
+        Person personToDelete = getTargetPerson(model);
+        model.deletePerson(personToDelete);
+        return new CommandResult(
+                String.format(MESSAGE_DELETE_PERSON_SUCCESS, personToDelete.getName().fullName, targetIndex));
+    }
+
+    /**
+     * Validates the displayed index and returns its contact without changing the model.
+     */
+    public Person getTargetPerson(Model model) throws CommandException {
         requireNonNull(model);
         List<Person> lastShownList = model.getFilteredPersonList();
 
@@ -68,10 +78,7 @@ public class DeleteCommand extends Command {
                     String.format(MESSAGE_INDEX_OUT_OF_RANGE, lastShownList.size()));
         }
 
-        Person personToDelete = lastShownList.get(targetIndex.intValueExact() - 1);
-        model.deletePerson(personToDelete);
-        return new CommandResult(
-                String.format(MESSAGE_DELETE_PERSON_SUCCESS, personToDelete.getName().fullName, targetIndex));
+        return lastShownList.get(targetIndex.intValueExact() - 1);
     }
 
     @Override

@@ -49,6 +49,7 @@ public interface Storage {
 
     /**
      * Saves the given {@link ReadOnlyAddressBook} to the storage.
+     * If saving fails, the previously saved address book must remain unchanged.
      * @param addressBook cannot be null.
      * @throws IOException if there was any problem writing to the file.
      */
