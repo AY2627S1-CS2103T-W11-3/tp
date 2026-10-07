@@ -19,8 +19,8 @@ import seedu.address.commons.core.index.Index;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
-import seedu.address.model.person.NameContainsKeywordsPredicate;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonContainsKeywordsPredicate;
 
 /**
  * Contains integration tests (interaction with the Model) and unit tests for
@@ -102,7 +102,7 @@ public class DeleteCommandTest {
 
     @Test
     public void execute_filteredIndex_preservesFilterAndContactsOutsideResults() throws Exception {
-        model.updateFilteredPersonList(new NameContainsKeywordsPredicate(List.of("Meier")));
+        model.updateFilteredPersonList(new PersonContainsKeywordsPredicate(List.of("Meier")));
         List<Person> expectedContacts = new ArrayList<>(model.getAddressBook().getPersonList());
         List<Person> expectedResults = new ArrayList<>(model.getFilteredPersonList());
         Person deleted = expectedResults.remove(1);
@@ -117,7 +117,7 @@ public class DeleteCommandTest {
 
     @Test
     public void execute_repeatedIndex_usesUpdatedListThenReportsOutOfRange() throws Exception {
-        model.updateFilteredPersonList(new NameContainsKeywordsPredicate(List.of("Meier")));
+        model.updateFilteredPersonList(new PersonContainsKeywordsPredicate(List.of("Meier")));
         DeleteCommand deleteFirst = new DeleteCommand(INDEX_FIRST_PERSON);
         DeleteCommand deleteSecond = new DeleteCommand(INDEX_SECOND_PERSON);
         List<Person> expectedContacts = new ArrayList<>(model.getAddressBook().getPersonList());

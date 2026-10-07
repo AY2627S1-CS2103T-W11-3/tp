@@ -12,6 +12,7 @@ import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.StagedModel;
 import seedu.address.model.person.Person;
@@ -23,7 +24,8 @@ import seedu.address.storage.Storage;
 public class LogicManager implements Logic {
     public static final String MESSAGE_SAVE_ERROR =
             "Could not save changes. No changes were applied. Please try again.";
-    public static final String MESSAGE_DELETE_SAVE_ERROR =
+
+    public static final String DELETE_SAVE_ERROR =
             "Could not save changes. Contact was not deleted. Please try again.";
 
     private final Logger logger = LogsCenter.getLogger(LogicManager.class);
@@ -47,6 +49,9 @@ public class LogicManager implements Logic {
         logger.info("----------------[USER COMMAND][" + commandText + "]");
 
         Command command = addressBookParser.parseCommand(commandText);
+        if (command instanceof DeleteCommand deleteCommand) {
+            return executeDelete(deleteCommand);
+        }
         StagedModel stagedModel = new StagedModel(model);
         CommandResult commandResult = command.execute(stagedModel);
 
@@ -55,13 +60,28 @@ public class LogicManager implements Logic {
                 storage.saveAddressBook(stagedModel.getAddressBook());
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
-                String message = command instanceof DeleteCommand ? MESSAGE_DELETE_SAVE_ERROR : MESSAGE_SAVE_ERROR;
-                throw new CommandException(message, ioe);
+                throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
             }
         }
 
         stagedModel.commitTo(model);
         return commandResult;
+    }
+
+    /**
+     * Saves the candidate collection before publishing a deletion to the observable model.
+     * Command execution is synchronous, so the displayed index remains valid during saving.
+     */
+    private CommandResult executeDelete(DeleteCommand command) throws CommandException {
+        Person target = command.getTargetPerson(model);
+        AddressBook candidate = new AddressBook(model.getAddressBook());
+        candidate.removePerson(target);
+        try {
+            storage.saveAddressBook(candidate);
+        } catch (IOException e) {
+            throw new CommandException(DELETE_SAVE_ERROR, e);
+        }
+        return command.execute(model);
     }
 
     @Override
