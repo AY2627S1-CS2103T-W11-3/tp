@@ -7,7 +7,6 @@ import java.util.List;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.ToStringBuilder;
-import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.Model;
 import seedu.address.model.person.Person;
@@ -26,7 +25,7 @@ public class DeleteCommand extends Command {
                     + COMMAND_WORD
                     + " 1";
 
-    public static final String MESSAGE_DELETE_PERSON_SUCCESS = "Deleted person: %1$s";
+    public static final String MESSAGE_DELETE_PERSON_SUCCESS = "Deleted contact: %1$s (index %2$d).";
 
     public static final String MESSAGE_MISSING_INDEX = "Missing contact index. Usage: delete INDEX";
     public static final String MESSAGE_MULTIPLE_INDICES =
@@ -72,7 +71,7 @@ public class DeleteCommand extends Command {
         Person personToDelete = lastShownList.get(targetIndex.intValueExact() - 1);
         model.deletePerson(personToDelete);
         return new CommandResult(
-                String.format(MESSAGE_DELETE_PERSON_SUCCESS, Messages.format(personToDelete)));
+                String.format(MESSAGE_DELETE_PERSON_SUCCESS, personToDelete.getName().fullName, targetIndex));
     }
 
     @Override
