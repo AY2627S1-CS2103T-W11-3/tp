@@ -53,6 +53,18 @@ public class AddressBookParserTest {
     }
 
     @Test
+    public void parseCommand_deleteSpacing_returnsDeleteCommand() throws Exception {
+        assertEquals(new DeleteCommand(INDEX_FIRST_PERSON), parser.parseCommand(" \tdelete \t 1\t "));
+    }
+
+    @Test
+    public void parseCommand_deleteWrongCase_throwsUnknownCommand() {
+        for (String input : new String[] {"Delete 1", "DELETE 1"}) {
+            assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand(input));
+        }
+    }
+
+    @Test
     public void parseCommand_edit() throws Exception {
         Person person = new PersonBuilder().build();
         EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(person).build();
