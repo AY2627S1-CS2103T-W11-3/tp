@@ -8,7 +8,8 @@ import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.CommandResult;
-import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.PreparedChange;
+import seedu.address.logic.commands.StagedCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -23,8 +24,6 @@ import seedu.address.storage.Storage;
 public class LogicManager implements Logic {
     public static final String MESSAGE_SAVE_ERROR =
             "Could not save changes. No changes were applied. Please try again.";
-    public static final String MESSAGE_DELETE_SAVE_ERROR =
-            "Could not save changes. Contact was not deleted. Please try again.";
 
     private final Logger logger = LogsCenter.getLogger(LogicManager.class);
 
@@ -47,6 +46,9 @@ public class LogicManager implements Logic {
         logger.info("----------------[USER COMMAND][" + commandText + "]");
 
         Command command = addressBookParser.parseCommand(commandText);
+        if (command instanceof StagedCommand stagedCommand) {
+            return executeStaged(stagedCommand);
+        }
         StagedModel stagedModel = new StagedModel(model);
         CommandResult commandResult = command.execute(stagedModel);
 
@@ -55,13 +57,23 @@ public class LogicManager implements Logic {
                 storage.saveAddressBook(stagedModel.getAddressBook());
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
-                String message = command instanceof DeleteCommand ? MESSAGE_DELETE_SAVE_ERROR : MESSAGE_SAVE_ERROR;
-                throw new CommandException(message, ioe);
+                throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
             }
         }
 
         stagedModel.commitTo(model);
         return commandResult;
+    }
+
+    /** Saves a prepared change before applying it to the observable model. */
+    private CommandResult executeStaged(StagedCommand command) throws CommandException {
+        PreparedChange change = command.prepare(model);
+        try {
+            storage.saveAddressBook(change.getCandidate());
+        } catch (IOException e) {
+            throw new CommandException(change.getSaveErrorMessage(), e);
+        }
+        return change.apply();
     }
 
     @Override

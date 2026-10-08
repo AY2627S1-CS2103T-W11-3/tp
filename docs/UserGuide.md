@@ -132,19 +132,33 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
-### Deleting a person: `delete`
+### Deleting a contact: `delete`
 
-Deletes the specified person from the address book.
+Permanently removes one contact and its contact details, tags, and notes.
 
-Format: `delete INDEX`
+Format: `delete <INDEX>`
 
-* Deletes the person at the specified `INDEX`.
-* The index refers to the index number shown in the displayed person list.
-* The index **must be a positive integer** 1, 2, 3, …​
+Angle brackets mark the required index; do not type the brackets.
 
-Examples:
-* `list` followed by `delete 2` deletes the 2nd person in the address book.
-* `find Betsy` followed by `delete 1` deletes the 1st person in the results of the `find` command.
+* Use the number beside the contact in the currently displayed list. Search results use their own numbering; the selected contact is removed from the full saved collection.
+* Supply exactly one index using ASCII digits, starting with 1–9. Leading zeros, signs, decimals, scientific notation, names, and multiple indices are rejected.
+* The keyword must be lowercase `delete`. Surrounding spaces/tabs and multiple spaces/tabs between the keyword and index are allowed; whitespace inside an index is rejected.
+* Success shows `Deleted contact: NAME (index INDEX).`, using the stored name and the index before deletion. Input clears, the current search remains active, and remaining contacts retain their order and are renumbered from 1. Other contacts and their shared tags are preserved.
+* Deleting the last displayed contact shows `No contacts to display.` in the list area. Repeating the command uses the updated numbering and may delete a different contact.
+* Failures retain the entered command and leave contacts and search results unchanged. A failed save preserves the previous file and live contacts. Successful changes persist after restarting.
+
+Examples: `delete 3` removes the third displayed contact; `find Betsy` followed by `delete 1` removes the first search result.
+
+Validation follows the table order. `N` is the number of displayed contacts; even an extremely large valid integer receives the empty-list or range response.
+
+| Condition | Message |
+| --- | --- |
+| Missing index | `Missing contact index. Usage: delete <INDEX>` |
+| More than one argument | `Expected exactly one contact index. Usage: delete <INDEX>` |
+| Invalid format, e.g. `0`, `01`, `-1`, `+1`, `abc` | `Invalid contact index. Enter a positive whole number without leading zeros. Usage: delete <INDEX>` |
+| No displayed contacts | `No contacts are displayed. Nothing to delete.` |
+| Index exceeds displayed count | `Contact index out of range. Choose an index from 1 to N.` |
+| Saving fails | `Could not save changes. Contact was not deleted. Please try again.` |
 
 ### Clearing all entries: `clear`
 
@@ -221,7 +235,7 @@ Action | Format, Examples
 --------|------------------
 **Add** | `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]…​ [note/NOTE]` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend note/Met at work`
 **Clear** | `clear`
-**Delete** | `delete INDEX`<br> e.g., `delete 3`
+**Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
 **List** | `list`
