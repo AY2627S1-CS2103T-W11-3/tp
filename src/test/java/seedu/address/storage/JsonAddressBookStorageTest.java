@@ -9,8 +9,10 @@ import static seedu.address.testutil.TypicalPersons.IDA;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.testutil.PersonBuilder;
 
 public class JsonAddressBookStorageTest {
     private static final Path TEST_DATA_FOLDER = Paths.get("src", "test", "data", "JsonAddressBookStorageTest");
@@ -47,12 +50,14 @@ public class JsonAddressBookStorageTest {
 
     @Test
     public void read_notJsonFormat_exceptionThrown() {
-        assertThrows(DataLoadingException.class, () -> readAddressBook("notJsonFormatAddressBook.json"));
+        assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_MALFORMED, () ->
+                readAddressBook("notJsonFormatAddressBook.json"));
     }
 
     @Test
     public void readAddressBook_invalidPersonAddressBook_throwDataLoadingException() {
-        assertThrows(DataLoadingException.class, () -> readAddressBook("invalidPersonAddressBook.json"));
+        assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_INVALID, () ->
+                readAddressBook("invalidPersonAddressBook.json"));
     }
 
     @Test
@@ -84,6 +89,44 @@ public class JsonAddressBookStorageTest {
         readBack = jsonAddressBookStorage.readAddressBook().get(); // file path not specified
         assertEquals(original, new AddressBook(readBack));
 
+    }
+
+    @Test
+    public void saveAndReadAddressBook_personWithNote_noteIsPreserved() throws Exception {
+        Path filePath = testFolder.resolve("AddressBookWithNote.json");
+        AddressBook original = new AddressBook();
+        original.addPerson(new PersonBuilder(ALICE).withNote("Known through a dating app").build());
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+
+        storage.saveAddressBook(original);
+        ReadOnlyAddressBook readBack = storage.readAddressBook().get();
+
+        assertEquals(original, new AddressBook(readBack));
+    }
+
+    @Test
+    public void readAddressBook_unreadableFile_reportsReadError() {
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(testFolder);
+        assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_UNREADABLE,
+                storage::readAddressBook);
+    }
+
+    @Test
+    public void readAddressBook_badStructureOrInvalidContacts_rejectsWholeFile() throws Exception {
+        Path path = testFolder.resolve("bad-data.json");
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(path);
+        for (String json : List.of("", "null", "{}", "{\"persons\":null}", "{\"persons\":[]} {}")) {
+            Files.writeString(path, json);
+            assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_MALFORMED,
+                    storage::readAddressBook);
+            assertEquals(json, Files.readString(path));
+        }
+        for (String json : List.of("{\"persons\":[null]}", "{\"persons\":[{}]}")) {
+            Files.writeString(path, json);
+            assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_INVALID,
+                    storage::readAddressBook);
+            assertEquals(json, Files.readString(path));
+        }
     }
 
     @Test

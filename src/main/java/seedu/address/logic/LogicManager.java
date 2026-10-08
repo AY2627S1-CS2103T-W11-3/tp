@@ -1,7 +1,6 @@
 package seedu.address.logic;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
@@ -15,6 +14,7 @@ import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.Model;
+import seedu.address.model.StagedModel;
 import seedu.address.model.person.Person;
 import seedu.address.storage.Storage;
 
@@ -22,10 +22,8 @@ import seedu.address.storage.Storage;
  * The main LogicManager of the app.
  */
 public class LogicManager implements Logic {
-    public static final String FILE_OPS_ERROR_FORMAT = "Could not save data due to the following error: %s";
-
-    public static final String FILE_OPS_PERMISSION_ERROR_FORMAT =
-            "Could not save data to file %s due to insufficient permissions to write to the file or the folder.";
+    public static final String MESSAGE_SAVE_ERROR =
+            "Could not save changes. No changes were applied. Please try again.";
 
     private final Logger logger = LogsCenter.getLogger(LogicManager.class);
 
@@ -34,7 +32,8 @@ public class LogicManager implements Logic {
     private final AddressBookParser addressBookParser;
 
     /**
-     * Constructs a {@code LogicManager} with the given {@code Model} and {@code Storage}.
+     * Constructs a {@code LogicManager} with the given {@code Model} and
+     * {@code Storage}.
      */
     public LogicManager(Model model, Storage storage) {
         this.model = model;
@@ -46,21 +45,23 @@ public class LogicManager implements Logic {
     public CommandResult execute(String commandText) throws CommandException, ParseException {
         logger.info("----------------[USER COMMAND][" + commandText + "]");
 
-        CommandResult commandResult;
         Command command = addressBookParser.parseCommand(commandText);
         if (command instanceof StagedCommand stagedCommand) {
             return executeStaged(stagedCommand);
         }
-        commandResult = command.execute(model);
+        StagedModel stagedModel = new StagedModel(model);
+        CommandResult commandResult = command.execute(stagedModel);
 
-        try {
-            storage.saveAddressBook(model.getAddressBook());
-        } catch (AccessDeniedException e) {
-            throw new CommandException(String.format(FILE_OPS_PERMISSION_ERROR_FORMAT, e.getMessage()), e);
-        } catch (IOException ioe) {
-            throw new CommandException(String.format(FILE_OPS_ERROR_FORMAT, ioe.getMessage()), ioe);
+        if (stagedModel.hasContactChanges()) {
+            try {
+                storage.saveAddressBook(stagedModel.getAddressBook());
+            } catch (IOException ioe) {
+                logger.warning("Could not save contact changes: " + ioe.getMessage());
+                throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
+            }
         }
 
+        stagedModel.commitTo(model);
         return commandResult;
     }
 

@@ -102,9 +102,12 @@ How the `Logic` component works:
 
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
-1. The command can communicate with the `Model` when it is executed (e.g. to delete a person).<br>
-   Note that although this is shown as a single step in the diagram above for simplicity, the code can require several interactions between the command object and the `Model` to complete the operation.
-1. The result of the command execution is encapsulated as a `CommandResult` object which is returned from `Logic`.
+1. The command executes against a `StagedModel`, which copies the contacts and records model operations.
+1. If the command changes contacts, `LogicManager` saves the full candidate address book before applying
+   the recorded operations to the live model. If saving fails, the candidate is discarded and a
+   `CommandException` is thrown. Commands that only change the view do not save contact data.
+1. After committing, the `CommandResult` is returned to the UI. The sequence diagram above omits the
+   staging and storage interactions; the persistence flow is described below.
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
@@ -154,6 +157,42 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 ## **Implementation**
 
 This section describes some noteworthy details on how certain features are implemented.
+
+### Automatic contact persistence (F5)
+
+`LogicManager` executes each command once against `StagedModel`. The candidate holds the full contact
+collection and uses a snapshot of the visible contacts for indexed operations. It records calls to
+`addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations
+trigger a save; view-only commands do not. The current UI runs commands synchronously, so the live model
+remains unchanged between preparing and committing a command.
+
+After saving, recorded operations are applied to the live model. This preserves incremental list
+notifications instead of replacing the whole list for every change. A deletion leaves the live search
+predicate active. A rejected command or failed save emits no changes to the live list, preserving UI
+selection and the input command. The UI displays success only after `LogicManager.execute` returns.
+
+`JsonAddressBookStorage` serializes UTF-8, pretty-printed JSON to a temporary file in the data directory,
+then atomically replaces the destination. It rejects saves if atomic replacement is unavailable and
+attempts to clean up temporary files. It never falls back to truncating the original file.
+
+Loading distinguishes a missing file (sample contacts), an unreadable file, malformed JSON, and invalid
+contact values. Conversion validates the whole collection before exposing any contacts. A load error
+starts an empty model and is displayed by `UiManager` after the window opens. The existing file remains
+untouched until a data-changing command successfully saves a replacement.
+
+Integration with the other MVP features:
+
+* `JsonAdaptedPerson` saves basic contact fields, tags, and notes. Older files without a note load with
+  an empty note. Conversion uses the same model validation and duplicate rules as contact commands.
+* `view` reads the staged contacts without writing a file. UI updates occur after a successful
+  `CommandResult`; commands do not directly change UI controls or write storage files.
+* `find` and `list` update the view through `Model.updateFilteredPersonList`. Storage always receives
+  the full address book, never just the displayed results.
+* `edit` supports the final `note/` argument with the same parsing and validation as `add`. Other edits
+  retain the existing note. A failed save leaves the original note and tags untouched.
+* Any new Model mutation must also be implemented and recorded by `StagedModel`. Keep `Person` immutable
+  so copying the collection safely isolates candidate changes. Future sorting or multi-step commands
+  may need to copy additional view state beyond the current filtered-contact snapshot.
 
 ### \[Proposed\] Undo/redo feature
 

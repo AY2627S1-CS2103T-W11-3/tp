@@ -3,7 +3,10 @@ package seedu.address.storage;
 import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
+import java.nio.charset.CharacterCodingException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
@@ -51,17 +54,33 @@ public class JsonAddressBookStorage {
     public Optional<ReadOnlyAddressBook> readAddressBook(Path filePath) throws DataLoadingException {
         requireNonNull(filePath);
 
-        Optional<JsonSerializableAddressBook> jsonAddressBook = JsonUtil.readJsonFile(
-                filePath, JsonSerializableAddressBook.class);
-        if (!jsonAddressBook.isPresent()) {
+        String content;
+        try {
+            content = Files.readString(filePath);
+        } catch (NoSuchFileException e) {
             return Optional.empty();
+        } catch (CharacterCodingException e) {
+            throw new ContactDataLoadingException(ContactDataLoadingException.MESSAGE_MALFORMED, e);
+        } catch (IOException e) {
+            throw new ContactDataLoadingException(ContactDataLoadingException.MESSAGE_UNREADABLE, e);
+        }
+
+        JsonSerializableAddressBook jsonAddressBook;
+        try {
+            jsonAddressBook = JsonUtil.fromJsonString(content, JsonSerializableAddressBook.class);
+        } catch (IOException e) {
+            throw new ContactDataLoadingException(ContactDataLoadingException.MESSAGE_MALFORMED, e);
+        }
+        if (jsonAddressBook == null) {
+            throw new ContactDataLoadingException(ContactDataLoadingException.MESSAGE_MALFORMED,
+                    new IllegalValueException("Expected a contact collection, but found null."));
         }
 
         try {
-            return Optional.of(jsonAddressBook.get().toModelType());
+            return Optional.of(jsonAddressBook.toModelType());
         } catch (IllegalValueException ive) {
             logger.info("Illegal values found in " + filePath + ": " + ive.getMessage());
-            throw new DataLoadingException(ive);
+            throw new ContactDataLoadingException(ContactDataLoadingException.MESSAGE_INVALID, ive);
         }
     }
 
@@ -85,6 +104,9 @@ public class JsonAddressBookStorage {
 
         Path destination = filePath.toAbsolutePath();
         Files.createDirectories(destination.getParent());
+        if (Files.exists(destination) && !Files.isWritable(destination)) {
+            throw new AccessDeniedException(destination.toString());
+        }
         Path temporaryFile = Files.createTempFile(destination.getParent(), "addressbook-", ".tmp");
         try {
             writeAddressBook(addressBook, temporaryFile);
