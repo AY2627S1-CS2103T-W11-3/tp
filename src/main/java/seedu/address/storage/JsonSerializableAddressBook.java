@@ -28,6 +28,9 @@ class JsonSerializableAddressBook {
      */
     @JsonCreator
     public JsonSerializableAddressBook(@JsonProperty("persons") List<JsonAdaptedPerson> persons) {
+        if (persons == null) {
+            throw new IllegalArgumentException("The persons field must be a list.");
+        }
         this.persons.addAll(persons);
     }
 
@@ -48,6 +51,9 @@ class JsonSerializableAddressBook {
     public AddressBook toModelType() throws IllegalValueException {
         AddressBook addressBook = new AddressBook();
         for (JsonAdaptedPerson jsonAdaptedPerson : persons) {
+            if (jsonAdaptedPerson == null) {
+                throw new IllegalValueException("A contact must not be null.");
+            }
             Person person = jsonAdaptedPerson.toModelType();
             if (addressBook.hasPerson(person)) {
                 throw new IllegalValueException(MESSAGE_DUPLICATE_PERSON);

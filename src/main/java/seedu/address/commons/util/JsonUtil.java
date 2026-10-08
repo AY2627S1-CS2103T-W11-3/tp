@@ -10,6 +10,8 @@ import java.util.logging.Logger;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -90,7 +92,13 @@ public class JsonUtil {
      * @return The instance of T with the specified values in the JSON string
      */
     public static <T> T fromJsonString(String json, Class<T> instanceClass) throws IOException {
-        return objectMapper.readValue(json, instanceClass);
+        try (JsonParser parser = objectMapper.getFactory().createParser(json)) {
+            T value = objectMapper.readValue(parser, instanceClass);
+            if (parser.nextToken() != null) {
+                throw new JsonParseException(parser, "Unexpected content after JSON value");
+            }
+            return value;
+        }
     }
 
     /**

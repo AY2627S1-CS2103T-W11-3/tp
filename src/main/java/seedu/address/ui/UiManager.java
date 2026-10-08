@@ -26,14 +26,23 @@ public class UiManager implements Ui {
     private Logic logic;
     private Path dataFilePath;
     private MainWindow mainWindow;
+    private final String contactLoadError;
 
     /**
      * Creates a {@code UiManager} with the given {@code Logic} and the data file path
      * to show in the status bar.
      */
     public UiManager(Logic logic, Path dataFilePath) {
+        this(logic, dataFilePath, null);
+    }
+
+    /**
+     * Creates a UI manager with an optional contact-loading error to display after the window opens.
+     */
+    public UiManager(Logic logic, Path dataFilePath, String contactLoadError) {
         this.logic = logic;
         this.dataFilePath = dataFilePath;
+        this.contactLoadError = contactLoadError;
     }
 
     @Override
@@ -47,6 +56,9 @@ public class UiManager implements Ui {
             mainWindow = new MainWindow(primaryStage, logic, dataFilePath);
             mainWindow.show(); //This should be called before creating other UI parts
             mainWindow.fillInnerParts();
+            if (contactLoadError != null) {
+                showAlertDialogAndWait(AlertType.ERROR, "Unable to load contacts", null, contactLoadError);
+            }
 
         } catch (Throwable e) {
             logger.severe(StringUtil.getDetails(e));
