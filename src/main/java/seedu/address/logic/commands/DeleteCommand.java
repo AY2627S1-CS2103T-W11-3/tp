@@ -21,19 +21,19 @@ public class DeleteCommand extends Command implements StagedCommand {
             COMMAND_WORD
                     + ": Deletes the person identified by the index number used in the displayed"
                     + " person list.\n"
-                    + "Parameters: INDEX (must be a positive integer)\n"
+                    + "Parameters: <INDEX> (must be a positive integer)\n"
                     + "Example: "
                     + COMMAND_WORD
                     + " 1";
 
     public static final String MESSAGE_DELETE_PERSON_SUCCESS = "Deleted contact: %1$s (index %2$d).";
 
-    public static final String MESSAGE_MISSING_INDEX = "Missing contact index. Usage: delete INDEX";
+    public static final String MESSAGE_MISSING_INDEX = "Missing contact index. Usage: delete <INDEX>";
     public static final String MESSAGE_MULTIPLE_INDICES =
-            "Expected exactly one contact index. Usage: delete INDEX";
+            "Expected exactly one contact index. Usage: delete <INDEX>";
     public static final String MESSAGE_INVALID_INDEX =
             "Invalid contact index. Enter a positive whole number without leading zeros. Usage:"
-                    + " delete INDEX";
+                    + " delete <INDEX>";
     public static final String MESSAGE_EMPTY_LIST = "No contacts are displayed. Nothing to delete.";
     public static final String MESSAGE_INDEX_OUT_OF_RANGE =
             "Contact index out of range. Choose an index from 1 to %1$d.";

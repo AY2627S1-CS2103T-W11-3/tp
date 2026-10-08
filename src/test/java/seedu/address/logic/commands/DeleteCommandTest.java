@@ -10,6 +10,7 @@ import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +30,14 @@ import seedu.address.model.person.PersonContainsKeywordsPredicate;
 public class DeleteCommandTest {
 
     private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+
+    @Test
+    public void constructor_nonPositiveIndex_throwsIllegalArgumentException() {
+        for (BigInteger index : new BigInteger[] {BigInteger.ZERO, BigInteger.valueOf(-1)}) {
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, ()
+                -> new DeleteCommand(index));
+        }
+    }
 
     @Test
     public void execute_validIndexUnfilteredList_success() {
