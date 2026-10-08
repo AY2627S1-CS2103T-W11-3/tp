@@ -185,6 +185,49 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_deleteSearchResult_preservesOtherNotesAndSharedTagsAfterReload() throws Exception {
+        logic.execute("add n/Sarah Lim p/91234567 e/sarah@example.com a/NUS t/project note/Met at workshop");
+        logic.execute("add n/Alex Tan p/98765432 e/alex@example.com a/NUS t/project note/Project teammate");
+        Person remaining = model.getAddressBook().getPersonList().get(1);
+        logic.execute("find Sarah");
+
+        assertEquals("Deleted contact: Sarah Lim (index 1).", logic.execute("delete 1").getFeedbackToUser());
+        assertTrue(model.getFilteredPersonList().isEmpty());
+        assertEquals(List.of(remaining), model.getAddressBook().getPersonList());
+        JsonAddressBookStorage saved = new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"));
+        assertEquals(List.of(remaining), saved.readAddressBook().orElseThrow().getPersonList());
+    }
+
+    @Test
+    public void execute_invalidDelete_precedencePreservesSavedData() throws Exception {
+        logic.execute("add n/Sarah Lim p/91234567 e/sarah@example.com a/NUS note/Workshop");
+        Path saved = temporaryFolder.resolve("addressBook.json");
+        byte[] before = Files.readAllBytes(saved);
+        AddressBook original = new AddressBook(model.getAddressBook());
+        String[][] cases = {
+            {"delete", DeleteCommand.MESSAGE_MISSING_INDEX},
+            {"delete abc 2", DeleteCommand.MESSAGE_MULTIPLE_INDICES},
+            {"delete 01", DeleteCommand.MESSAGE_INVALID_INDEX},
+            {"delete +1", DeleteCommand.MESSAGE_INVALID_INDEX}
+        };
+        for (boolean empty : new boolean[] {false, true}) {
+            if (empty) {
+                logic.execute("find nobody");
+            }
+            List<Person> displayed = List.copyOf(model.getFilteredPersonList());
+            for (String[] input : cases) {
+                assertThrows(ParseException.class, input[1], () -> logic.execute(input[0]));
+            }
+            String rangeMessage = empty ? DeleteCommand.MESSAGE_EMPTY_LIST
+                    : "Contact index out of range. Choose an index from 1 to 1.";
+            assertThrows(CommandException.class, rangeMessage, () -> logic.execute("delete " + "9".repeat(1000)));
+            assertEquals(original, model.getAddressBook());
+            assertEquals(displayed, model.getFilteredPersonList());
+            assertArrayEquals(before, Files.readAllBytes(saved));
+        }
+    }
+
+    @Test
     public void getFilteredPersonList_modifyList_throwsUnsupportedOperationException() {
         assertThrows(UnsupportedOperationException.class, () -> logic.getFilteredPersonList().remove(0));
     }
