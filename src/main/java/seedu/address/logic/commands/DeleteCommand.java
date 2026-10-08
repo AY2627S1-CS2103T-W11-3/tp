@@ -8,11 +8,12 @@ import java.util.List;
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.person.Person;
 
 /** Deletes a person identified using its displayed index from the address book. */
-public class DeleteCommand extends Command {
+public class DeleteCommand extends Command implements StagedCommand {
 
     public static final String COMMAND_WORD = "delete";
 
@@ -37,6 +38,9 @@ public class DeleteCommand extends Command {
     public static final String MESSAGE_INDEX_OUT_OF_RANGE =
             "Contact index out of range. Choose an index from 1 to %1$d.";
 
+    public static final String MESSAGE_SAVE_ERROR =
+            "Could not save changes. Contact was not deleted. Please try again.";
+
     private final BigInteger targetIndex;
 
     /** Creates a command using an existing application index. */
@@ -57,16 +61,23 @@ public class DeleteCommand extends Command {
 
     @Override
     public CommandResult execute(Model model) throws CommandException {
-        Person personToDelete = getTargetPerson(model);
-        model.deletePerson(personToDelete);
-        return new CommandResult(
-                String.format(MESSAGE_DELETE_PERSON_SUCCESS, personToDelete.getName().fullName, targetIndex));
+        return prepare(model).apply();
+    }
+
+    @Override
+    public PreparedChange prepare(Model model) throws CommandException {
+        Person target = getTargetPerson(model);
+        AddressBook candidate = new AddressBook(model.getAddressBook());
+        candidate.removePerson(target);
+        CommandResult result = new CommandResult(
+                String.format(MESSAGE_DELETE_PERSON_SUCCESS, target.getName().fullName, targetIndex));
+        return new PreparedChange(candidate, () -> model.deletePerson(target), result, MESSAGE_SAVE_ERROR);
     }
 
     /**
      * Validates the displayed index and returns its contact without changing the model.
      */
-    public Person getTargetPerson(Model model) throws CommandException {
+    private Person getTargetPerson(Model model) throws CommandException {
         requireNonNull(model);
         List<Person> lastShownList = model.getFilteredPersonList();
 

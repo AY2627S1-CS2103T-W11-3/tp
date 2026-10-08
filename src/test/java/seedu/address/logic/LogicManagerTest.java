@@ -134,7 +134,7 @@ public class LogicManagerTest {
                 logic = new LogicManager(model, new StorageManager(failingStorage,
                         new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json"))));
 
-                assertThrows(CommandException.class, LogicManager.DELETE_SAVE_ERROR, () -> logic.execute("delete 2"));
+                assertThrows(CommandException.class, DeleteCommand.MESSAGE_SAVE_ERROR, () -> logic.execute("delete 2"));
 
                 assertEquals(original, model.getAddressBook());
                 assertEquals(displayed, model.getFilteredPersonList());
