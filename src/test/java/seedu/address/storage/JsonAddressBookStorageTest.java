@@ -1,7 +1,10 @@
 package seedu.address.storage;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.HOON;
@@ -9,6 +12,7 @@ import static seedu.address.testutil.TypicalPersons.IDA;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,6 +31,32 @@ public class JsonAddressBookStorageTest {
 
     @TempDir
     public Path testFolder;
+
+    @Test
+    public void saveAddressBook_cleanupFailure_preservesOriginalErrorAndSavedData() throws Exception {
+        Path destination = testFolder.resolve("contacts.json");
+        new JsonAddressBookStorage(destination).saveAddressBook(getTypicalAddressBook());
+        byte[] original = Files.readAllBytes(destination);
+        IOException writeFailure = new IOException("Simulated write failure");
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(destination) {
+            @Override
+            protected void writeAddressBook(ReadOnlyAddressBook addressBook, Path temporaryFile) throws IOException {
+                // A nonempty directory deterministically prevents cleanup on every supported platform.
+                Files.delete(temporaryFile);
+                Files.createDirectory(temporaryFile);
+                Files.writeString(temporaryFile.resolve("remaining-data"), "partial content");
+                throw writeFailure;
+            }
+        };
+
+        IOException actual = org.junit.jupiter.api.Assertions.assertThrows(IOException.class, ()
+            -> storage.saveAddressBook(new AddressBook()));
+
+        assertSame(writeFailure, actual);
+        assertEquals(1, actual.getSuppressed().length);
+        assertTrue(actual.getSuppressed()[0] instanceof DirectoryNotEmptyException);
+        assertArrayEquals(original, Files.readAllBytes(destination));
+    }
 
     @Test
     public void readAddressBook_nullFilePath_throwsNullPointerException() {
