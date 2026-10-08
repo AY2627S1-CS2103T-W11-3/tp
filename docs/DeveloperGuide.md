@@ -158,9 +158,23 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
+### Contact deletion (F4)
+
+`DeleteCommandParser` checks argument count, then delegates ASCII positive-integer validation to `ParserUtil.parsePositiveInteger`. A `BigInteger` retains oversized inputs until empty-list and range validation; conversion to an `int` occurs only after checking the displayed count.
+
+`DeleteCommand` implements `StagedCommand`. Its `prepare` method resolves the displayed index once and returns a `PreparedChange`: a full candidate collection, an operation capturing the selected contact, success feedback, and the save-error message. `LogicManager` saves the candidate before applying that operation. It depends on the staging interface, not a concrete deletion command. A failed save produces no observable live-model changes. Both staging paths require synchronous execution without intervening commands.
+
+The existing duplicate rules remain owned by contact creation. Deletion removes the selected contact object; it does not search by name. Notes are part of that immutable contact, and other contacts retain their own tags and notes.
+
+`CommandBox` clears input only after successful execution and retains it when parsing or execution throws. `PersonListPanel` provides the empty-list placeholder and updates card numbering when cell indices change.
+
+`DeleteUiTest` checks the empty-list label, renumbered cells, and command-input behavior on the JavaFX application thread. Run it with `./gradlew test --tests '*DeleteUiTest'` on a machine with a graphical display. It is skipped on Linux when `DISPLAY` is absent; logic/storage tests remain independent of the display.
+
+The persistent contact-details panel is owned by the view feature and is not yet implemented: `view` currently writes details into the feedback box. Clearing details for the deleted contact, preserving another contact's details, and retaining details on failure remain integration acceptance criteria for that owner. F4 does not add a competing panel.
+
 ### Automatic contact persistence (F5)
 
-`LogicManager` executes each command once against `StagedModel`. The candidate holds the full contact
+`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds the full contact
 collection and uses a snapshot of the visible contacts for indexed operations. It records calls to
 `addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations
 trigger a save; view-only commands do not. The current UI runs commands synchronously, so the live model
@@ -454,22 +468,16 @@ testers are expected to do more *exploratory* testing.
 
 1. _{ more test cases …​ }_
 
-### Deleting a person
+### Deleting a contact
 
-1. Deleting a person while all persons are being shown
+Use disposable test contacts and a separate data file for these checks.
 
-   1. Prerequisites: List all persons using the `list` command, with multiple persons in the list.
-
-   1. Test case: `delete 1`<br>
-      Expected: The first contact is deleted from the list. The status message shows the deleted contact's details.
-
-   1. Test case: `delete 0`<br>
-      Expected: No person is deleted. The status message shows error details.
-
-   1. Other incorrect delete commands to try: `delete`, `delete x`, `...` (where x is larger than the list size)<br>
-      Expected: Similar to previous.
-
-1. _{ more test cases …​ }_
+1. Create at least three contacts with different names, notes, and a shared tag. Delete the middle contact. Expect `Deleted contact: NAME (index 2).`, cleared input, consecutive numbering, and unchanged fields/tags/notes for the remaining contacts.
+1. Search for a subset, delete its first result, and confirm contacts outside the search remain stored. Repeat `delete 1`: it selects the next result. Once results are empty, expect `No contacts to display.`; `delete 1` then reports the empty-list error.
+1. Try `delete`, `delete abc 2`, `delete 01`, `delete +1`, `delete 1.0`, and a 100-digit positive index. Compare exact errors with the User Guide. Repeat on an empty search: count and format errors take priority over the empty-list error. Input remains available for correction.
+1. Use spaces and tabs around `delete 1` and between keyword and index. Confirm acceptance. `Delete 1` is an unknown command; `delete 1 2` is rejected.
+1. Restart after a successful deletion. Confirm the contact and its note remain absent and other contacts are restored unchanged.
+1. Simulate a save failure using the integration tests in `LogicManagerTest`. They check partial writes, denied/unsupported replacement, original file bytes, unchanged model/filter, and zero observable notifications. For a manual check, make the disposable data directory unwritable, attempt deletion, and expect the exact save-error message with input and contacts retained; restore permissions and retry.
 
 ### Saving data
 
