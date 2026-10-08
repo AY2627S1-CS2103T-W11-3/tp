@@ -134,9 +134,11 @@ Examples:
 
 ### Deleting a contact: `delete`
 
-Permanently removes one contact and its contact details, tags, and notes. There is no confirmation or undo.
+Permanently removes one contact and its contact details, tags, and notes.
 
-Format: `delete INDEX`
+Format: `delete <INDEX>`
+
+Angle brackets mark the required index; do not type the brackets.
 
 * Use the number beside the contact in the currently displayed list. Search results use their own numbering; the selected contact is removed from the full saved collection.
 * Supply exactly one index using ASCII digits, starting with 1–9. Leading zeros, signs, decimals, scientific notation, names, and multiple indices are rejected.
@@ -151,9 +153,9 @@ Validation follows the table order. `N` is the number of displayed contacts; eve
 
 | Condition | Message |
 | --- | --- |
-| Missing index | `Missing contact index. Usage: delete INDEX` |
-| More than one argument | `Expected exactly one contact index. Usage: delete INDEX` |
-| Invalid format, e.g. `0`, `01`, `-1`, `+1`, `abc` | `Invalid contact index. Enter a positive whole number without leading zeros. Usage: delete INDEX` |
+| Missing index | `Missing contact index. Usage: delete <INDEX>` |
+| More than one argument | `Expected exactly one contact index. Usage: delete <INDEX>` |
+| Invalid format, e.g. `0`, `01`, `-1`, `+1`, `abc` | `Invalid contact index. Enter a positive whole number without leading zeros. Usage: delete <INDEX>` |
 | No displayed contacts | `No contacts are displayed. Nothing to delete.` |
 | Index exceeds displayed count | `Contact index out of range. Choose an index from 1 to N.` |
 | Saving fails | `Could not save changes. Contact was not deleted. Please try again.` |
@@ -233,7 +235,7 @@ Action | Format, Examples
 --------|------------------
 **Add** | `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]…​ [note/NOTE]` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend note/Met at work`
 **Clear** | `clear`
-**Delete** | `delete INDEX`<br> e.g., `delete 3`
+**Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
 **List** | `list`
