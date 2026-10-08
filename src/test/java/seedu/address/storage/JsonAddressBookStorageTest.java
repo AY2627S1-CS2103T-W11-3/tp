@@ -9,8 +9,10 @@ import static seedu.address.testutil.TypicalPersons.IDA;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -48,12 +50,14 @@ public class JsonAddressBookStorageTest {
 
     @Test
     public void read_notJsonFormat_exceptionThrown() {
-        assertThrows(DataLoadingException.class, () -> readAddressBook("notJsonFormatAddressBook.json"));
+        assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_MALFORMED, () ->
+                readAddressBook("notJsonFormatAddressBook.json"));
     }
 
     @Test
     public void readAddressBook_invalidPersonAddressBook_throwDataLoadingException() {
-        assertThrows(DataLoadingException.class, () -> readAddressBook("invalidPersonAddressBook.json"));
+        assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_INVALID, () ->
+                readAddressBook("invalidPersonAddressBook.json"));
     }
 
     @Test
@@ -98,6 +102,31 @@ public class JsonAddressBookStorageTest {
         ReadOnlyAddressBook readBack = storage.readAddressBook().get();
 
         assertEquals(original, new AddressBook(readBack));
+    }
+
+    @Test
+    public void readAddressBook_unreadableFile_reportsReadError() {
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(testFolder);
+        assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_UNREADABLE,
+                storage::readAddressBook);
+    }
+
+    @Test
+    public void readAddressBook_badStructureOrInvalidContacts_rejectsWholeFile() throws Exception {
+        Path path = testFolder.resolve("bad-data.json");
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(path);
+        for (String json : List.of("", "null", "{}", "{\"persons\":null}", "{\"persons\":[]} {}")) {
+            Files.writeString(path, json);
+            assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_MALFORMED,
+                    storage::readAddressBook);
+            assertEquals(json, Files.readString(path));
+        }
+        for (String json : List.of("{\"persons\":[null]}", "{\"persons\":[{}]}")) {
+            Files.writeString(path, json);
+            assertThrows(ContactDataLoadingException.class, ContactDataLoadingException.MESSAGE_INVALID,
+                    storage::readAddressBook);
+            assertEquals(json, Files.readString(path));
+        }
     }
 
     @Test
