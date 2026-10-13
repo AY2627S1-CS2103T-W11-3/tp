@@ -97,6 +97,28 @@ Shows a list of all persons in the address book.
 
 Format: `list`
 
+### Viewing a person: `view`
+
+Shows the full details of the person at the specified index. The person is not added, edited, or deleted.
+
+Format: `view INDEX`
+
+* The index refers to the index number shown in the displayed person list. The index **must be a positive integer** 1, 2, 3, …​
+* After `find`, the index refers to the filtered list on screen.
+* Leading and trailing spaces are ignored, so `view 1` and `view    1` show the same person.
+* The result lists name, phone, email, and address. A stored note is included as `Note: NOTE`. A person with no note omits that line. Tags are listed in alphabetical order, separated by commas. A person with no tags shows `Tags: Not specified`.
+* The result ends with `Showing details for NAME.`
+
+Examples:
+* `view 1` shows the first person in the displayed list.
+* `find Betsy` followed by `view 1` shows the first person in the search results.
+
+| Condition | Message |
+| --- | --- |
+| Missing index, extra words, or a value that is not a positive integer, such as `view`, `view 1 John`, `view 0`, or `view Alice` | `Invalid command format!` followed by the `view` usage |
+| No contacts are displayed | `No contacts available to view.` |
+| Index exceeds the displayed list | `Invalid index. Please select an index shown in the contact list.` |
+
 ### Editing a person: `edit`
 
 Edits an existing person in the address book.
@@ -239,4 +261,5 @@ Action | Format, Examples
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
 **List** | `list`
+**View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
