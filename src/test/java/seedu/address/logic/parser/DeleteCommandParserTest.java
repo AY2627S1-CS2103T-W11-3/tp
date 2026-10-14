@@ -23,6 +23,18 @@ public class DeleteCommandParserTest {
     private final DeleteCommandParser parser = new DeleteCommandParser();
 
     @Test
+    public void parse_invalidInput_includesDescriptionParametersAndExample() {
+        String usage = "delete: Deletes the contact identified by the index number used in the displayed"
+                + " contact list.\n"
+                + "Parameters: <INDEX> (must be a positive integer without leading zeros)\n"
+                + "Example: delete 1";
+        assertParseFailure(parser, "", "Missing contact index.\n" + usage);
+        assertParseFailure(parser, "1 2", "Expected exactly one contact index.\n" + usage);
+        assertParseFailure(parser, "01",
+                "Invalid contact index. Enter a positive whole number without leading zeros.\n" + usage);
+    }
+
+    @Test
     public void parse_validArgs_returnsDeleteCommand() {
         for (String input : new String[] {"1", " 1 ", "\t1\t", " \t1 \t"}) {
             assertParseSuccess(parser, input, new DeleteCommand(INDEX_FIRST_PERSON));
