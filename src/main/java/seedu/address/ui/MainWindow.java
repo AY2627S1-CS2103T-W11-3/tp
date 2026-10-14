@@ -5,6 +5,7 @@ import java.util.logging.Logger;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextInputControl;
 import javafx.scene.input.KeyCombination;
@@ -39,6 +40,9 @@ public class MainWindow extends UiPart<Stage> {
 
     @FXML
     private StackPane commandBoxPlaceholder;
+
+    @FXML
+    private Label commandError;
 
     @FXML
     private MenuItem helpMenuItem;
@@ -179,6 +183,9 @@ public class MainWindow extends UiPart<Stage> {
     private CommandResult executeCommand(String commandText) throws CommandException, ParseException {
         try {
             CommandResult commandResult = logic.execute(commandText);
+            commandError.setText("");
+            commandError.setVisible(false);
+            commandError.setManaged(false);
             logger.info("Result: " + commandResult.getFeedbackToUser());
             resultDisplay.setFeedbackToUser(commandResult.getFeedbackToUser());
 
@@ -193,7 +200,9 @@ public class MainWindow extends UiPart<Stage> {
             return commandResult;
         } catch (CommandException | ParseException e) {
             logger.info("An error occurred while executing command: " + commandText);
-            resultDisplay.setFeedbackToUser(e.getMessage());
+            commandError.setText(e.getMessage());
+            commandError.setVisible(true);
+            commandError.setManaged(true);
             throw e;
         }
     }

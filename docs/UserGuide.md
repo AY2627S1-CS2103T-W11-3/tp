@@ -210,7 +210,8 @@ You do not need to save manually. Contacts, tags, and notes are restored when yo
 If no data file exists, AddressBook starts with its sample contacts.
 
 Changes appear only after saving succeeds. If saving fails, contacts, the displayed list, and the previous
-data file remain unchanged. The command stays in the input box so you can retry.
+data file remain unchanged. Any displayed contact details also remain visible; the error appears below
+the command box. The command stays in the input box so you can retry. A successful command clears the error.
 
 For a failed deletion, the message is:
 `Could not save changes. Contact was not deleted. Please try again.`

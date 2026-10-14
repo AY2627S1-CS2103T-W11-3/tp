@@ -282,7 +282,7 @@ public class LogicManagerTest {
         failSave.set(true);
         for (String command : List.of("delete 1", "edit 1 note/Changed note", "clear")) {
             String message = command.startsWith("delete")
-                    ? LogicManager.DELETE_SAVE_ERROR : LogicManager.MESSAGE_SAVE_ERROR;
+                    ? DeleteCommand.MESSAGE_SAVE_ERROR : LogicManager.MESSAGE_SAVE_ERROR;
             assertThrows(CommandException.class, message, () -> logic.execute(command));
             assertEquals(previousContacts, model.getAddressBook());
             assertEquals(previousVisible, model.getFilteredPersonList());

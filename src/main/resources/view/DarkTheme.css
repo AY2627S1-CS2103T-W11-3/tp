@@ -146,6 +146,10 @@
     -fx-background-color: derive(#1d1d1d, 30%);
 }
 
+.command-error {
+    -fx-text-fill: #ffb4ab;
+}
+
 .result-display {
     -fx-background-color: transparent;
     -fx-font-family: "Segoe UI Light";
