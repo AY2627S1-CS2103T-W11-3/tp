@@ -1,5 +1,6 @@
 package seedu.address.model.person;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
@@ -27,6 +28,9 @@ public class NoteTest {
         assertFalse(Note.isValidNote("line one\nline two"));
         assertFalse(Note.isValidNote("contains\ta tab"));
         assertFalse(Note.isValidNote("a".repeat(1001)));
+        for (int codePoint : new int[] {0x0378, 0x200B, 0x2028, 0x2029, Character.MIN_SURROGATE}) {
+            assertFalse(Note.isValidNote(String.valueOf((char) codePoint)));
+        }
 
         assertTrue(Note.isValidNote("a"));
         assertTrue(Note.isValidNote("a".repeat(1000)));
@@ -43,6 +47,23 @@ public class NoteTest {
 
     @Test
     public void constructor_paddedNote_trimsValue() {
-        assertTrue(new Note(" \u2003Known through an app\u00a0 ").equals(new Note("Known through an app")));
+        assertEquals(new Note("Known through an app"), new Note(" \u2003Known through an app\u00a0 "));
+    }
+
+    @Test
+    public void equals() {
+        Note note = new Note("Known through an app");
+
+        assertTrue(note.equals(note));
+        assertTrue(note.equals(new Note("Known through an app")));
+        assertFalse(note.equals(null));
+        assertFalse(note.equals("Known through an app"));
+        assertFalse(note.equals(new Note("Different note")));
+        assertEquals(note.hashCode(), new Note("Known through an app").hashCode());
+    }
+
+    @Test
+    public void toStringMethod() {
+        assertEquals("Known through an app", new Note("Known through an app").toString());
     }
 }

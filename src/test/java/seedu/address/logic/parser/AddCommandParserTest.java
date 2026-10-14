@@ -146,6 +146,26 @@ public class AddCommandParserTest {
     }
 
     @Test
+    public void parse_noteAtUnicodeLengthBoundaries_success() {
+        String baseCommand = NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB;
+
+        Person oneCharacterNote = new PersonBuilder(BOB).withTags().withNote("😊").build();
+        assertParseSuccess(parser, baseCommand + " note/😊", new AddCommand(oneCharacterNote));
+
+        String maximumLengthNote = "😊".repeat(1000);
+        Person maximumLengthPerson = new PersonBuilder(BOB).withTags().withNote(maximumLengthNote).build();
+        assertParseSuccess(parser, baseCommand + " note/" + maximumLengthNote,
+                new AddCommand(maximumLengthPerson));
+    }
+
+    @Test
+    public void parse_paddedNote_success() {
+        Person expectedPerson = new PersonBuilder(BOB).withTags().withNote("Known through an app").build();
+        assertParseSuccess(parser, NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB
+                + " note/ \u2003Known through an app\u00a0 ", new AddCommand(expectedPerson));
+    }
+
+    @Test
     public void parse_compulsoryFieldMissing_failure() {
         String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE);
 
@@ -227,5 +247,10 @@ public class AddCommandParserTest {
 
         assertParseFailure(parser, NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB
                 + NOTE_DESC_BOB + TAG_DESC_FRIEND, AddCommand.MESSAGE_NOTE_NOT_AT_END);
+
+        for (String suffix : new String[] {NAME_DESC_AMY, EMAIL_DESC_AMY, ADDRESS_DESC_AMY, NOTE_DESC_BOB}) {
+            assertParseFailure(parser, NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB
+                    + " note/First note" + suffix, AddCommand.MESSAGE_NOTE_NOT_AT_END);
+        }
     }
 }
