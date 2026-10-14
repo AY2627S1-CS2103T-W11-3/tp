@@ -175,12 +175,21 @@ Validation follows the table order. `N` is the number of displayed contacts; eve
 
 | Condition | Message |
 | --- | --- |
-| Missing index | `Missing contact index. Usage: delete <INDEX>` |
-| More than one argument | `Expected exactly one contact index. Usage: delete <INDEX>` |
-| Invalid format, e.g. `0`, `01`, `-1`, `+1`, `abc` | `Invalid contact index. Enter a positive whole number without leading zeros. Usage: delete <INDEX>` |
+| Missing index | `Missing contact index.` |
+| More than one argument | `Expected exactly one contact index.` |
+| Invalid format, e.g. `0`, `01`, `-1`, `+1`, `abc` | `Invalid contact index. Enter a positive whole number without leading zeros.` |
 | No displayed contacts | `No contacts are displayed. Nothing to delete.` |
 | Index exceeds displayed count | `Contact index out of range. Choose an index from 1 to N.` |
 | Saving fails | `Could not save changes. Contact was not deleted. Please try again.` |
+
+Missing, extra, or malformed indices also show the command description, required parameter, and example on separate lines. For example, entering `delete` displays:
+
+```text
+Missing contact index.
+delete: Deletes the contact identified by the index number used in the displayed contact list.
+Parameters: <INDEX> (must be a positive integer without leading zeros)
+Example: delete 1
+```
 
 ### Clearing all entries: `clear`
 
