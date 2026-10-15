@@ -74,6 +74,21 @@ public class PersonContainsKeywordsPredicateTest {
     }
 
     @Test
+    public void test_noteContainsKeywords_returnsTrue() {
+        // One matching keyword
+        PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of("college"));
+        assertTrue(predicate.test(new PersonBuilder().withNote("Met at college").build()));
+
+        // Only one matching keyword
+        predicate = new PersonContainsKeywordsPredicate(List.of("school", "college"));
+        assertTrue(predicate.test(new PersonBuilder().withNote("Met at college").build()));
+
+        // Mixed-case keyword
+        predicate = new PersonContainsKeywordsPredicate(List.of("cOLLege"));
+        assertTrue(predicate.test(new PersonBuilder().withNote("Met at college").build()));
+    }
+
+    @Test
     public void test_nameDoesNotContainKeywords_returnsFalse() {
         // Zero keywords
         PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of());
@@ -98,6 +113,17 @@ public class PersonContainsKeywordsPredicateTest {
         // Partial tag match
         predicate = new PersonContainsKeywordsPredicate(List.of("friend"));
         assertFalse(predicate.test(new PersonBuilder().withName("Alice Bob").withTags("friends").build()));
+    }
+
+    @Test
+    public void test_noteDoesNotContainKeywords_returnsFalse() {
+        // Non-matching keyword
+        PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of("school"));
+        assertFalse(predicate.test(new PersonBuilder().withNote("Met at college").build()));
+
+        // Partial note match
+        predicate = new PersonContainsKeywordsPredicate(List.of("coll"));
+        assertFalse(predicate.test(new PersonBuilder().withNote("Met at college").build()));
     }
 
     @Test

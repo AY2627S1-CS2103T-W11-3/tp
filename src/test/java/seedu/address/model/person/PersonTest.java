@@ -25,6 +25,14 @@ public class PersonTest {
     }
 
     @Test
+    public void constructor_withoutNote_usesEmptyNote() {
+        Person person = new Person(ALICE.getName(), ALICE.getPhone(), ALICE.getEmail(), ALICE.getAddress(),
+                ALICE.getTags());
+
+        assertEquals(Note.empty(), person.getNote());
+    }
+
+    @Test
     public void isSamePerson() {
         // same object -> returns true
         assertTrue(ALICE.isSamePerson(ALICE));
