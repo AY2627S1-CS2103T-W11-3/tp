@@ -338,7 +338,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | Priority | As a …​                                    | I want to …​                     | So that I can…​                                                        |
 | -------- | ------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------- |
 | `* * *`  | new user                                   | see usage instructions         | refer to instructions when I forget how to use the App                 |
-| `* * *`  | student                                       | add a new person               |                                                                        |
+| `* * *`  | student                                       | add a new person               | record someone I want to remember or contact later                     |
 | `* * *`  | student                                       | store different types of contact information, such as phone numbers and email addresses               | contact people through different methods                                                                       |
 | `* * *`  | student                                   | add a contact even when some contact information is unavailable         | save useful contacts without needing complete information                 |
 | `* * *`  | student                                       | delete a person                | remove entries that I no longer need                                   |
@@ -364,6 +364,17 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | `*`      | student | store useful links such as LinkedIn, GitHub, or Telegram profiles for a contact | quickly access their online profiles |
 | `* *`      | student | add or remove contacts from an existing group | allow group membership to change as projects and organisations evolve |
 | `*`      | student | rename a group | update it when a project or team changes its name |
+| `* * *`  | student | search using remembered details, such as an event and a skill | find someone even when I have forgotten their name |
+| `* * *`  | student | be told what is wrong when a command is invalid | correct the command and try again |
+| `* *`    | student | place contacts into groups | organise project teams and student organisation members |
+| `* *`    | student | view all contacts in a group | manage related people together |
+| `* *`    | student | see which groups a contact belongs to | understand how I know them |
+| `* *`    | student | store when a contact is usually available | coordinate with that person more easily |
+| `* *`    | student | find common free periods among contacts in a group | arrange a project meeting in less time |
+| `*`      | project team leader | find common free periods among team members | arrange meetings quickly |
+| `*`      | student applying for jobs | tag contacts as recruiters, referrers, or interviewers | keep track of my professional network |
+| `*`      | student leader | group contacts by committee | manage members who work on the same events |
+| `*`      | research student | tag collaborators and professors | keep track of them for outreach |
 
 ### Use cases
 
@@ -392,7 +403,150 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
       Use case resumes at step 2.
 
-*{More to be added}*
+**Use case: Add a person**
+
+**MSS**
+
+1.  User requests to add a person, providing a name, contact information, and any relationship context
+2.  AddressBook adds the person
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. The name is missing, or neither a phone number nor an email address is provided.
+
+    * 1a1. AddressBook shows an error message.
+
+      Use case ends.
+
+* 1b. The supplied phone number or email address matches a person already stored.
+
+    * 1b1. AddressBook shows an error message.
+
+      Use case ends.
+
+* 1c. A supplied value does not meet the expected format.
+
+    * 1c1. AddressBook shows an error message.
+
+      Use case ends.
+
+**Use case: Find a person by remembered details**
+
+**MSS**
+
+1.  User requests to find persons using one or more remembered keywords
+2.  AddressBook shows the matching persons
+3.  User requests the details of a specific person in the results
+4.  AddressBook shows that person's details
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. No person matches the keywords.
+
+  Use case ends.
+
+* 3a. The given index is invalid.
+
+    * 3a1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+**Use case: View a person**
+
+**MSS**
+
+1.  User requests to list persons
+2.  AddressBook shows a list of persons
+3.  User requests to view a specific person in the list
+4.  AddressBook shows that person's details
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. The list is empty.
+
+  Use case ends.
+
+* 3a. The request does not give exactly one positive index.
+
+    * 3a1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+* 3b. The given index is not in the list.
+
+    * 3b1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+**Use case: Edit a person**
+
+**MSS**
+
+1.  User requests to list persons
+2.  AddressBook shows a list of persons
+3.  User requests to change one or more details of a specific person in the list
+4.  AddressBook updates the person
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. The list is empty.
+
+  Use case ends.
+
+* 3a. The given index is invalid.
+
+    * 3a1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+* 3b. The user does not specify any detail to change.
+
+    * 3b1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+* 3c. A supplied value does not meet the expected format.
+
+    * 3c1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+**Use case: Add a person to a group**
+
+**MSS**
+
+1.  User requests to list persons
+2.  AddressBook shows a list of persons
+3.  User requests to add a specific person to a group
+4.  AddressBook records that person as a member of the group
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. The list is empty.
+
+  Use case ends.
+
+* 3a. The given index is invalid.
+
+    * 3a1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
+
+* 3b. The named group does not exist.
+
+    * 3b1. AddressBook shows an error message.
+
+      Use case resumes at step 2.
 
 ### Non-Functional Requirements
 
@@ -418,26 +572,20 @@ These requirements incorporate the product constraints in the [course project co
 
 ### Glossary
 
-| Term | Definition |
-| --- | --- |
-| AB4 | The desktop contact manager for National University of Singapore (NUS) students developed in this project, based on AddressBook Level 3 (AB3). |
-| Address book | The collection of contact records managed by one AB4 instance and persisted in its contact data file. |
-| Contact (person) | A record about someone the user wants to remember or contact. “Person” is the equivalent term used in the inherited code and parts of this guide; it does not refer to the application user. |
-| Contact information | Details used to reach a contact, such as a phone number, email address, or postal address. |
-| Relationship context | Information that helps the user remember how they know a contact, such as a shared module, student organisation, project, or event. It can be recorded using tags and notes. |
-| Tag | A short label attached to a contact to categorise them or record shared context, such as `CS2103T` or `friend`. A contact can have multiple tags. |
-| Note | Free-text information attached to a contact to record details or relationship context that a short tag does not adequately express. |
-| User | The person operating AB4 to manage their contacts; the target user is an NUS student who prefers typing commands. |
-| CLI (Command Line Interface) | A text-based interaction method. In AB4, users type commands into the command box inside the application window. |
-| GUI (Graphical User Interface) | The application's visual interface, including the command box, displayed contact list, and command feedback. |
-| Displayed list / filtered list | The contacts currently shown in the GUI. This can be the whole address book or a subset selected by a search. |
-| Index | The positive integer shown next to a contact in the displayed list. It identifies that contact for commands acting on the current list and is not a permanent contact identifier. |
-| Mainstream OS / supported operating systems | Windows, macOS, and Linux, subject to the Java and JavaFX compatibility requirements above. This term does not imply support for every operating-system version or processor architecture. |
-| JAR (Java Archive) | The packaged Java application distributed to users and launched with a Java runtime. |
-| JSON (JavaScript Object Notation) | The structured text format used to store AB4 contact data and user preferences. |
-| Private contact detail | Any information about a contact that the user does not intend to share with others, including sensitive content in tags or notes. The term does not imply that AB4 currently hides or encrypts such information. |
-| MSS (Main Success Scenario) | The sequence of steps in a use case in which the actor achieves the intended outcome without taking an extension path. |
-| Undo / redo | Undo restores the state before an earlier change; redo reapplies an undone change. These terms describe the proposed feature in this guide. |
+* **Mainstream OS**: Windows, Linux, Unix, or macOS
+* **Private contact detail**: A contact detail that is not meant to be shared with others
+* **AB4**: The desktop contact manager for National University of Singapore (NUS) students developed in this project, based on AddressBook Level 3 (AB3)
+* **Address book**: The collection of persons managed by one AB4 instance
+* **Person**: A contact record about someone the user wants to remember or contact. In this guide, “person” does not mean the application user
+* **Contact information**: Details used to reach a person, such as a phone number, email address, or postal address
+* **Relationship context**: Information that helps the user remember how they know a person, such as a shared module, student organisation, project, or event. It can be recorded with tags and notes
+* **Tag**: A short label attached to a person to categorise them or record shared context, such as `CS2103T` or `friend`. A person can have more than one tag
+* **Note**: Free-text information attached to a person for relationship context that a short tag does not express
+* **Group**: A named set of persons, such as a project team or a student-organisation committee. A person can belong to more than one group
+* **Availability**: The periods when a person is usually free, stored so the user can coordinate with that person
+* **User**: The person operating AB4. The target user is an NUS student who prefers typing commands
+* **Index**: The positive integer shown next to a person in the current list. It identifies that person for the current list and is not a permanent identifier
+* **MSS**: Main Success Scenario. The steps in a use case in which the actor achieves the intended outcome without taking an extension path
 
 --------------------------------------------------------------------------------------------------------------------
 
