@@ -89,6 +89,11 @@ public class AddCommandTest {
      */
     private class ModelStub implements Model {
         @Override
+        public void addFavourite(Person person) {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
         public ContactSection getActiveSection() {
             throw new AssertionError("This method should not be called.");
         }

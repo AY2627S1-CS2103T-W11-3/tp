@@ -62,6 +62,9 @@ public interface Model {
      */
     void addPerson(Person person);
 
+    /** Adds an independent favorite without changing the active section or its search filter. */
+    void addFavourite(Person person);
+
     /**
      * Replaces the given person {@code target} with {@code editedPerson}.
      * {@code target} must exist in the address book.

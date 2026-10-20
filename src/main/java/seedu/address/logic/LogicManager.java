@@ -57,7 +57,8 @@ public class LogicManager implements Logic {
 
         if (stagedModel.hasContactChanges()) {
             try {
-                saveCollection(stagedModel.getActiveSection(), stagedModel.getAddressBook());
+                ContactSection changedSection = stagedModel.getChangedSection();
+                saveCollection(changedSection, stagedModel.getAddressBook(changedSection));
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);

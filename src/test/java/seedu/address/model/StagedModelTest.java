@@ -2,6 +2,7 @@ package seedu.address.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.BENSON;
@@ -16,6 +17,19 @@ import seedu.address.model.person.Person;
 import seedu.address.testutil.AddressBookBuilder;
 
 public class StagedModelTest {
+    @Test
+    public void contactChanges_bothCollections_rejectsBeforeChangingSecondCollection() {
+        Model source = new ModelManager();
+        StagedModel staged = new StagedModel(source);
+        staged.addFavourite(ALICE);
+
+        assertThrows(IllegalStateException.class, () -> staged.addPerson(BENSON));
+
+        assertTrue(staged.getAddressBook(ContactSection.CONTACTS).getPersonList().isEmpty());
+        assertEquals(List.of(ALICE), staged.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        assertTrue(source.getAddressBook(ContactSection.FAVOURITES).getPersonList().isEmpty());
+    }
+
     @Test
     public void deletePerson_filteredFavourites_isolatedUntilCommitAndPreservesLiveFilter() {
         AddressBook contacts = new AddressBookBuilder().withPerson(ALICE).build();

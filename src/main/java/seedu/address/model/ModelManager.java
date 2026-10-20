@@ -117,9 +117,13 @@ public class ModelManager implements Model {
     }
 
     @Override
+    public void addFavourite(Person person) {
+        addressBooks.get(ContactSection.FAVOURITES).addPerson(person);
+    }
+
+    @Override
     public void setPerson(Person target, Person editedPerson) {
         requireAllNonNull(target, editedPerson);
-
         addressBooks.get(activeSection).setPerson(target, editedPerson);
     }
 

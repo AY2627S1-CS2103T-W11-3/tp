@@ -1,5 +1,7 @@
 package seedu.address.model;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -17,7 +19,7 @@ import seedu.address.model.person.Person;
 public class StagedModel implements Model {
     private final Model candidate;
     private final List<Consumer<Model>> changes = new ArrayList<>();
-    private boolean hasContactChanges;
+    private ContactSection changedSection;
 
     /**
      * Copies all contacts and the currently visible contacts used to resolve command indices.
@@ -32,7 +34,20 @@ public class StagedModel implements Model {
     }
 
     public boolean hasContactChanges() {
-        return hasContactChanges;
+        return changedSection != null;
+    }
+
+    /** Returns the collection changed by this command, after a contact change has been recorded. */
+    public ContactSection getChangedSection() {
+        return requireNonNull(changedSection);
+    }
+
+    /** Each command saves one collection, so reject changes spanning multiple files. */
+    private void recordContactChange(ContactSection section) {
+        if (changedSection != null && changedSection != section) {
+            throw new IllegalStateException("A command cannot change both contact collections");
+        }
+        changedSection = section;
     }
 
     @Override
@@ -74,9 +89,9 @@ public class StagedModel implements Model {
     @Override
     public void setAddressBook(ReadOnlyAddressBook addressBook) {
         AddressBook snapshot = new AddressBook(addressBook);
+        recordContactChange(candidate.getActiveSection());
         candidate.setAddressBook(snapshot);
         changes.add(model -> model.setAddressBook(snapshot));
-        hasContactChanges = true;
     }
 
     @Override
@@ -96,23 +111,30 @@ public class StagedModel implements Model {
 
     @Override
     public void deletePerson(Person target) {
+        recordContactChange(candidate.getActiveSection());
         candidate.deletePerson(target);
         changes.add(model -> model.deletePerson(target));
-        hasContactChanges = true;
     }
 
     @Override
     public void addPerson(Person person) {
+        recordContactChange(candidate.getActiveSection());
         candidate.addPerson(person);
         changes.add(model -> model.addPerson(person));
-        hasContactChanges = true;
+    }
+
+    @Override
+    public void addFavourite(Person person) {
+        recordContactChange(ContactSection.FAVOURITES);
+        candidate.addFavourite(person);
+        changes.add(model -> model.addFavourite(person));
     }
 
     @Override
     public void setPerson(Person target, Person editedPerson) {
+        recordContactChange(candidate.getActiveSection());
         candidate.setPerson(target, editedPerson);
         changes.add(model -> model.setPerson(target, editedPerson));
-        hasContactChanges = true;
     }
 
     @Override
