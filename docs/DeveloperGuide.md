@@ -162,7 +162,7 @@ This section describes some noteworthy details on how certain features are imple
 
 `DeleteCommandParser` checks argument count, then delegates ASCII positive-integer validation to `ParserUtil.parsePositiveInteger`. A `BigInteger` retains oversized inputs until empty-list and range validation; conversion to an `int` occurs only after checking the displayed count.
 
-`DeleteCommand` implements `StagedCommand`. Its `prepare` method resolves the displayed index once and returns a `PreparedChange`: a full candidate collection, an operation capturing the selected contact, success feedback, and the save-error message. `LogicManager` saves the candidate before applying that operation. It depends on the staging interface, not a concrete deletion command. A failed save produces no observable live-model changes. Both staging paths require synchronous execution without intervening commands.
+`DeleteCommand` extends `UndoableCommand` and implements `StagedCommand`. Its `prepare` method resolves the displayed index once and returns a `PreparedChange`: a full candidate collection, an operation capturing the selected contact, success feedback, and the save-error message. `LogicManager` saves the candidate and registers its undo snapshot before applying that operation. It depends on the staging interface, not a concrete deletion command. A failed save produces no observable live-model changes. Both staging paths require synchronous execution without intervening commands.
 
 The existing duplicate rules remain owned by contact creation. Deletion removes the selected contact object; it does not search by name. Notes are part of that immutable contact, and other contacts retain their own tags and notes.
 
@@ -174,11 +174,7 @@ The persistent contact-details panel is owned by the view feature and is not yet
 
 ### Automatic contact persistence (F5)
 
-`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds the full contact
-collection and uses a snapshot of the visible contacts for indexed operations. It records calls to
-`addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations
-trigger a save; view-only commands do not. The current UI runs commands synchronously, so the live model
-remains unchanged between preparing and committing a command.
+`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds the full contact collection and uses a snapshot of the visible contacts for indexed operations. It records calls to `addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations trigger a save; undoable commands with identical candidate data skip saving and history registration. View-only commands do not save contact data. The current UI runs commands synchronously, so the live model remains unchanged between preparing and committing a command.
 
 After saving, recorded operations are applied to the live model. This preserves incremental list
 notifications instead of replacing the whole list for every change. A deletion leaves the live search
@@ -208,89 +204,45 @@ Integration with the other MVP features:
   so copying the collection safely isolates candidate changes. Future sorting or multi-step commands
   may need to copy additional view state beyond the current filtered-contact snapshot.
 
-### \[Proposed\] Undo/redo feature
+### Session undo
 
-#### Proposed Implementation
+The `undo` command restores the contact data before the most recent successful data-changing command. History contains at most five full contact snapshots and lasts for the current application session. Redo and history recovery across restarts are not implemented.
 
-The proposed undo/redo mechanism is facilitated by `VersionedAddressBook`. It extends `AddressBook` with an undo/redo history, stored internally as an `addressBookStateList` and `currentStatePointer`. Additionally, it implements the following operations:
+#### Recording changes
 
-* `VersionedAddressBook#commit()` — Saves the current address book state in its history.
-* `VersionedAddressBook#undo()` — Restores the previous address book state from its history.
-* `VersionedAddressBook#redo()` — Restores a previously undone address book state from its history.
+`AddCommand`, `DeleteCommand`, `EditCommand`, and `ClearCommand` extend the abstract `UndoableCommand`. Its `createSnapshot(Model)` helper copies the full pre-command address book, preserving contact order and all fields, including tags and notes. This is a JSON snapshot of model data rather than a diff or a byte-for-byte copy of the existing data file, so it also works before the first data file has been created.
 
-These operations are exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#undoAddressBook()` and `Model#redoAddressBook()` respectively.
+`LogicManager` captures that snapshot before execution. Both existing execution paths use it: commands executed against `StagedModel`, and commands implementing `StagedCommand` that return a `PreparedChange`. For an undoable change, `StorageManager.saveUndoableChange(previous, candidate)` delegates to `UndoSnapshotStorage`:
 
-Given below is an example usage scenario and how the undo/redo mechanism behaves at each step.
+1. Compare the full contact lists. Identical data requires no save or history entry.
+1. Save the previous data as a complete JSON backup, then atomically save the candidate as the current data file.
+1. Register the backup only after saving succeeds. If history exceeds five entries, remove the oldest entry and attempt to delete its backup.
+1. Return to logic, which publishes the prepared changes to the live model.
 
-Step 1. The user launches the application for the first time. The `VersionedAddressBook` will be initialized with the initial address book state, and the `currentStatePointer` pointing to that single address book state.
+A rejected command or failed backup/save leaves live contacts and existing history unchanged. Failed commands and unchanged data consume no history slots; view-only commands do not participate in history.
 
-![UndoRedoState0](images/UndoRedoState0.png)
+New commands that change contact data must extend `UndoableCommand` to participate in undo history. Keep snapshot registration in the shared logic/storage path rather than adding command-specific inverse operations.
 
-Step 2. The user executes `delete 5` command to delete the 5th person in the address book. The `delete` command calls `Model#commitAddressBook()`, causing the modified state of the address book after the `delete 5` command executes to be saved in the `addressBookStateList`, and the `currentStatePointer` is shifted to the newly inserted address book state.
+#### Restoring a snapshot
 
-![UndoRedoState1](images/UndoRedoState1.png)
+The model-level `UndoHistory` interface exposes `readLatestSnapshot()` and `discardLatestSnapshot()` without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` delegates its implementation to `UndoSnapshotStorage`. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
 
-Step 3. The user executes `add n/David …​` to add a new person. The `add` command also calls `Model#commitAddressBook()`, causing another modified address book state to be saved into the `addressBookStateList`.
+`UndoCommand` implements `StagedCommand` and owns undo behavior:
 
-![UndoRedoState2](images/UndoRedoState2.png)
+1. `prepare(model)` reads the latest snapshot without consuming it. Empty history produces `No changes to undo.`; missing, unreadable, or invalid backup data produces the command's load-error message.
+1. The command returns a `PreparedChange` containing the snapshot, success feedback, the undo save-error message, and the operation to apply after saving.
+1. The generic staged-command path in `LogicManager` saves the snapshot using `Storage.saveAddressBook`. A failed save leaves the model, filter, current file, and history unchanged.
+1. After saving succeeds, the prepared operation replaces the model data, shows all contacts, and consumes the history entry.
 
-<div markdown="span" class="alert alert-info">:information_source: **Note:** If a command fails its execution, it will not call `Model#commitAddressBook()`, so the address book state will not be saved into the `addressBookStateList`.
+`UndoCommand` does not extend `UndoableCommand`, so restoration creates no new history entry. `LogicManager` needs no undo-specific execution branch, and `CommandResult` contains ordinary feedback. Preparation, saving, and application must run synchronously without intervening commands. Callers must use the logic execution path for persistence; directly calling a staged command's `execute` bypasses the save step.
 
-</div>
+#### Backup lifecycle and design tradeoffs
 
-Step 4. The user now decides that adding the person was a mistake, and decides to undo that action by executing the `undo` command. The `undo` command will call `Model#undoAddressBook()`, which will shift the `currentStatePointer` once to the left, pointing it to the previous address book state, and restores the address book to that state.
+`UndoSnapshotStorage` lazily creates a unique `.addressbook-undo-*` directory beside the address-book file. Its deque stores backup paths, with the latest entry at the end. It removes unused backups after failed saves and attempts cleanup after eviction or consumption. Cleanup errors are logged without reporting an already completed change as a failure.
 
-![UndoRedoState3](images/UndoRedoState3.png)
+`MainApp.stop()` calls `Storage.closeUndoHistory()` even if saving preferences fails. Each new session starts with empty history. An abnormal exit can leave backup files on disk; the next session does not recover or reuse them. Persistent history and interrupted-operation recovery are deferred to the next milestone.
 
-<div markdown="span" class="alert alert-info">:information_source: **Note:** If the `currentStatePointer` is at index 0, pointing to the initial AddressBook state, then there are no previous AddressBook states to restore. The `undo` command uses `Model#canUndoAddressBook()` to check if this is the case. If so, it will return an error to the user rather
-than attempting to perform the undo.
-
-</div>
-
-The following sequence diagram shows how an undo operation goes through the `Logic` component:
-
-![UndoSequenceDiagram](images/UndoSequenceDiagram-Logic.png)
-
-<div markdown="span" class="alert alert-info">:information_source: **Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, it continues to the end of the diagram.
-
-</div>
-
-Similarly, how an undo operation goes through the `Model` component is shown below:
-
-![UndoSequenceDiagram](images/UndoSequenceDiagram-Model.png)
-
-The `redo` command does the opposite — it calls `Model#redoAddressBook()`, which shifts the `currentStatePointer` once to the right, pointing to the previously undone state, and restores the address book to that state.
-
-<div markdown="span" class="alert alert-info">:information_source: **Note:** If the `currentStatePointer` is at index `addressBookStateList.size() - 1`, pointing to the latest address book state, then there are no undone AddressBook states to restore. The `redo` command uses `Model#canRedoAddressBook()` to check if this is the case. If so, it will return an error to the user rather than attempting to perform the redo.
-
-</div>
-
-Step 5. The user then decides to execute the command `list`. Commands that do not modify the address book, such as `list`, will usually not call `Model#commitAddressBook()`, `Model#undoAddressBook()` or `Model#redoAddressBook()`. Thus, the `addressBookStateList` remains unchanged.
-
-![UndoRedoState4](images/UndoRedoState4.png)
-
-Step 6. The user executes `clear`, which calls `Model#commitAddressBook()`. Since the `currentStatePointer` is not pointing at the end of the `addressBookStateList`, all address book states after the `currentStatePointer` will be purged. Reason: It no longer makes sense to redo the `add n/David …​` command. This is the behavior that most modern desktop applications follow.
-
-![UndoRedoState5](images/UndoRedoState5.png)
-
-The following activity diagram summarizes what happens when a user executes a new command:
-
-<img src="images/CommitActivityDiagram.png" width="250" />
-
-#### Design considerations:
-
-**Aspect: How undo & redo execute:**
-
-* **Alternative 1 (current choice):** Saves the entire address book.
-  * Pros: Easy to implement.
-  * Cons: May have performance issues in terms of memory usage.
-
-* **Alternative 2:** Individual command knows how to undo/redo by
-  itself.
-  * Pros: Will use less memory (e.g. for `delete`, just save the person being deleted).
-  * Cons: We must ensure that the implementation of each individual command is correct.
-
-_{more aspects and alternatives to be added}_
+Full snapshots avoid command-specific inverse operations and restore contact order and complete records together. The five-entry bound limits active history, but each change serializes the full contact collection. Failed cleanup can leave unreferenced files beyond that bound. Search predicates and GUI preferences are outside snapshots; successful undo deliberately shows all contacts.
 
 ### \[Proposed\] Data archiving
 
@@ -626,6 +578,19 @@ Use disposable test contacts and a separate data file for these checks.
 1. Use spaces and tabs around `delete 1` and between keyword and index. Confirm acceptance. `Delete 1` is an unknown command; `delete 1 2` is rejected.
 1. Restart after a successful deletion. Confirm the contact and its note remain absent and other contacts are restored unchanged.
 1. Simulate a save failure using the integration tests in `LogicManagerTest`. They check partial writes, denied/unsupported replacement, original file bytes, unchanged model/filter, and zero observable notifications. For a manual check, make the disposable data directory unwritable, attempt deletion, and expect the exact save-error message with input and contacts retained; restore permissions and retry.
+
+### Undoing contact changes
+
+Use a disposable app folder with its own `data/addressbook.json`, since these checks change and restore contacts.
+
+1. With at least two contacts present, run `add n/Undo Test p/91234567 e/undo@example.com a/NUS t/project note/Original note`, `edit 1 note/Changed note`, `delete 2`, and `clear`. Run `undo` four times. Each reports `Undo successful.` and restores the previous full collection, including order, tags, and notes. A fifth undo reports `No changes to undo.`. Check that successful commands clear input and failed commands retain it.
+1. After a data change, run `find NoSuchUndoContact` to show no matches, then `undo`. Expect all restored contacts to be displayed. Make another change and undo it; confirm earlier history is still available afterward.
+1. In a fresh session with a contact at index 1, use `edit 1 note/Step 1` through `edit 1 note/Step 6`. Five undos restore notes `Step 5` through `Step 1`; the sixth reports no history. The state before `Step 1` is no longer available.
+1. In a fresh session, try `delete 0` and an edit that sets a field to its existing value. Neither creates undo history. After `clear`, issue `clear` again: a single undo restores the contacts; the next reports no history.
+1. Enter `undo 1` and compare the exact usage message with the User Guide. `Undo` is an unknown command. Surrounding spaces and tabs around lowercase `undo` are accepted.
+1. After a successful undo, close and reopen the app. Confirm the restored contacts persist and `undo` reports no history. No earlier session's backups should be available for undo.
+1. For a save-failure check, create a change, activate a search filter, then make the disposable data directory unwritable. Run `undo`: expect `Could not save changes. Nothing was undone. Please try again.`, unchanged contacts/search results/file contents, and retained input. Restore permissions and retry: the same snapshot remains available. Use the injected failures in `UndoableCommandIntegrationTest` for a deterministic check when filesystem permissions do not prevent writes.
+1. For a read-failure check, make one data change in a fresh session, then temporarily move its backup JSON out of the `.addressbook-undo-*` directory beside the current data file. Run `undo`: expect `Could not read undo history. Nothing was undone. Please try again.` and unchanged contacts, search results, and data file. Return the backup to its original path and retry successfully. Do not edit the main data file while the app is running.
 
 ### Saving data
 

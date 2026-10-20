@@ -34,3 +34,17 @@ This project has three types of tests:
    For example: `seedu.address.storage.StorageManagerTest`
 1. *Hybrid tests* combine unit and integration testing. These tests check both the individual units and how they work together.<br>
    For example: `seedu.address.logic.LogicManagerTest`
+
+## Testing session undo
+
+Run the undo storage, command integration, and parser tests with:
+
+```bash
+./gradlew test --tests '*UndoSnapshotStorageTest' --tests '*UndoableCommandIntegrationTest' --tests '*AddressBookParserTest'
+```
+
+* `UndoSnapshotStorageTest` covers full snapshots, non-consuming reads, the five-entry boundary, failed first saves, unreadable or missing backups, history consumption, and session isolation.
+* `UndoableCommandIntegrationTest` exercises add, edit, delete, clear, and undo through the parser, logic, model, and real JSON storage. It checks successful restoration, unchanged or rejected commands, failure preservation, retry, and cleanup.
+* `AddressBookParserTest` checks argument-free lowercase `undo`, surrounding whitespace, and rejected arguments or capitalization. Its history stub rejects access during parsing, ensuring parsing does not read or consume history.
+
+These tests use equivalence partitions and meaningful boundaries rather than repeating equivalent inputs at every layer. For interactive checks, follow [Undoing contact changes](DeveloperGuide.md#undoing-contact-changes) in the manual testing appendix. Run `./gradlew check coverage` for the full suite, Checkstyle, and coverage reports.

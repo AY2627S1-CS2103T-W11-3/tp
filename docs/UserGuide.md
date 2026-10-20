@@ -31,6 +31,8 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
    * `clear` : Deletes all contacts.
 
+   * `undo` : Restores the contact data before the most recent change in this session.
+
    * `exit` : Exits the app.
 
 1. Refer to the [Features](#features) section below for details of each command.
@@ -51,7 +53,7 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
 * Prefixed fields in `add` and `edit` can be in any order, except that `note/NOTE` must be last. For indexed commands such as `edit`, put `INDEX` before the fields.<br> For example, `add p/91234567 n/John Doe e/john@example.com a/NUS note/Met in class` is valid.
 
-* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`.
+* Extraneous parameters for `help`, `list`, `exit`, and `clear` are ignored.<br> For example, `help 123` is interpreted as `help`. The `undo` command rejects extra parameters.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </div>
@@ -155,7 +157,7 @@ Examples:
 
 ### Deleting a contact: `delete`
 
-Permanently removes one contact and its contact details, tags, and notes.
+Removes one contact and its contact details, tags, and notes. A recent deletion can be reversed using [undo](#undoing-a-contact-change-undo) while its history is available.
 
 Format: `delete <INDEX>`
 
@@ -196,6 +198,38 @@ Clears all entries from the address book.
 
 Format: `clear`
 
+### Undoing a contact change: `undo`
+
+Restores the full contact data from before the most recent successful `add`, `delete`, `edit`, or `clear` that changed contacts.
+
+Format: `undo`
+
+* Use lowercase `undo` with no arguments. Surrounding spaces and tabs are accepted.
+* Undo restores all contact fields, tags, notes, and contact order, then shows all contacts. The previous search filter is not restored.
+* Up to five data changes can be undone, most recent first. Making a sixth change removes the oldest available undo entry.
+* Failed commands, identical edits, and clearing an already empty address book do not consume history. Commands such as `find`, `list`, and `view` leave it unchanged.
+* Each successful undo consumes one history entry. Undo itself does not create an entry, and there is no redo command.
+* History lasts only for the current app session. Closing and reopening the app clears undo history; the contact data saved by a successful undo remains saved.
+* Success clears the input box. Failures retain the command and leave the contact data, displayed list, saved file, and available history unchanged.
+
+For example, with at least one contact displayed, execute `delete 1` and then `undo`. The deleted contact returns to its original position, and the full contact list is shown. If you next make another change, undo reverses that new change before reaching earlier history entries.
+
+| Condition | Message |
+| --- | --- |
+| Undo succeeds | `Undo successful.` |
+| No history is available, including after restart | `No changes to undo.` |
+| Extra arguments, such as `undo 1` | `Invalid command format!` followed by the `undo` usage |
+| A backup is missing, unreadable, or corrupted | `Could not read undo history. Nothing was undone. Please try again.` |
+| Saving the restored data fails | `Could not save changes. Nothing was undone. Please try again.` |
+
+For example, entering `undo 1` displays:
+
+```text
+Invalid command format!
+undo: Undoes the most recent change to the address book.
+Example: undo
+```
+
 ### Exiting the program: `exit`
 
 Exits the program.
@@ -204,13 +238,15 @@ Format: `exit`
 
 ### Saving the data
 
-AB4 automatically saves contact data after a successful `add`, `edit`, `delete`, or `clear` command. You do not need to save manually. Contacts, tags, and notes are restored when you next open the application. If no data file exists, AB4 starts with its sample contacts.
+AB4 automatically saves contact data after a successful data change through `add`, `edit`, `delete`, `clear`, or `undo`. You do not need to save manually. Contacts, tags, and notes are restored when you next open the application. Undo history resets on restart. If no data file exists, AB4 starts with its sample contacts.
 
 Changes appear only after saving succeeds. If saving fails, contacts, the displayed list, and the previous data file remain unchanged. The command stays in the input box so you can retry.
 
 For a failed deletion, the message is: `Could not save changes. Contact was not deleted. Please try again.`
 
-For other changes, the message is: `Could not save changes. No changes were applied. Please try again.`
+For a failed undo save, the message is: `Could not save changes. Nothing was undone. Please try again.`
+
+For failed saves through `add`, `edit`, or `clear`, the message is: `Could not save changes. No changes were applied. Please try again.`
 
 Commands such as `find`, `list`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
 
@@ -252,6 +288,7 @@ Action | Format, Examples
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
 **List** | `list`
+**Undo** | `undo`
 **View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
 **Exit** | `exit`
