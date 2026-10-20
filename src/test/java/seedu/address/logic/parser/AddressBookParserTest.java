@@ -7,6 +7,7 @@ import static seedu.address.logic.Messages.MESSAGE_UNKNOWN_COMMAND;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,11 +19,14 @@ import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.logic.commands.ExitCommand;
+import seedu.address.logic.commands.FavouriteCommand;
 import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.TabCommand;
 import seedu.address.logic.commands.ViewCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.person.Note;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.PersonContainsKeywordsPredicate;
@@ -33,6 +37,33 @@ import seedu.address.testutil.PersonUtil;
 public class AddressBookParserTest {
 
     private final AddressBookParser parser = new AddressBookParser();
+
+    @Test
+    public void parseCommand_favourite_returnsFavouriteCommand() throws Exception {
+        assertEquals(new FavouriteCommand(BigInteger.ONE), parser.parseCommand("favourite \t1 "));
+    }
+
+    @Test
+    public void parseCommand_favouriteInvalidArguments_reportsUsage() {
+        String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FavouriteCommand.MESSAGE_USAGE);
+        for (String input : List.of("favourite", "favourite 0", "favourite 1 2")) {
+            assertThrows(ParseException.class, expected, () -> parser.parseCommand(input));
+        }
+    }
+
+    @Test
+    public void parseCommand_tab_returnsSelectedSection() throws Exception {
+        assertEquals(new TabCommand(ContactSection.CONTACTS), parser.parseCommand("tab contacts"));
+        assertEquals(new TabCommand(ContactSection.FAVOURITES), parser.parseCommand("tab favourites"));
+    }
+
+    @Test
+    public void parseCommand_tabInvalidArguments_reportsUsage() {
+        String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, TabCommand.MESSAGE_USAGE);
+        for (String input : List.of("tab", "tab other", "tab favourites extra")) {
+            assertThrows(ParseException.class, expected, () -> parser.parseCommand(input));
+        }
+    }
 
     @Test
     public void parseCommand_add() throws Exception {

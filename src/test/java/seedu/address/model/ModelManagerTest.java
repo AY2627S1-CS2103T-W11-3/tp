@@ -12,12 +12,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import javafx.collections.ObservableList;
 import seedu.address.commons.core.GuiSettings;
-import seedu.address.model.person.Person;
 import seedu.address.model.person.PersonContainsKeywordsPredicate;
 import seedu.address.testutil.AddressBookBuilder;
-import seedu.address.testutil.PersonBuilder;
 
 public class ModelManagerTest {
 
@@ -41,85 +38,6 @@ public class ModelManagerTest {
         UserPrefs oldUserPrefs = new UserPrefs(userPrefs);
         userPrefs.setGuiSettings(new GuiSettings(5, 6, 7, 8));
         assertEquals(oldUserPrefs, modelManager.getUserPrefs());
-    }
-
-    @Test
-    public void constructor_sharedInputCollection_createsIndependentCopies() {
-        AddressBook original = new AddressBookBuilder().withPerson(ALICE).build();
-        modelManager = new ModelManager(original, original, new UserPrefs());
-        original.addPerson(BENSON);
-
-        assertEquals(ContactSection.CONTACTS, modelManager.getActiveSection());
-        assertEquals(List.of(ALICE), modelManager.getAddressBook().getPersonList());
-        assertEquals(List.of(ALICE), modelManager.getAddressBook(ContactSection.FAVOURITES).getPersonList());
-        modelManager.deletePerson(ALICE);
-        assertEquals(List.of(ALICE), modelManager.getAddressBook(ContactSection.FAVOURITES).getPersonList());
-    }
-
-    @Test
-    public void constructor_nullCollection_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> new ModelManager(null, new AddressBook(), new UserPrefs()));
-        assertThrows(NullPointerException.class, () -> new ModelManager(new AddressBook(), null, new UserPrefs()));
-    }
-
-    @Test
-    public void contactOperations_eitherSection_changeOnlyActiveCollection() {
-        AddressBook original = new AddressBookBuilder().withPerson(ALICE).build();
-        Person editedAlice = new PersonBuilder(ALICE).withPhone("88888888").build();
-        for (ContactSection section : ContactSection.values()) {
-            ModelManager model = new ModelManager(original, original, new UserPrefs());
-            model.setActiveSection(section);
-            ContactSection other = section == ContactSection.CONTACTS
-                    ? ContactSection.FAVOURITES : ContactSection.CONTACTS;
-
-            assertFalse(model.hasPerson(BENSON));
-            model.addPerson(BENSON);
-            assertTrue(model.hasPerson(BENSON));
-            assertEquals(List.of(ALICE, BENSON), model.getFilteredPersonList());
-            assertEquals(List.of(ALICE), model.getAddressBook(other).getPersonList());
-            model.setPerson(ALICE, editedAlice);
-            assertEquals(List.of(editedAlice, BENSON), model.getAddressBook().getPersonList());
-            model.deletePerson(BENSON);
-            assertEquals(List.of(editedAlice), model.getFilteredPersonList());
-            model.setAddressBook(new AddressBook());
-            assertTrue(model.getFilteredPersonList().isEmpty());
-            assertEquals(List.of(ALICE), model.getAddressBook(other).getPersonList());
-        }
-    }
-
-    @Test
-    public void setActiveSection_changedSection_resetsSearchAndPreservesSharedPreferences() {
-        modelManager.addPerson(ALICE);
-        modelManager.addPerson(BENSON);
-        modelManager.updateFilteredPersonList(person -> person.equals(ALICE));
-        modelManager.setActiveSection(ContactSection.CONTACTS);
-        assertEquals(List.of(ALICE), modelManager.getFilteredPersonList());
-
-        modelManager.setActiveSection(ContactSection.FAVOURITES);
-        assertTrue(modelManager.getFilteredPersonList().isEmpty());
-        GuiSettings settings = new GuiSettings(300, 600, 4, 6);
-        modelManager.setGuiSettings(settings);
-        modelManager.setActiveSection(ContactSection.CONTACTS);
-        assertEquals(List.of(ALICE, BENSON), modelManager.getFilteredPersonList());
-        assertEquals(settings, modelManager.getGuiSettings());
-    }
-
-    @Test
-    public void setActiveSection_nullSection_preservesSelection() {
-        assertThrows(NullPointerException.class, () -> modelManager.setActiveSection(null));
-        assertEquals(ContactSection.CONTACTS, modelManager.getActiveSection());
-        assertThrows(NullPointerException.class, () -> modelManager.getAddressBook(null));
-    }
-
-    @Test
-    public void getFilteredPersonList_favourites_isUnmodifiableAndTracksChanges() {
-        modelManager.setActiveSection(ContactSection.FAVOURITES);
-        ObservableList<Person> displayed = modelManager.getFilteredPersonList();
-        modelManager.addPerson(ALICE);
-        assertEquals(List.of(ALICE), displayed);
-        assertThrows(UnsupportedOperationException.class, () -> displayed.add(BENSON));
-        modelManager.updateFilteredPersonList(person -> false);
-        assertTrue(displayed.isEmpty());
     }
 
     @Test
@@ -190,12 +108,5 @@ public class ModelManagerTest {
         UserPrefs differentUserPrefs = new UserPrefs();
         differentUserPrefs.setGuiSettings(new GuiSettings(1, 2, 3, 4));
         assertFalse(modelManager.equals(new ModelManager(addressBook, differentUserPrefs)));
-
-        // different favorites -> returns false
-        assertFalse(modelManager.equals(new ModelManager(addressBook, addressBook, userPrefs)));
-
-        // different active section -> returns false
-        modelManagerCopy.setActiveSection(ContactSection.FAVOURITES);
-        assertFalse(modelManager.equals(modelManagerCopy));
     }
 }

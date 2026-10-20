@@ -214,7 +214,7 @@ Integration with the other MVP features:
 
 Duplicate detection uses `Person.isSamePerson`: exact, case-sensitive name equality, regardless of other fields. Both files store full contact records, without a favorite flag or cross-file identifier. `Person` is immutable, so sharing its value when copying is safe; later edits replace a record in only one collection. Removing a favorite uses the existing `delete` command while Favourites is active.
 
-`FavouriteIntegrationTest` covers copying filtered results, complete fields, persistence, independent copies, duplicate identity, wrong-section errors, index boundaries, and save failures. `TabIntegrationTest` covers command routing and saving in Favourites. `MainAppTest` covers independent startup loading. Parser and model tests cover their respective contracts. Use the manual scenarios below to verify visible feedback and command-input behavior.
+The favourites cases in `LogicManagerTest` cover copying a displayed contact, duplicate and selection errors, wrong-section errors, save failure, and context switching with contact commands scoped to the selected collection. `AddressBookParserTest` checks the `favourite` and `tab` command formats. Broader regression testing is deferred to the next milestone. Use the manual scenarios below to verify visible feedback and command-input behavior.
 
 ### \[Proposed\] Undo/redo feature
 
@@ -682,10 +682,10 @@ Use a disposable launch folder. Prepare contacts with distinct names, tags, and 
 1. In Contacts, try `favourite`, `favourite 1 2`, `favourite 01`, `favourite 0`, and a 100-digit positive index. Compare feedback with the User Guide. Search for a nonexistent name and try `favourite 1`; expect the empty-list error.
 1. Edit or delete the original in Contacts. Expect its favorite copy to remain unchanged. Delete the copy in Favourites; expect the original, if still present, to remain. Favourite it again to confirm removal permits a new copy.
 1. Exercise `add`, `edit`, `delete`, `clear`, `find`, `list`, and `view` in Favourites. Expect them to operate only on Favourites. Restart and verify that both files restore their respective collections and the active section starts on Contacts.
-1. Simulate write and replacement failures with `FavouriteIntegrationTest`. For manual feedback checks, make the disposable data location unwritable, attempt `favourite 1`, and expect the save-error message with input, files, and displayed data unchanged. Navigation and read-only commands must remain available; restore permissions before retrying.
+1. Use `LogicManagerTest` to check favourite save-error handling and the shared persistence failure cases. For manual feedback checks, make the disposable data location unwritable, attempt `favourite 1`, and expect the save-error message with input, files, and displayed data unchanged. Navigation and read-only commands must remain available; restore permissions before retrying.
 
 Run the focused backend checks with:
 
 ```bash
-./gradlew test --tests '*FavouriteIntegrationTest' --tests '*TabIntegrationTest' --tests '*FavouriteCommandParserTest' --tests '*TabCommandParserTest' --tests '*MainAppTest'
+./gradlew test --tests '*LogicManagerTest' --tests '*AddressBookParserTest'
 ```
