@@ -98,6 +98,33 @@ public class UndoSnapshotStorageTest {
     }
 
     @Test
+    public void saveChange_identicalData_doesNotSaveOrConsumeHistory() throws Exception {
+        history.saveChange(new AddressBook(), book(ALICE));
+        dataStorage.shouldFailBackup = true;
+        dataStorage.shouldFailSave = true;
+        history.saveChange(book(ALICE), book(ALICE));
+        assertEquals(new AddressBook(), history.readLatestSnapshot().orElseThrow());
+        assertEquals(1, snapshotFiles().size());
+    }
+
+    @Test
+    public void saveChange_backupOrSaveFailure_preservesSavedDataAndHistory() throws Exception {
+        for (boolean shouldFailBackup : new boolean[] {true, false}) {
+            history.saveChange(book(ALICE), book(BOB));
+            byte[] saved = Files.readAllBytes(dataFile);
+            dataStorage.shouldFailBackup = shouldFailBackup;
+            dataStorage.shouldFailSave = !shouldFailBackup;
+            assertThrows(IOException.class, () -> history.saveChange(book(BOB), new AddressBook()));
+            assertArrayEquals(saved, Files.readAllBytes(dataFile));
+            assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
+            assertEquals(1, snapshotFiles().size());
+            dataStorage.shouldFailBackup = false;
+            dataStorage.shouldFailSave = false;
+            history.discardLatestSnapshot();
+        }
+    }
+
+    @Test
     public void readLatestSnapshot_invalidOrMissingSnapshot_preservesDataAndHistory() throws Exception {
         history.saveChange(book(ALICE), book(BOB));
         Path snapshot = snapshotFiles().getFirst();
@@ -138,6 +165,17 @@ public class UndoSnapshotStorageTest {
         } finally {
             second.close();
         }
+    }
+
+    @Test
+    public void close_removesBackupsPreservesContactsAndRejectsFurtherChanges() throws Exception {
+        history.saveChange(book(ALICE), book(BOB));
+        Path session = snapshotFiles().getFirst().getParent();
+        history.close();
+        assertFalse(Files.exists(session));
+        assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
+        assertThrows(IllegalStateException.class, history::readLatestSnapshot);
+        assertThrows(IllegalStateException.class, () -> history.saveChange(book(BOB), book(ALICE)));
     }
 
     private List<Path> snapshotFiles() throws IOException {

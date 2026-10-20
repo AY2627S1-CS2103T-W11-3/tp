@@ -1,0 +1,86 @@
+package seedu.address.logic.commands;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static seedu.address.testutil.Assert.assertThrows;
+import static seedu.address.testutil.TypicalPersons.BOB;
+import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+
+import java.io.IOException;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+
+import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBook;
+import seedu.address.model.Model;
+import seedu.address.model.ModelManager;
+import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.UndoHistory;
+
+public class UndoCommandTest {
+    private final Model model = new ModelManager();
+    private final UndoHistoryStub history = new UndoHistoryStub();
+
+    @Test
+    public void prepare_validHistory_restoresDataAndConsumesHistoryOnlyOnApply() throws Exception {
+        model.addPerson(BOB);
+        model.updateFilteredPersonList(unused -> false);
+        AddressBook before = new AddressBook(model.getAddressBook());
+        AddressBook snapshot = getTypicalAddressBook();
+        history.snapshot = Optional.of(snapshot);
+
+        PreparedChange change = new UndoCommand(history).prepare(model);
+        assertEquals(snapshot, change.getCandidate());
+        assertEquals(UndoCommand.MESSAGE_SAVE_ERROR, change.getSaveErrorMessage());
+        assertEquals(before, model.getAddressBook());
+        assertEquals(0, model.getFilteredPersonList().size());
+        assertEquals(0, history.discardCount);
+
+        assertEquals(new CommandResult(UndoCommand.MESSAGE_SUCCESS), change.apply());
+        assertEquals(snapshot, model.getAddressBook());
+        assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
+        assertEquals(1, history.discardCount);
+    }
+
+    @Test
+    public void prepare_emptyHistory_throwsWithoutChangingModelOrHistory() {
+        assertPreparationFailure(UndoCommand.MESSAGE_NO_HISTORY);
+    }
+
+    @Test
+    public void prepare_unreadableHistory_throwsWithoutChangingModelOrHistory() {
+        history.failure = new DataLoadingException(new IOException("Unreadable snapshot"));
+        assertPreparationFailure(UndoCommand.MESSAGE_LOAD_ERROR);
+    }
+
+    private void assertPreparationFailure(String message) {
+        model.addPerson(BOB);
+        model.updateFilteredPersonList(unused -> false);
+        AddressBook before = new AddressBook(model.getAddressBook());
+        assertThrows(CommandException.class, message, () -> new UndoCommand(history).prepare(model));
+        assertEquals(before, model.getAddressBook());
+        assertEquals(0, model.getFilteredPersonList().size());
+        assertEquals(0, history.discardCount);
+    }
+
+    private static class UndoHistoryStub implements UndoHistory {
+        private Optional<ReadOnlyAddressBook> snapshot = Optional.empty();
+        private DataLoadingException failure;
+        private int discardCount;
+
+        @Override
+        public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
+            if (failure != null) {
+                throw failure;
+            }
+            return snapshot;
+        }
+
+        @Override
+        public void discardLatestSnapshot() {
+            discardCount++;
+            snapshot = Optional.empty();
+        }
+    }
+}
