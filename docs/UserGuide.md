@@ -25,6 +25,8 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
    * `list` : Lists all contacts.
 
+   * `recent` : Lists all contacts with the most recently added contact first.
+
    * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01` : Adds a contact named `John Doe` to the Address Book.
 
    * `delete 3` : Deletes the 3rd contact shown in the current list.
@@ -51,7 +53,7 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
 * Prefixed fields in `add` and `edit` can be in any order, except that `note/NOTE` must be last. For indexed commands such as `edit`, put `INDEX` before the fields.<br> For example, `add p/91234567 n/John Doe e/john@example.com a/NUS note/Met in class` is valid.
 
-* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`.
+* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`. The `recent` command is an exception: it rejects extraneous parameters.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </div>
@@ -87,6 +89,20 @@ Examples:
 Shows a list of all persons in the address book.
 
 Format: `list`
+
+### Viewing recently added contacts: `recent`
+
+Shows all contacts with the most recently added contact first.
+
+Format: `recent`
+
+* Addition order is based on the order in which contacts were added. Editing a contact does not make it recent again.
+* Deleted contacts are omitted. Commands such as `find`, `list`, and `view` do not change addition order.
+* The ordering is preserved after restarting the application.
+* If there are no contacts, the command shows `No contacts available.`
+* The command does not accept parameters.
+
+Example: After adding `John Doe` and then `Betsy Crowe`, `recent` displays Betsy before John.
 
 ### Viewing a person: `view`
 
@@ -212,7 +228,7 @@ For a failed deletion, the message is: `Could not save changes. Contact was not 
 
 For other changes, the message is: `Could not save changes. No changes were applied. Please try again.`
 
-Commands such as `find`, `list`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+Commands such as `find`, `list`, `recent`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
 
 ### Editing the data file
 
@@ -252,6 +268,7 @@ Action | Format, Examples
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
 **List** | `list`
+**Recent** | `recent`
 **View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
 **Exit** | `exit`

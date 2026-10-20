@@ -107,4 +107,10 @@ public class StagedModel implements Model {
         candidate.updateFilteredPersonList(predicate);
         changes.add(model -> model.updateFilteredPersonList(predicate));
     }
+
+    @Override
+    public void updateFilteredPersonListToShowRecent() {
+        candidate.updateFilteredPersonListToShowRecent();
+        changes.add(Model::updateFilteredPersonListToShowRecent);
+    }
 }

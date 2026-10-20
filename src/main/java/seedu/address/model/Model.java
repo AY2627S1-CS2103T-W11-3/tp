@@ -68,4 +68,9 @@ public interface Model {
      * @throws NullPointerException if {@code predicate} is null.
      */
     void updateFilteredPersonList(Predicate<Person> predicate);
+
+    /**
+     * Updates the filtered person list to show all persons in reverse addition order.
+     */
+    void updateFilteredPersonListToShowRecent();
 }
