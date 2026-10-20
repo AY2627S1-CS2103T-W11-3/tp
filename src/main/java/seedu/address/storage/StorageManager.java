@@ -18,13 +18,22 @@ public class StorageManager implements Storage {
 
     private static final Logger logger = LogsCenter.getLogger(StorageManager.class);
     private JsonAddressBookStorage addressBookStorage;
+    private JsonAddressBookStorage favouritesStorage;
     private JsonUserPrefsStorage userPrefsStorage;
 
     /**
      * Creates a {@code StorageManager} with the given address book and user prefs storage.
      */
     public StorageManager(JsonAddressBookStorage addressBookStorage, JsonUserPrefsStorage userPrefsStorage) {
+        this(addressBookStorage, new JsonAddressBookStorage(
+                addressBookStorage.getAddressBookFilePath().resolveSibling("favourites.json")), userPrefsStorage);
+    }
+
+    /** Creates storage for independent contact collections and shared preferences. */
+    public StorageManager(JsonAddressBookStorage addressBookStorage, JsonAddressBookStorage favouritesStorage,
+            JsonUserPrefsStorage userPrefsStorage) {
         this.addressBookStorage = addressBookStorage;
+        this.favouritesStorage = favouritesStorage;
         this.userPrefsStorage = userPrefsStorage;
     }
 
@@ -63,6 +72,21 @@ public class StorageManager implements Storage {
     public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
         logger.fine("Attempting to write to data file: " + addressBookStorage.getAddressBookFilePath());
         addressBookStorage.saveAddressBook(addressBook);
+    }
+
+    @Override
+    public Path getFavouritesFilePath() {
+        return favouritesStorage.getAddressBookFilePath();
+    }
+
+    @Override
+    public Optional<ReadOnlyAddressBook> readFavourites() throws DataLoadingException {
+        return favouritesStorage.readAddressBook();
+    }
+
+    @Override
+    public void saveFavourites(ReadOnlyAddressBook favourites) throws IOException {
+        favouritesStorage.saveAddressBook(favourites);
     }
 
 }
