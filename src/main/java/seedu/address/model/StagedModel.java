@@ -24,13 +24,26 @@ public class StagedModel implements Model {
      * The live model's filter remains untouched unless the command explicitly changes it.
      */
     public StagedModel(Model source) {
-        candidate = new ModelManager(source.getAddressBook(), source.getUserPrefs());
+        candidate = new ModelManager(source.getAddressBook(ContactSection.CONTACTS),
+                source.getAddressBook(ContactSection.FAVOURITES), source.getUserPrefs());
+        candidate.setActiveSection(source.getActiveSection());
         Set<Person> visiblePersons = Set.copyOf(source.getFilteredPersonList());
         candidate.updateFilteredPersonList(visiblePersons::contains);
     }
 
     public boolean hasContactChanges() {
         return hasContactChanges;
+    }
+
+    @Override
+    public ContactSection getActiveSection() {
+        return candidate.getActiveSection();
+    }
+
+    @Override
+    public void setActiveSection(ContactSection section) {
+        candidate.setActiveSection(section);
+        changes.add(model -> model.setActiveSection(section));
     }
 
     /**
@@ -69,6 +82,11 @@ public class StagedModel implements Model {
     @Override
     public ReadOnlyAddressBook getAddressBook() {
         return candidate.getAddressBook();
+    }
+
+    @Override
+    public ReadOnlyAddressBook getAddressBook(ContactSection section) {
+        return candidate.getAddressBook(section);
     }
 
     @Override

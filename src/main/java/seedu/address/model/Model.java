@@ -13,6 +13,12 @@ public interface Model {
     /** {@code Predicate} that always evaluates to true */
     Predicate<Person> PREDICATE_SHOW_ALL_PERSONS = unused -> true;
 
+    /** Returns the collection used by contact operations. */
+    ContactSection getActiveSection();
+
+    /** Switches collections, showing all contacts when the section changes. */
+    void setActiveSection(ContactSection section);
+
     /**
      * Returns the user prefs.
      */
@@ -29,12 +35,15 @@ public interface Model {
     void setGuiSettings(GuiSettings guiSettings);
 
     /**
-     * Replaces address book data with the data in {@code addressBook}.
+     * Replaces the active collection with the data in {@code addressBook}.
      */
     void setAddressBook(ReadOnlyAddressBook addressBook);
 
-    /** Returns the AddressBook */
+    /** Returns the complete active collection. */
     ReadOnlyAddressBook getAddressBook();
+
+    /** Returns a complete collection regardless of the active section. */
+    ReadOnlyAddressBook getAddressBook(ContactSection section);
 
     /**
      * Returns true if a person with the same identity as {@code person} exists in the address book.
