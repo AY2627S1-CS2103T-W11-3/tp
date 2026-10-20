@@ -46,14 +46,14 @@ public class UndoSnapshotStorageTest {
     }
 
     @Test
-    public void restoreLatest_emptyHistory_doesNotCreateFiles() throws Exception {
-        assertTrue(history.restoreLatest().isEmpty());
+    public void readLatestSnapshot_emptyHistory_doesNotCreateFiles() throws Exception {
+        assertTrue(history.readLatestSnapshot().isEmpty());
         assertEquals(List.of(), snapshotFiles());
         assertFalse(Files.exists(dataFile));
     }
 
     @Test
-    public void saveChange_missingDataFile_backsUpModelAndRestoresAllContactData() throws Exception {
+    public void saveChange_missingDataFile_backsUpFullModelWithoutChangingOnRead() throws Exception {
         Person person = new PersonBuilder(ALICE).withNote("Met at orientation").withTags("friends", "NUS").build();
         AddressBook original = book(BOB, person);
         history.saveChange(original, new AddressBook());
@@ -62,10 +62,13 @@ public class UndoSnapshotStorageTest {
 
         // Later changes to the source cannot alter the file-backed snapshot.
         original.removePerson(BOB);
-        assertEquals(book(BOB, person), history.restoreLatest().orElseThrow());
-        assertEquals(book(BOB, person), dataStorage.readAddressBook().orElseThrow());
+        assertEquals(book(BOB, person), history.readLatestSnapshot().orElseThrow());
+        assertEquals(book(BOB, person), history.readLatestSnapshot().orElseThrow());
+        assertEquals(new AddressBook(), dataStorage.readAddressBook().orElseThrow());
+        assertEquals(1, snapshotFiles().size());
+        history.discardLatestSnapshot();
         assertEquals(List.of(), snapshotFiles());
-        assertTrue(history.restoreLatest().isEmpty());
+        assertTrue(history.readLatestSnapshot().isEmpty());
     }
 
     @Test
@@ -79,10 +82,10 @@ public class UndoSnapshotStorageTest {
         }
         assertEquals(5, snapshotFiles().size());
         for (int i = 5; i >= 1; i--) {
-            assertEquals(states.get(i), history.restoreLatest().orElseThrow());
-            assertEquals(states.get(i), dataStorage.readAddressBook().orElseThrow());
+            assertEquals(states.get(i), history.readLatestSnapshot().orElseThrow());
+            history.discardLatestSnapshot();
         }
-        assertTrue(history.restoreLatest().isEmpty());
+        assertTrue(history.readLatestSnapshot().isEmpty());
     }
 
     @Test
@@ -91,49 +94,37 @@ public class UndoSnapshotStorageTest {
         assertThrows(IOException.class, () -> history.saveChange(book(ALICE), book(BOB)));
         assertFalse(Files.exists(dataFile));
         assertEquals(List.of(), snapshotFiles());
-        assertTrue(history.restoreLatest().isEmpty());
+        assertTrue(history.readLatestSnapshot().isEmpty());
     }
 
     @Test
-    public void restoreLatest_saveFailure_retainsSnapshotForRetry() throws Exception {
-        history.saveChange(book(ALICE), book(BOB));
-        byte[] saved = Files.readAllBytes(dataFile);
-        dataStorage.shouldFailSave = true;
-        assertThrows(IOException.class, history::restoreLatest);
-        assertArrayEquals(saved, Files.readAllBytes(dataFile));
-        assertEquals(1, snapshotFiles().size());
-
-        dataStorage.shouldFailSave = false;
-        assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
-        assertTrue(history.restoreLatest().isEmpty());
-    }
-
-    @Test
-    public void restoreLatest_invalidOrMissingSnapshot_preservesDataAndHistory() throws Exception {
+    public void readLatestSnapshot_invalidOrMissingSnapshot_preservesDataAndHistory() throws Exception {
         history.saveChange(book(ALICE), book(BOB));
         Path snapshot = snapshotFiles().getFirst();
         byte[] backup = Files.readAllBytes(snapshot);
         byte[] saved = Files.readAllBytes(dataFile);
         Files.writeString(snapshot, "invalid JSON");
-        assertThrows(DataLoadingException.class, history::restoreLatest);
+        assertThrows(DataLoadingException.class, history::readLatestSnapshot);
         assertArrayEquals(saved, Files.readAllBytes(dataFile));
         Files.delete(snapshot);
-        assertThrows(IOException.class, history::restoreLatest);
+        assertThrows(DataLoadingException.class, history::readLatestSnapshot);
         assertArrayEquals(saved, Files.readAllBytes(dataFile));
 
         Files.write(snapshot, backup);
-        assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
+        assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
     }
 
     @Test
-    public void saveChange_afterUndo_restoresNewBranchThenEarlierHistory() throws Exception {
+    public void saveChange_afterDiscard_preservesNewAndEarlierSnapshots() throws Exception {
         history.saveChange(new AddressBook(), book(ALICE));
         history.saveChange(book(ALICE), book(ALICE, BOB));
-        assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
+        history.discardLatestSnapshot();
         history.saveChange(book(ALICE), book(BOB));
-        assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
-        assertEquals(new AddressBook(), history.restoreLatest().orElseThrow());
-        assertTrue(history.restoreLatest().isEmpty());
+        assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
+        history.discardLatestSnapshot();
+        assertEquals(new AddressBook(), history.readLatestSnapshot().orElseThrow());
+        history.discardLatestSnapshot();
+        assertTrue(history.readLatestSnapshot().isEmpty());
     }
 
     @Test
@@ -141,9 +132,9 @@ public class UndoSnapshotStorageTest {
         UndoSnapshotStorage second = new UndoSnapshotStorage(dataStorage);
         try {
             history.saveChange(book(ALICE), book(BOB));
-            assertTrue(second.restoreLatest().isEmpty());
+            assertTrue(second.readLatestSnapshot().isEmpty());
             assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
-            assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
+            assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
         } finally {
             second.close();
         }

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import javafx.collections.ListChangeListener;
 import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
@@ -33,7 +34,7 @@ import seedu.address.storage.JsonUserPrefsStorage;
 import seedu.address.storage.StorageManager;
 
 /**
- * Verifies that commands record history only after their contact changes have been saved successfully.
+ * Verifies contact commands and undo through the full parser, logic, model, and storage flow.
  */
 public class UndoableCommandIntegrationTest {
     private static final String ADD_COMMAND = "add n/Charlie Tan p/91234567 e/charlie@example.com a/NUS"
@@ -64,7 +65,7 @@ public class UndoableCommandIntegrationTest {
     }
 
     @Test
-    public void execute_mixedContactChanges_recordsPreCommandDataInOrder() throws Exception {
+    public void execute_mixedContactChanges_undoRestoresEachSnapshotAndShowsAllContacts() throws Exception {
         List<AddressBook> snapshots = new ArrayList<>();
         for (String command : List.of(ADD_COMMAND, "edit 1 note/Updated note", "delete 2", "clear")) {
             snapshots.add(new AddressBook(model.getAddressBook()));
@@ -73,10 +74,13 @@ public class UndoableCommandIntegrationTest {
         }
         assertTrue(model.getAddressBook().getPersonList().isEmpty());
         for (int i = snapshots.size() - 1; i >= 0; i--) {
-            assertEquals(snapshots.get(i), storage.restoreLatestSnapshot().orElseThrow());
+            logic.execute("find NoMatch");
+            assertEquals(UndoCommand.MESSAGE_SUCCESS, logic.execute("undo").getFeedbackToUser());
+            assertEquals(snapshots.get(i), model.getAddressBook());
+            assertEquals(snapshots.get(i).getPersonList(), model.getFilteredPersonList());
             assertEquals(snapshots.get(i), storage.readAddressBook().orElseThrow());
         }
-        assertTrue(storage.restoreLatestSnapshot().isEmpty());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
     }
 
     @Test
@@ -84,18 +88,21 @@ public class UndoableCommandIntegrationTest {
         AddressBook original = new AddressBook(model.getAddressBook());
         logic.execute("find Alice");
         assertEquals(original, model.getAddressBook());
-        assertTrue(storage.restoreLatestSnapshot().isEmpty());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
+        assertEquals(List.of(ALICE), model.getFilteredPersonList());
+        assertEquals(original, storage.readAddressBook().orElseThrow());
     }
 
     @Test
     public void execute_identicalEditAndEmptyClear_doNotRecordHistory() throws Exception {
         logic.execute("edit 1 n/" + ALICE.getName().fullName);
-        assertTrue(storage.restoreLatestSnapshot().isEmpty());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
 
         logic.execute("clear");
         logic.execute("clear");
-        assertEquals(List.of(ALICE, BOB), storage.restoreLatestSnapshot().orElseThrow().getPersonList());
-        assertTrue(storage.restoreLatestSnapshot().isEmpty());
+        logic.execute("undo");
+        assertEquals(List.of(ALICE, BOB), model.getAddressBook().getPersonList());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
     }
 
     @Test
@@ -108,7 +115,7 @@ public class UndoableCommandIntegrationTest {
 
         assertEquals(original, model.getAddressBook());
         assertArrayEquals(saved, Files.readAllBytes(dataStorage.getAddressBookFilePath()));
-        assertTrue(storage.restoreLatestSnapshot().isEmpty());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
     }
 
     @Test
@@ -122,6 +129,60 @@ public class UndoableCommandIntegrationTest {
     }
 
     @Test
+    public void execute_undoSaveFailure_preservesStateAndAllowsRetry() throws Exception {
+        AddressBook original = new AddressBook(model.getAddressBook());
+        logic.execute(ADD_COMMAND);
+        logic.execute("find Bob");
+        AddressBook beforeFailure = new AddressBook(model.getAddressBook());
+        byte[] saved = Files.readAllBytes(dataStorage.getAddressBookFilePath());
+        AtomicInteger notifications = new AtomicInteger();
+        model.getAddressBook().getPersonList().addListener(
+                (ListChangeListener<Person>) change -> notifications.incrementAndGet());
+        model.getFilteredPersonList().addListener(
+                (ListChangeListener<Person>) change -> notifications.incrementAndGet());
+        dataStorage.shouldFailSave = true;
+
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_SAVE_ERROR, () -> logic.execute("undo"));
+        assertEquals(beforeFailure, model.getAddressBook());
+        assertEquals(List.of(BOB), model.getFilteredPersonList());
+        assertEquals(0, notifications.get());
+        assertArrayEquals(saved, Files.readAllBytes(dataStorage.getAddressBookFilePath()));
+
+        dataStorage.shouldFailSave = false;
+        logic.execute("undo");
+        assertEquals(original, model.getAddressBook());
+        assertEquals(original.getPersonList(), model.getFilteredPersonList());
+        assertEquals(original, storage.readAddressBook().orElseThrow());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
+    }
+
+    @Test
+    public void execute_unreadableUndoSnapshot_preservesStateAndAllowsRetry() throws Exception {
+        AddressBook original = new AddressBook(model.getAddressBook());
+        logic.execute(ADD_COMMAND);
+        logic.execute("find Bob");
+        AddressBook beforeFailure = new AddressBook(model.getAddressBook());
+        byte[] saved = Files.readAllBytes(dataStorage.getAddressBookFilePath());
+        Path snapshot;
+        try (var files = Files.walk(testFolder)) {
+            snapshot = files.filter(path -> path.getFileName().toString().startsWith("undo-"))
+                    .findFirst().orElseThrow();
+        }
+        byte[] backup = Files.readAllBytes(snapshot);
+        Files.writeString(snapshot, "invalid JSON");
+
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_LOAD_ERROR, () -> logic.execute("undo"));
+        assertEquals(beforeFailure, model.getAddressBook());
+        assertEquals(List.of(BOB), model.getFilteredPersonList());
+        assertArrayEquals(saved, Files.readAllBytes(dataStorage.getAddressBookFilePath()));
+
+        Files.write(snapshot, backup);
+        logic.execute("undo");
+        assertEquals(original, model.getAddressBook());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
+    }
+
+    @Test
     public void closeUndoHistory_removesBackupsPreservesContactsAndRejectsFurtherChanges() throws Exception {
         logic.execute(ADD_COMMAND);
         AddressBook saved = new AddressBook(model.getAddressBook());
@@ -130,7 +191,8 @@ public class UndoableCommandIntegrationTest {
             assertEquals(List.of(dataStorage.getAddressBookFilePath()), files.toList());
         }
         assertEquals(saved, storage.readAddressBook().orElseThrow());
-        assertThrows(IllegalStateException.class, storage::restoreLatestSnapshot);
+        assertThrows(IllegalStateException.class, storage::readLatestSnapshot);
+        assertThrows(IllegalStateException.class, storage::discardLatestSnapshot);
         assertThrows(IllegalStateException.class, () -> storage.saveUndoableChange(saved, new AddressBook()));
     }
 
@@ -161,8 +223,9 @@ public class UndoableCommandIntegrationTest {
 
         dataStorage.shouldFailBackup = false;
         dataStorage.shouldFailSave = false;
-        assertEquals(original, storage.restoreLatestSnapshot().orElseThrow());
-        assertTrue(storage.restoreLatestSnapshot().isEmpty());
+        logic.execute("undo");
+        assertEquals(original, model.getAddressBook());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
     }
 
     /**

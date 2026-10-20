@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -14,13 +15,14 @@ import java.util.stream.Stream;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.UndoHistory;
 
 /**
  * Saves contact changes with file-backed undo snapshots for one application session.
  * Callers must publish changes to the live model only after saving or restoring succeeds.
  * Instances are used synchronously and must be closed when their session ends.
  */
-public class UndoSnapshotStorage {
+public class UndoSnapshotStorage implements UndoHistory {
     public static final int MAX_HISTORY_SIZE = 5;
 
     private static final Logger logger = LogsCenter.getLogger(UndoSnapshotStorage.class);
@@ -68,24 +70,26 @@ public class UndoSnapshotStorage {
         logger.fine("Saved contact change with " + snapshots.size() + " undo snapshot(s).");
     }
 
-    /**
-     * Saves the latest snapshot as the current data and returns it for publication to the live model.
-     * Returns empty when no changes can be undone. Read/save failures retain the entry for retry.
-     */
-    public Optional<ReadOnlyAddressBook> restoreLatest() throws IOException, DataLoadingException {
+    @Override
+    public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
         requireOpen();
         if (snapshots.isEmpty()) {
             return Optional.empty();
         }
 
         Path snapshot = snapshots.getLast();
-        ReadOnlyAddressBook restored = addressBookStorage.readAddressBook(snapshot)
-                .orElseThrow(() -> new IOException("Undo snapshot is missing."));
-        addressBookStorage.saveAddressBook(restored);
-        snapshots.removeLast();
-        deleteSafely(snapshot);
+        return Optional.of(addressBookStorage.readAddressBook(snapshot)
+                .orElseThrow(() -> new DataLoadingException(new NoSuchFileException(snapshot.toString()))));
+    }
+
+    @Override
+    public void discardLatestSnapshot() {
+        requireOpen();
+        if (snapshots.isEmpty()) {
+            throw new IllegalStateException("No undo snapshot is available to consume.");
+        }
+        deleteSafely(snapshots.removeLast());
         logger.fine("Restored contact snapshot; " + snapshots.size() + " undo snapshot(s) remain.");
-        return Optional.of(restored);
     }
 
     /**

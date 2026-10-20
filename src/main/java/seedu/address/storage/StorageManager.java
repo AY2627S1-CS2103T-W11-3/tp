@@ -75,8 +75,13 @@ public class StorageManager implements Storage {
     }
 
     @Override
-    public Optional<ReadOnlyAddressBook> restoreLatestSnapshot() throws IOException, DataLoadingException {
-        return undoSnapshotStorage.restoreLatest();
+    public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
+        return undoSnapshotStorage.readLatestSnapshot();
+    }
+
+    @Override
+    public void discardLatestSnapshot() {
+        undoSnapshotStorage.discardLatestSnapshot();
     }
 
     @Override

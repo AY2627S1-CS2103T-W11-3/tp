@@ -7,12 +7,13 @@ import java.util.Optional;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.ReadOnlyUserPrefs;
+import seedu.address.model.UndoHistory;
 import seedu.address.model.UserPrefs;
 
 /**
  * API of the Storage component
  */
-public interface Storage {
+public interface Storage extends UndoHistory {
 
     /**
      * Returns the file path of the UserPrefs data file.
@@ -60,12 +61,6 @@ public interface Storage {
      * Identical data is ignored. A failed backup or save preserves saved data and existing history.
      */
     void saveUndoableChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException;
-
-    /**
-     * Restores and returns the latest session snapshot, or empty when history is exhausted.
-     * Read/save failures preserve the saved data and retain the snapshot for retry.
-     */
-    Optional<ReadOnlyAddressBook> restoreLatestSnapshot() throws IOException, DataLoadingException;
 
     /**
      * Ends the undo session and attempts to remove its backup files without throwing cleanup errors.
