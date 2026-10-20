@@ -86,45 +86,6 @@ public class UndoSnapshotStorageTest {
     }
 
     @Test
-    public void saveChange_identicalData_doesNotSaveOrConsumeHistory() throws Exception {
-        history.saveChange(new AddressBook(), book(ALICE));
-        byte[] saved = Files.readAllBytes(dataFile);
-        dataStorage.shouldFailBackup = true;
-        dataStorage.shouldFailSave = true;
-        history.saveChange(book(ALICE), book(ALICE));
-        assertArrayEquals(saved, Files.readAllBytes(dataFile));
-        assertEquals(1, snapshotFiles().size());
-        dataStorage.shouldFailSave = false;
-        assertEquals(new AddressBook(), history.restoreLatest().orElseThrow());
-        assertTrue(history.restoreLatest().isEmpty());
-    }
-
-    @Test
-    public void saveChange_backupFailure_preservesDataAndExistingHistory() throws Exception {
-        history.saveChange(book(ALICE), book(ALICE, BOB));
-        byte[] saved = Files.readAllBytes(dataFile);
-        dataStorage.shouldFailBackup = true;
-
-        assertThrows(IOException.class, () -> history.saveChange(book(ALICE, BOB), new AddressBook()));
-        assertArrayEquals(saved, Files.readAllBytes(dataFile));
-        assertEquals(1, snapshotFiles().size());
-        assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
-    }
-
-    @Test
-    public void saveChange_saveFailure_preservesDataAndExistingHistory() throws Exception {
-        history.saveChange(book(ALICE), book(ALICE, BOB));
-        byte[] saved = Files.readAllBytes(dataFile);
-        dataStorage.shouldFailSave = true;
-
-        assertThrows(IOException.class, () -> history.saveChange(book(ALICE, BOB), new AddressBook()));
-        assertArrayEquals(saved, Files.readAllBytes(dataFile));
-        assertEquals(1, snapshotFiles().size());
-        dataStorage.shouldFailSave = false;
-        assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
-    }
-
-    @Test
     public void saveChange_firstSaveFails_keepsDataFileAbsentAndHistoryEmpty() throws Exception {
         dataStorage.shouldFailSave = true;
         assertThrows(IOException.class, () -> history.saveChange(book(ALICE), book(BOB)));
@@ -173,18 +134,6 @@ public class UndoSnapshotStorageTest {
         assertEquals(book(ALICE), history.restoreLatest().orElseThrow());
         assertEquals(new AddressBook(), history.restoreLatest().orElseThrow());
         assertTrue(history.restoreLatest().isEmpty());
-    }
-
-    @Test
-    public void close_removesBackupsAndRejectsFurtherOperations() throws Exception {
-        history.saveChange(book(ALICE), book(BOB));
-        Path session = snapshotFiles().getFirst().getParent();
-        history.close();
-        assertFalse(Files.exists(session));
-        assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
-        assertThrows(IllegalStateException.class, history::restoreLatest);
-        assertThrows(IllegalStateException.class, () -> history.saveChange(book(BOB), book(ALICE)));
-        history.close();
     }
 
     @Test

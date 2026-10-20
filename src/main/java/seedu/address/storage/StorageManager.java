@@ -1,5 +1,7 @@
 package seedu.address.storage;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -19,13 +21,15 @@ public class StorageManager implements Storage {
     private static final Logger logger = LogsCenter.getLogger(StorageManager.class);
     private JsonAddressBookStorage addressBookStorage;
     private JsonUserPrefsStorage userPrefsStorage;
+    private final UndoSnapshotStorage undoSnapshotStorage;
 
     /**
      * Creates a {@code StorageManager} with the given address book and user prefs storage.
      */
     public StorageManager(JsonAddressBookStorage addressBookStorage, JsonUserPrefsStorage userPrefsStorage) {
-        this.addressBookStorage = addressBookStorage;
-        this.userPrefsStorage = userPrefsStorage;
+        this.addressBookStorage = requireNonNull(addressBookStorage);
+        this.userPrefsStorage = requireNonNull(userPrefsStorage);
+        undoSnapshotStorage = new UndoSnapshotStorage(addressBookStorage);
     }
 
     // ================ UserPrefs methods ==============================
@@ -63,6 +67,21 @@ public class StorageManager implements Storage {
     public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
         logger.fine("Attempting to write to data file: " + addressBookStorage.getAddressBookFilePath());
         addressBookStorage.saveAddressBook(addressBook);
+    }
+
+    @Override
+    public void saveUndoableChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException {
+        undoSnapshotStorage.saveChange(previous, candidate);
+    }
+
+    @Override
+    public Optional<ReadOnlyAddressBook> restoreLatestSnapshot() throws IOException, DataLoadingException {
+        return undoSnapshotStorage.restoreLatest();
+    }
+
+    @Override
+    public void closeUndoHistory() {
+        undoSnapshotStorage.close();
     }
 
 }

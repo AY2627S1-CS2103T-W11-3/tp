@@ -10,10 +10,12 @@ import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.PreparedChange;
 import seedu.address.logic.commands.StagedCommand;
+import seedu.address.logic.commands.UndoableCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.StagedModel;
 import seedu.address.model.person.Person;
 import seedu.address.storage.Storage;
@@ -46,15 +48,17 @@ public class LogicManager implements Logic {
         logger.info("----------------[USER COMMAND][" + commandText + "]");
 
         Command command = addressBookParser.parseCommand(commandText);
+        ReadOnlyAddressBook snapshot = command instanceof UndoableCommand undoableCommand
+                ? undoableCommand.createSnapshot(model) : null;
         if (command instanceof StagedCommand stagedCommand) {
-            return executeStaged(stagedCommand);
+            return executeStaged(stagedCommand, snapshot);
         }
         StagedModel stagedModel = new StagedModel(model);
         CommandResult commandResult = command.execute(stagedModel);
 
         if (stagedModel.hasContactChanges()) {
             try {
-                storage.saveAddressBook(stagedModel.getAddressBook());
+                saveChange(snapshot, stagedModel.getAddressBook());
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
@@ -66,14 +70,26 @@ public class LogicManager implements Logic {
     }
 
     /** Saves a prepared change before applying it to the observable model. */
-    private CommandResult executeStaged(StagedCommand command) throws CommandException {
+    private CommandResult executeStaged(StagedCommand command, ReadOnlyAddressBook snapshot) throws CommandException {
         PreparedChange change = command.prepare(model);
         try {
-            storage.saveAddressBook(change.getCandidate());
+            saveChange(snapshot, change.getCandidate());
         } catch (IOException e) {
+            logger.warning("Could not save prepared contact changes: " + e.getMessage());
             throw new CommandException(change.getSaveErrorMessage(), e);
         }
         return change.apply();
+    }
+
+    /**
+     * Saves the candidate and, for an undoable command, registers its previous data only on success.
+     */
+    private void saveChange(ReadOnlyAddressBook snapshot, ReadOnlyAddressBook candidate) throws IOException {
+        if (snapshot == null) {
+            storage.saveAddressBook(candidate);
+        } else {
+            storage.saveUndoableChange(snapshot, candidate);
+        }
     }
 
     @Override

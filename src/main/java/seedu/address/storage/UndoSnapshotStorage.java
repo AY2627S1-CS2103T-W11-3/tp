@@ -56,6 +56,7 @@ public class UndoSnapshotStorage {
             addressBookStorage.saveAddressBook(candidate);
         } catch (IOException | RuntimeException e) {
             deleteSafely(snapshot);
+            deleteEmptySessionDirectory();
             throw e;
         }
 
@@ -63,6 +64,8 @@ public class UndoSnapshotStorage {
         if (snapshots.size() > MAX_HISTORY_SIZE) {
             deleteSafely(snapshots.removeFirst());
         }
+        assert snapshots.size() <= MAX_HISTORY_SIZE : "Undo history exceeds its capacity";
+        logger.fine("Saved contact change with " + snapshots.size() + " undo snapshot(s).");
     }
 
     /**
@@ -81,6 +84,7 @@ public class UndoSnapshotStorage {
         addressBookStorage.saveAddressBook(restored);
         snapshots.removeLast();
         deleteSafely(snapshot);
+        logger.fine("Restored contact snapshot; " + snapshots.size() + " undo snapshot(s) remain.");
         return Optional.of(restored);
     }
 
@@ -93,7 +97,27 @@ public class UndoSnapshotStorage {
             Files.createDirectories(parent);
             sessionDirectory = Files.createTempDirectory(parent, ".addressbook-undo-");
         }
-        return Files.createTempFile(sessionDirectory, "undo-", ".json");
+        try {
+            return Files.createTempFile(sessionDirectory, "undo-", ".json");
+        } catch (IOException e) {
+            deleteEmptySessionDirectory();
+            throw e;
+        }
+    }
+
+    /**
+     * Removes an unused session directory after a failed first backup or save.
+     */
+    private void deleteEmptySessionDirectory() {
+        if (!snapshots.isEmpty() || sessionDirectory == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(sessionDirectory);
+            sessionDirectory = null;
+        } catch (IOException e) {
+            logger.warning("Could not remove unused undo directory: " + e.getMessage());
+        }
     }
 
     /**
@@ -102,7 +126,7 @@ public class UndoSnapshotStorage {
     public void close() {
         isClosed = true;
         snapshots.clear();
-        if (sessionDirectory == null) {
+        if (sessionDirectory == null || Files.notExists(sessionDirectory)) {
             return;
         }
         try (Stream<Path> files = Files.list(sessionDirectory)) {

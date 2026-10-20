@@ -55,4 +55,21 @@ public interface Storage {
      */
     void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException;
 
+    /**
+     * Saves a contact change with its previous data in session undo history.
+     * Identical data is ignored. A failed backup or save preserves saved data and existing history.
+     */
+    void saveUndoableChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException;
+
+    /**
+     * Restores and returns the latest session snapshot, or empty when history is exhausted.
+     * Read/save failures preserve the saved data and retain the snapshot for retry.
+     */
+    Optional<ReadOnlyAddressBook> restoreLatestSnapshot() throws IOException, DataLoadingException;
+
+    /**
+     * Ends the undo session and attempts to remove its backup files without throwing cleanup errors.
+     */
+    void closeUndoHistory();
+
 }
