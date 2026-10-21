@@ -58,6 +58,8 @@ public class GroupCommandIntegrationTest {
         logic.execute("group add n/Team");
         assertThrows(CommandException.class, () -> logic.execute("group add n/Team"));
         assertThrows(CommandException.class, () -> logic.execute("group member g/Team add/Unknown Person"));
+        model.addPerson(ALICE);
+        assertThrows(CommandException.class, () -> logic.execute("group member g/Team remove/Alice Pauline"));
         assertEquals(1, model.getAddressBook().getGroupList().size());
         assertEquals(0, model.getGroup("Team").getMembers().size());
     }

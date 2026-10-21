@@ -2,6 +2,8 @@ package seedu.address.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_ADDRESS_BOB;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_HUSBAND;
@@ -11,12 +13,14 @@ import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import seedu.address.model.group.Group;
+import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.exceptions.DuplicatePersonException;
 import seedu.address.testutil.PersonBuilder;
@@ -80,6 +84,68 @@ public class AddressBookTest {
     @Test
     public void getPersonList_modifyList_throwsUnsupportedOperationException() {
         assertThrows(UnsupportedOperationException.class, () -> addressBook.getPersonList().remove(0));
+    }
+
+    @Test
+    public void groupOperations_rejectDuplicateAndMissingGroups() {
+        Group group = new Group("Team", Set.of());
+        addressBook.addGroup(group);
+
+        assertThrows(IllegalArgumentException.class, () -> addressBook.addGroup(group));
+        assertThrows(IllegalArgumentException.class, () -> addressBook.setGroup(new Group("Missing", Set.of())));
+        addressBook.removeGroup("Team");
+        assertNull(addressBook.getGroup("Team"));
+        assertThrows(IllegalArgumentException.class, () -> addressBook.removeGroup("Team"));
+    }
+
+    @Test
+    public void setPerson_renamingMemberUpdatesOnlyAffectedGroups() {
+        Person renamedAlice = new PersonBuilder(ALICE).withName("Alice New").build();
+        addressBook.addPerson(ALICE);
+        addressBook.addGroup(new Group("Project", Set.of(ALICE.getName())));
+        addressBook.addGroup(new Group("Committee", Set.of()));
+
+        addressBook.setPerson(ALICE, renamedAlice);
+
+        assertEquals(Set.of(new Name("Alice New")), addressBook.getGroup("Project").getMembers());
+        assertEquals(Set.of(), addressBook.getGroup("Committee").getMembers());
+    }
+
+    @Test
+    public void removePerson_removesMembershipFromEveryGroup() {
+        addressBook.addPerson(ALICE);
+        addressBook.addGroup(new Group("Project", Set.of(ALICE.getName())));
+        addressBook.addGroup(new Group("Committee", Set.of(ALICE.getName())));
+        addressBook.addGroup(new Group("Unaffected", Set.of()));
+
+        addressBook.removePerson(ALICE);
+
+        assertEquals(Set.of(), addressBook.getGroup("Project").getMembers());
+        assertEquals(Set.of(), addressBook.getGroup("Committee").getMembers());
+        assertEquals(Set.of(), addressBook.getGroup("Unaffected").getMembers());
+    }
+
+    @Test
+    public void resetData_copiesGroups() {
+        AddressBook source = new AddressBook();
+        source.addGroup(new Group("Project", Set.of()));
+
+        addressBook.resetData(source);
+
+        assertEquals(source, addressBook);
+        assertEquals(source.hashCode(), addressBook.hashCode());
+        assertThrows(UnsupportedOperationException.class, () -> addressBook.getGroupList().clear());
+    }
+
+    @Test
+    public void equals_comparesGroupData() {
+        AddressBook other = new AddressBook();
+        assertEquals(addressBook, other);
+        assertEquals(addressBook, addressBook);
+        assertNotEquals(addressBook, "address book");
+
+        other.addGroup(new Group("Project", Set.of()));
+        assertNotEquals(addressBook, other);
     }
 
     @Test
