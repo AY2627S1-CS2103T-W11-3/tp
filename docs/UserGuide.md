@@ -153,6 +153,22 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
+### Filtering persons by tag: `filter`
+
+Shows persons who have all of the given tags.
+
+Format: `filter t/TAG [t/TAG]…​`
+
+* Tag matching is case-insensitive; for example, `t/friends` matches `Friends`.
+* Only whole tags match; for example, `t/friend` does not match `friends`.
+* If more than one tag is given, a person must have every listed tag.
+* The index numbers in the result list can be used by commands such as `view`, `edit`, and `delete`.
+* Use `list` to show all persons again.
+
+Examples:
+* `filter t/friends` returns persons tagged `friends`.
+* `filter t/friends t/owesMoney` returns persons who have both tags.
+
 ### Deleting a contact: `delete`
 
 Permanently removes one contact and its contact details, tags, and notes.
@@ -212,7 +228,7 @@ For a failed deletion, the message is: `Could not save changes. Contact was not 
 
 For other changes, the message is: `Could not save changes. No changes were applied. Please try again.`
 
-Commands such as `find`, `list`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+Commands such as `find`, `filter`, `list`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
 
 ### Editing the data file
 
@@ -251,6 +267,7 @@ Action | Format, Examples
 **Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
+**Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`
 **List** | `list`
 **View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
