@@ -11,6 +11,8 @@ import com.fasterxml.jackson.annotation.JsonRootName;
 import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.group.Group;
+import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 
 /**
@@ -22,16 +24,26 @@ class JsonSerializableAddressBook {
     public static final String MESSAGE_DUPLICATE_PERSON = "Persons list contains duplicate person(s).";
 
     private final List<JsonAdaptedPerson> persons = new ArrayList<>();
+    private final List<JsonAdaptedGroup> groups = new ArrayList<>();
 
     /**
      * Constructs a {@code JsonSerializableAddressBook} with the given persons.
      */
     @JsonCreator
-    public JsonSerializableAddressBook(@JsonProperty("persons") List<JsonAdaptedPerson> persons) {
+    public JsonSerializableAddressBook(@JsonProperty("persons") List<JsonAdaptedPerson> persons,
+            @JsonProperty("groups") List<JsonAdaptedGroup> groups) {
         if (persons == null) {
             throw new IllegalArgumentException("The persons field must be a list.");
         }
         this.persons.addAll(persons);
+        if (groups != null) {
+            this.groups.addAll(groups);
+        }
+    }
+
+    /** Creates an address book without groups for existing callers. */
+    public JsonSerializableAddressBook(List<JsonAdaptedPerson> persons) {
+        this(persons, null);
     }
 
     /**
@@ -41,6 +53,7 @@ class JsonSerializableAddressBook {
      */
     public JsonSerializableAddressBook(ReadOnlyAddressBook source) {
         persons.addAll(source.getPersonList().stream().map(JsonAdaptedPerson::new).collect(Collectors.toList()));
+        groups.addAll(source.getGroupList().stream().map(JsonAdaptedGroup::new).collect(Collectors.toList()));
     }
 
     /**
@@ -59,6 +72,21 @@ class JsonSerializableAddressBook {
                 throw new IllegalValueException(MESSAGE_DUPLICATE_PERSON);
             }
             addressBook.addPerson(person);
+        }
+        for (JsonAdaptedGroup jsonAdaptedGroup : groups) {
+            if (jsonAdaptedGroup == null) {
+                throw new IllegalValueException("A group must not be null.");
+            }
+            Group group = jsonAdaptedGroup.toModelType();
+            if (addressBook.getGroup(group.getName()) != null) {
+                throw new IllegalValueException("Groups list contains duplicate group names.");
+            }
+            for (Name member : group.getMembers()) {
+                if (addressBook.getPersonList().stream().noneMatch(person -> person.getName().equals(member))) {
+                    throw new IllegalValueException("Group contains a contact that does not exist.");
+                }
+            }
+            addressBook.addGroup(group);
         }
         return addressBook;
     }

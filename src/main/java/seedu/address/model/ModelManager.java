@@ -10,6 +10,7 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
+import seedu.address.model.group.Group;
 import seedu.address.model.person.Person;
 
 /**
@@ -91,6 +92,26 @@ public class ModelManager implements Model {
         requireAllNonNull(target, editedPerson);
 
         addressBook.setPerson(target, editedPerson);
+    }
+
+    @Override
+    public Group getGroup(String name) {
+        return addressBook.getGroup(name);
+    }
+
+    @Override
+    public void addGroup(Group group) {
+        addressBook.addGroup(group);
+    }
+
+    @Override
+    public void deleteGroup(String name) {
+        addressBook.removeGroup(name);
+    }
+
+    @Override
+    public void setGroup(Group group) {
+        addressBook.setGroup(group);
     }
 
     //=========== Filtered Person List Accessors =============================================================
