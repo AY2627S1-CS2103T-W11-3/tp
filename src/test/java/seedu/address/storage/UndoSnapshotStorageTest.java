@@ -25,7 +25,7 @@ import seedu.address.model.AddressBook;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.PersonBuilder;
 
-public class UndoSnapshotStorageTest {
+class UndoSnapshotStorageTest {
     @TempDir
     private Path testFolder;
 
@@ -98,11 +98,19 @@ public class UndoSnapshotStorageTest {
     }
 
     @Test
-    public void saveChange_identicalData_doesNotSaveOrConsumeHistory() throws Exception {
+    public void saveChange_identicalData_savesWithoutChangingHistory() throws Exception {
         history.saveChange(new AddressBook(), book(ALICE));
+        Files.writeString(dataFile, "invalid JSON");
         dataStorage.shouldFailBackup = true;
-        dataStorage.shouldFailSave = true;
         history.saveChange(book(ALICE), book(ALICE));
+        assertEquals(book(ALICE), dataStorage.readAddressBook().orElseThrow());
+        assertEquals(new AddressBook(), history.readLatestSnapshot().orElseThrow());
+        assertEquals(1, snapshotFiles().size());
+
+        byte[] saved = Files.readAllBytes(dataFile);
+        dataStorage.shouldFailSave = true;
+        assertThrows(IOException.class, () -> history.saveChange(book(ALICE), book(ALICE)));
+        assertArrayEquals(saved, Files.readAllBytes(dataFile));
         assertEquals(new AddressBook(), history.readLatestSnapshot().orElseThrow());
         assertEquals(1, snapshotFiles().size());
     }

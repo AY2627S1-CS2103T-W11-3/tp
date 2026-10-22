@@ -22,7 +22,7 @@ import seedu.address.model.UndoHistory;
  * Callers must publish changes to the live model only after saving or restoring succeeds.
  * Instances are used synchronously and must be closed when their session ends.
  */
-public class UndoSnapshotStorage implements UndoHistory {
+class UndoSnapshotStorage implements UndoHistory {
     public static final int MAX_HISTORY_SIZE = 5;
 
     private static final Logger logger = LogsCenter.getLogger(UndoSnapshotStorage.class);
@@ -41,7 +41,8 @@ public class UndoSnapshotStorage implements UndoHistory {
 
     /**
      * Backs up the previous contacts, then saves the candidate before registering its undo entry.
-     * Identical contact data is ignored. A failed backup or save leaves existing history untouched.
+     * Identical contact data is saved without adding history, allowing recovery from an invalid data file.
+     * A failed backup or save leaves existing history untouched.
      * The previous data comes from the model, including when the main data file does not yet exist.
      */
     public void saveChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException {
@@ -49,6 +50,7 @@ public class UndoSnapshotStorage implements UndoHistory {
         requireNonNull(previous);
         requireNonNull(candidate);
         if (previous.getPersonList().equals(candidate.getPersonList())) {
+            addressBookStorage.saveAddressBook(candidate);
             return;
         }
 

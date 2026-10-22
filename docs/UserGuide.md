@@ -238,7 +238,7 @@ Format: `exit`
 
 ### Saving the data
 
-AB4 automatically saves contact data after a successful data change through `add`, `edit`, `delete`, `clear`, or `undo`. You do not need to save manually. Contacts, tags, and notes are restored when you next open the application. Undo history resets on restart. If no data file exists, AB4 starts with its sample contacts.
+AB4 automatically saves contact data after a successful `add`, `edit`, `delete`, `clear`, or `undo`. Commands such as an identical edit or clearing an empty address book still save, but do not add undo history. This allows `clear` to replace a corrupted file after startup has opened an empty address book. You do not need to save manually. Contacts, tags, and notes are restored when you next open the application. Undo history resets on restart. If no data file exists, AB4 starts with its sample contacts.
 
 Changes appear only after saving succeeds. If saving fails, contacts, the displayed list, and the previous data file remain unchanged. The command stays in the input box so you can retry.
 

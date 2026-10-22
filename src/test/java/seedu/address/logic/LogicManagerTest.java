@@ -28,10 +28,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import javafx.collections.ListChangeListener;
+import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.logic.commands.AddCommand;
+import seedu.address.logic.commands.ClearCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
@@ -252,6 +255,22 @@ public class LogicManagerTest {
         assertTrue(model.getFilteredPersonList().isEmpty());
         logic.execute("clear");
         assertTrue(saved.readAddressBook().orElseThrow().getPersonList().isEmpty());
+    }
+
+    @Test
+    public void execute_clearAfterCorruptedFile_savesEmptyContactsThatReloadWithoutError() throws Exception {
+        Path dataPath = temporaryFolder.resolve("addressBook.json");
+        Files.writeString(dataPath, "invalid JSON");
+        JsonAddressBookStorage saved = new JsonAddressBookStorage(dataPath);
+        assertThrows(DataLoadingException.class, saved::readAddressBook);
+        // The empty model matches the startup fallback after a loading error.
+        assertTrue(model.getAddressBook().getPersonList().isEmpty());
+        assertEquals(ClearCommand.MESSAGE_SUCCESS, logic.execute("clear").getFeedbackToUser());
+
+        ReadOnlyAddressBook reloaded = new JsonAddressBookStorage(dataPath).readAddressBook().orElseThrow();
+        Model restarted = new ModelManager(reloaded, new UserPrefs());
+        assertEquals(new AddressBook(), restarted.getAddressBook());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
     }
 
     @Test

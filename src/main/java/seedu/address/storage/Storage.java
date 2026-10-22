@@ -58,7 +58,7 @@ public interface Storage extends UndoHistory {
 
     /**
      * Saves a contact change with its previous data in session undo history.
-     * Identical data is ignored. A failed backup or save preserves saved data and existing history.
+     * Identical data is saved without adding history. A failed backup or save preserves saved data and history.
      */
     void saveUndoableChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException;
 

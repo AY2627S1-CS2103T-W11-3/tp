@@ -174,7 +174,7 @@ The persistent contact-details panel is owned by the view feature and is not yet
 
 ### Automatic contact persistence (F5)
 
-`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds the full contact collection and uses a snapshot of the visible contacts for indexed operations. It records calls to `addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations trigger a save; undoable commands with identical candidate data skip saving and history registration. View-only commands do not save contact data. The current UI runs commands synchronously, so the live model remains unchanged between preparing and committing a command.
+`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds the full contact collection and uses a snapshot of the visible contacts for indexed operations. It records calls to `addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations trigger a save; undoable commands with identical candidate data still save but do not register undo history. View-only commands do not save contact data. The current UI runs commands synchronously, so the live model remains unchanged between preparing and committing a command.
 
 After saving, recorded operations are applied to the live model. This preserves incremental list
 notifications instead of replacing the whole list for every change. A deletion leaves the live search
@@ -214,7 +214,7 @@ The `undo` command restores the contact data before the most recent successful d
 
 `LogicManager` captures that snapshot before execution. Both existing execution paths use it: commands executed against `StagedModel`, and commands implementing `StagedCommand` that return a `PreparedChange`. For an undoable change, `StorageManager.saveUndoableChange(previous, candidate)` delegates to `UndoSnapshotStorage`:
 
-1. Compare the full contact lists. Identical data requires no save or history entry.
+1. Compare the full contact lists. If identical, save the candidate without adding history, then return. This lets `clear` repair an invalid data file when startup has fallen back to an empty model.
 1. Save the previous data as a complete JSON backup, then atomically save the candidate as the current data file.
 1. Register the backup only after saving succeeds. If history exceeds five entries, remove the oldest entry and attempt to delete its backup.
 1. Return to logic, which publishes the prepared changes to the live model.
