@@ -3,9 +3,11 @@ package seedu.address.ui;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -50,17 +52,17 @@ public class CommandHistoryUiTest {
             enterCommand(input, "list");
             enterCommand(input, "find Alex");
 
-            input.fireEvent(createArrowKeyEvent(KeyCode.UP));
+            input.fireEvent(createKeyEvent(KeyCode.UP));
             assertEquals("find Alex", input.getText());
             assertEquals(input.getText().length(), input.getCaretPosition());
-            input.fireEvent(createArrowKeyEvent(KeyCode.UP));
+            input.fireEvent(createKeyEvent(KeyCode.UP));
             assertEquals("list", input.getText());
-            input.fireEvent(createArrowKeyEvent(KeyCode.UP));
+            input.fireEvent(createKeyEvent(KeyCode.UP));
             assertEquals("list", input.getText());
-            input.fireEvent(createArrowKeyEvent(KeyCode.DOWN));
+            input.fireEvent(createKeyEvent(KeyCode.DOWN));
             assertEquals("find Alex", input.getText());
             assertEquals(input.getText().length(), input.getCaretPosition());
-            input.fireEvent(createArrowKeyEvent(KeyCode.DOWN));
+            input.fireEvent(createKeyEvent(KeyCode.DOWN));
             assertEquals("find Alex", input.getText());
         });
     }
@@ -76,9 +78,65 @@ public class CommandHistoryUiTest {
             enterCommand(input, "invalid command");
             input.setText("");
 
-            input.fireEvent(createArrowKeyEvent(KeyCode.UP));
+            input.fireEvent(createKeyEvent(KeyCode.UP));
 
             assertEquals("invalid command", input.getText());
+        });
+    }
+
+    @Test
+    public void historyFileAppendFails_executesAndRetainsCommand() throws Exception {
+        Path historyFile = temporaryFolder.resolve("command-history.txt");
+        CommandHistory commandHistory = new CommandHistory(historyFile);
+        Files.delete(historyFile);
+        AtomicInteger executionCount = new AtomicInteger();
+        runOnFxThread(() -> {
+            CommandBox commandBox = new CommandBox(text -> {
+                executionCount.incrementAndGet();
+                return new CommandResult("Success");
+            }, commandHistory);
+            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
+
+            enterCommand(input, "list");
+
+            assertEquals(1, executionCount.get());
+            assertEquals("", input.getText());
+            input.fireEvent(createKeyEvent(KeyCode.UP));
+            assertEquals("list", input.getText());
+        });
+    }
+
+    @Test
+    public void nonArrowKeyPressed_doesNotNavigateHistory() throws Exception {
+        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        commandHistory.add("list");
+        runOnFxThread(() -> {
+            CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"), commandHistory);
+            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
+            input.setText("draft");
+
+            input.fireEvent(createKeyEvent(KeyCode.LEFT));
+
+            assertEquals("draft", input.getText());
+        });
+    }
+
+    @Test
+    public void emptyCommandEntered_isNotExecutedOrStored() throws Exception {
+        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        AtomicInteger executionCount = new AtomicInteger();
+        runOnFxThread(() -> {
+            CommandBox commandBox = new CommandBox(text -> {
+                executionCount.incrementAndGet();
+                return new CommandResult("Success");
+            }, commandHistory);
+            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
+
+            input.fireEvent(new ActionEvent());
+            input.fireEvent(createKeyEvent(KeyCode.UP));
+
+            assertEquals(0, executionCount.get());
+            assertEquals("", input.getText());
         });
     }
 
@@ -87,7 +145,7 @@ public class CommandHistoryUiTest {
         input.fireEvent(new ActionEvent());
     }
 
-    private static KeyEvent createArrowKeyEvent(KeyCode keyCode) {
+    private static KeyEvent createKeyEvent(KeyCode keyCode) {
         return new KeyEvent(KeyEvent.KEY_PRESSED, "", "", keyCode, false, false, false, false);
     }
 

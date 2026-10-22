@@ -1,8 +1,10 @@
 package seedu.address.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -52,5 +54,29 @@ public class CommandHistoryTest {
         commandHistory.add("view 1");
 
         assertEquals("view 1", commandHistory.getPreviousCommand().orElseThrow());
+    }
+
+    @Test
+    public void create_fileInitializationFails_usesInMemoryHistory() throws Exception {
+        CommandHistory commandHistory = CommandHistory.create(() -> {
+            throw new IOException("Unable to create temporary file");
+        });
+
+        commandHistory.add("list");
+
+        assertEquals("list", commandHistory.getPreviousCommand().orElseThrow());
+    }
+
+    @Test
+    public void add_fileAppendFails_retainsCommandInMemory() throws Exception {
+        Path historyFile = temporaryFolder.resolve("command-history.txt");
+        CommandHistory commandHistory = new CommandHistory(historyFile);
+        commandHistory.add("list");
+        commandHistory.getPreviousCommand();
+        Files.delete(historyFile);
+
+        assertThrows(IOException.class, () -> commandHistory.add("find Alex"));
+
+        assertEquals("find Alex", commandHistory.getPreviousCommand().orElseThrow());
     }
 }

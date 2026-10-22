@@ -8,6 +8,9 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
+
+import seedu.address.commons.core.LogsCenter;
 
 /**
  * Stores commands entered during the current application session.
@@ -16,33 +19,53 @@ public class CommandHistory {
 
     private static final String TEMP_FILE_PREFIX = "addressbook-command-history-";
     private static final String TEMP_FILE_SUFFIX = ".txt";
+    private static final Logger logger = LogsCenter.getLogger(CommandHistory.class);
 
-    private final Path historyFile;
+    private final Optional<Path> historyFile;
     private final List<String> commands = new ArrayList<>();
     private int nextCommandIndex;
 
-    /**
-     * Creates an empty command history backed by a temporary text file.
-     */
-    public CommandHistory() throws IOException {
-        this(Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX));
-        historyFile.toFile().deleteOnExit();
+    private CommandHistory() {
+        historyFile = Optional.empty();
     }
 
     CommandHistory(Path historyFile) throws IOException {
-        this.historyFile = historyFile;
+        this.historyFile = Optional.of(historyFile);
         Files.writeString(historyFile, "", StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     /**
+     * Creates an empty command history backed by a temporary text file, or by memory if file creation fails.
+     */
+    public static CommandHistory create() {
+        return create(() -> Files.createTempFile(TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX));
+    }
+
+    static CommandHistory create(TemporaryFileCreator temporaryFileCreator) {
+        try {
+            Path historyFile = temporaryFileCreator.create();
+            historyFile.toFile().deleteOnExit();
+            return new CommandHistory(historyFile);
+        } catch (IOException e) {
+            logger.warning("Could not initialize command history file; using in-memory history: " + e.getMessage());
+            return new CommandHistory();
+        }
+    }
+
+    /**
      * Adds a command to the end of this session's history.
+     * The command remains available in memory if it cannot be appended to the temporary file.
+     *
+     * @throws IOException if the command cannot be appended to the temporary file
      */
     public void add(String command) throws IOException {
-        Files.writeString(historyFile, command + System.lineSeparator(), StandardCharsets.UTF_8,
-                StandardOpenOption.APPEND);
         commands.add(command);
         nextCommandIndex = commands.size();
+        if (historyFile.isPresent()) {
+            Files.writeString(historyFile.get(), command + System.lineSeparator(), StandardCharsets.UTF_8,
+                    StandardOpenOption.APPEND);
+        }
     }
 
     /**
@@ -67,5 +90,16 @@ public class CommandHistory {
 
         nextCommandIndex++;
         return Optional.of(commands.get(nextCommandIndex));
+    }
+
+    /**
+     * Creates the temporary file used to store command history.
+     */
+    @FunctionalInterface
+    interface TemporaryFileCreator {
+        /**
+         * Creates and returns the temporary file path.
+         */
+        Path create() throws IOException;
     }
 }

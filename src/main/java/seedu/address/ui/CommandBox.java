@@ -34,7 +34,7 @@ public class CommandBox extends UiPart<Region> {
      * Creates a {@code CommandBox} with the given {@code CommandExecutor}.
      */
     public CommandBox(CommandExecutor commandExecutor) {
-        this(commandExecutor, createCommandHistory());
+        this(commandExecutor, CommandHistory.create());
     }
 
     CommandBox(CommandExecutor commandExecutor, CommandHistory commandHistory) {
@@ -67,14 +67,6 @@ public class CommandBox extends UiPart<Region> {
             commandTextField.setText("");
         } catch (CommandException | ParseException e) {
             setStyleToIndicateCommandFailure();
-        }
-    }
-
-    private static CommandHistory createCommandHistory() {
-        try {
-            return new CommandHistory();
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not create command history", e);
         }
     }
 
