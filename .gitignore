@@ -35,3 +35,5 @@ _temp/
 /.settings/
 .classpath
 .project
+docs/images/assertion-failure-output.txt
+docs/images/assertion-failure-screenshot.png
