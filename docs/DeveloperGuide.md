@@ -74,6 +74,10 @@ The **API** of this component is specified in [`Ui.java`](https://github.com/se-
 
 The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDisplay`, `PersonListPanel`, and `StatusBarFooter`. All of these, including `MainWindow`, inherit from the abstract `UiPart` class, which captures common behavior among classes that represent visible GUI parts.
 
+`CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and
+to navigate them with the Up and Down arrow keys. This history belongs to the UI component because it records command
+input rather than address-book data; it does not pass through `Logic`, `Model`, or `Storage`.
+
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
 The `UI` component,
@@ -171,6 +175,47 @@ The existing duplicate rules remain owned by contact creation. Deletion removes 
 `DeleteUiTest` checks the empty-list label, renumbered cells, and command-input behavior on the JavaFX application thread. Run it with `./gradlew test --tests '*DeleteUiTest'` on a machine with a graphical display. It is skipped on Linux when `DISPLAY` is absent; logic/storage tests remain independent of the display.
 
 The persistent contact-details panel is owned by the view feature and is not yet implemented: `view` currently writes details into the feedback box. Clearing details for the deleted contact, preserving another contact's details, and retaining details on failure remain integration acceptance criteria for that owner. F4 does not add a competing panel.
+
+### Command history
+
+`CommandHistory` records every non-empty command submitted from `CommandBox`, including commands that later fail
+parsing or execution. Recording occurs before `CommandExecutor.execute` is called. Therefore, a user can recall and
+correct an invalid command instead of typing it again. Empty input is ignored and is not added to history.
+
+Each `CommandHistory` maintains:
+
+* a `List<String>` containing the commands available for navigation during the current session;
+* a `nextCommandIndex` identifying the current navigation position; and
+* a UTF-8 temporary text file containing the same submitted commands, one command per line.
+
+When a command is added, `CommandHistory` first appends it to the temporary file, then adds it to the in-memory list
+and moves `nextCommandIndex` to the position immediately after the newest command. This reset ensures that pressing Up
+after submitting a new command recalls that new command, even if the user had previously navigated to an older entry.
+
+`CommandBox` handles navigation on JavaFX `KEY_PRESSED` events:
+
+- When the user presses Up, `getPreviousCommand` moves the index toward the beginning of the list and returns the
+   older command.
+- When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns the newer
+   command.
+- `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
+- If the index is already at the oldest or newest available command, the corresponding method returns an empty
+   `Optional`; the input remains unchanged. Down does not clear the newest command or restore an earlier draft.
+
+The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key
+behavior. Other key events are left untouched.
+
+The default `CommandHistory` constructor creates a new file in the operating system's temporary directory using
+`Files.createTempFile`. The file starts empty and is registered for deletion when the JVM exits normally. Every launch
+creates a different empty file, so command history is never restored in a later session. It is deliberately separate
+from `data/addressbook.json` and the `Storage` component. If appending to the temporary file fails, `CommandBox` logs a
+warning and still executes the submitted command; the failed append is not added to the navigable in-memory history.
+
+`CommandHistoryTest` verifies file reset, line-based storage, navigation order and boundaries, and cursor reset
+after a new command. `CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, and retention of a
+failed command on the JavaFX application thread. Run them with
+`./gradlew test --tests '*CommandHistoryTest' --tests '*CommandHistoryUiTest'`. The UI test is skipped on Linux when
+`DISPLAY` is absent; the non-UI history tests remain independent of the display.
 
 ### Automatic contact persistence (F5)
 
@@ -626,6 +671,17 @@ Use disposable test contacts and a separate data file for these checks.
 1. Use spaces and tabs around `delete 1` and between keyword and index. Confirm acceptance. `Delete 1` is an unknown command; `delete 1 2` is rejected.
 1. Restart after a successful deletion. Confirm the contact and its note remain absent and other contacts are restored unchanged.
 1. Simulate a save failure using the integration tests in `LogicManagerTest`. They check partial writes, denied/unsupported replacement, original file bytes, unchanged model/filter, and zero observable notifications. For a manual check, make the disposable data directory unwritable, attempt deletion, and expect the exact save-error message with input and contacts retained; restore permissions and retry.
+
+### Command history
+
+1. Enter `list`, then enter `find Alex`. Press Up once and expect `find Alex`. Press Up again and expect `list`.
+   Pressing Up again should leave `list` unchanged.
+2. From `list`, press Down once and expect `find Alex`. Pressing Down again should leave `find Alex` unchanged. The
+   caret should be at the end of each recalled command.
+3. Enter an invalid command such as `notACommand`, press `Enter`, then replace it with `list`, and press Enter. Press Up to recall `list`,
+   then press Up again. Expect `notACommand`, confirming that failed commands are also recorded.
+4. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty,
+   confirming that history from the previous launch was cleared.
 
 ### Saving data
 
