@@ -1,6 +1,9 @@
 package seedu.address.ui;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
+import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -8,6 +11,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Region;
+import seedu.address.commons.core.LogsCenter;
 import seedu.address.logic.CommandAutocompleter;
 import seedu.address.logic.CommandWords;
 import seedu.address.logic.commands.CommandResult;
@@ -23,6 +27,8 @@ public class CommandBox extends UiPart<Region> {
     private static final String FXML = "CommandBox.fxml";
 
     private final CommandExecutor commandExecutor;
+    private final CommandHistory commandHistory;
+    private final Logger logger = LogsCenter.getLogger(getClass());
     private final CommandAutocompleter autocompleter;
     private boolean isUpdatingFromAutocomplete;
 
@@ -34,7 +40,7 @@ public class CommandBox extends UiPart<Region> {
      * and the default command-word list.
      */
     public CommandBox(CommandExecutor commandExecutor) {
-        this(commandExecutor, CommandWords.get());
+        this(commandExecutor, CommandWords.get(), CommandHistory.create());
     }
 
     /**
@@ -42,8 +48,17 @@ public class CommandBox extends UiPart<Region> {
      * and command words used for Tab autocomplete.
      */
     public CommandBox(CommandExecutor commandExecutor, List<String> commandWords) {
+        this(commandExecutor, commandWords, CommandHistory.create());
+    }
+
+    CommandBox(CommandExecutor commandExecutor, CommandHistory commandHistory) {
+        this(commandExecutor, CommandWords.get(), commandHistory);
+    }
+
+    CommandBox(CommandExecutor commandExecutor, List<String> commandWords, CommandHistory commandHistory) {
         super(FXML);
         this.commandExecutor = commandExecutor;
+        this.commandHistory = commandHistory;
         this.autocompleter = new CommandAutocompleter(commandWords);
         // calls #setStyleToDefault() whenever there is a change to the text of the command box.
         commandTextField.textProperty().addListener((unused1, unused2, unused3) -> {
@@ -53,6 +68,7 @@ public class CommandBox extends UiPart<Region> {
             }
         });
         commandTextField.addEventFilter(KeyEvent.KEY_PRESSED, this::handleTabPressed);
+        commandTextField.setOnKeyPressed(this::handleKeyPressed);
     }
 
     /**
@@ -89,11 +105,34 @@ public class CommandBox extends UiPart<Region> {
         }
 
         try {
+            commandHistory.add(commandText);
+        } catch (IOException e) {
+            logger.warning("Could not save command history: " + e.getMessage());
+        }
+
+        try {
             commandExecutor.execute(commandText);
             commandTextField.setText("");
         } catch (CommandException | ParseException e) {
             setStyleToIndicateCommandFailure();
         }
+    }
+
+    private void handleKeyPressed(KeyEvent event) {
+        Optional<String> historyCommand;
+        if (event.getCode() == KeyCode.UP) {
+            historyCommand = commandHistory.getPreviousCommand();
+        } else if (event.getCode() == KeyCode.DOWN) {
+            historyCommand = commandHistory.getNextCommand();
+        } else {
+            return;
+        }
+
+        historyCommand.ifPresent(command -> {
+            commandTextField.setText(command);
+            commandTextField.positionCaret(command.length());
+        });
+        event.consume();
     }
 
     /**
