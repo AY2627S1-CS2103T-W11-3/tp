@@ -55,4 +55,13 @@ public interface Storage {
      */
     void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException;
 
+    /** Returns the file path of the independent favorites collection. */
+    Path getFavouritesFilePath();
+
+    /** Reads favorites, returning an empty optional if the file does not exist. */
+    Optional<ReadOnlyAddressBook> readFavourites() throws DataLoadingException;
+
+    /** Saves favorites atomically, preserving the previous file if saving fails. */
+    void saveFavourites(ReadOnlyAddressBook favourites) throws IOException;
+
 }

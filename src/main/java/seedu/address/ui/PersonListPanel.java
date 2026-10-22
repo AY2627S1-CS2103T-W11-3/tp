@@ -31,6 +31,11 @@ public class PersonListPanel extends UiPart<Region> {
         personListView.setCellFactory(listView -> new PersonListViewCell());
     }
 
+    /** Displays the active collection without rebuilding the panel. */
+    public void setPersonList(ObservableList<Person> persons) {
+        personListView.setItems(persons);
+    }
+
     /**
      * Custom {@code ListCell} that displays the graphics of a {@code Person} using a {@code PersonCard}.
      */

@@ -1,6 +1,7 @@
 package seedu.address.logic;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -14,7 +15,9 @@ import seedu.address.logic.commands.StagedCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.StagedModel;
 import seedu.address.model.person.Person;
 import seedu.address.storage.Storage;
@@ -55,7 +58,8 @@ public class LogicManager implements Logic {
 
         if (stagedModel.hasContactChanges()) {
             try {
-                storage.saveAddressBook(stagedModel.getAddressBook());
+                ContactSection changedSection = stagedModel.getChangedSection();
+                saveCollection(changedSection, stagedModel.getAddressBook(changedSection));
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
@@ -70,11 +74,31 @@ public class LogicManager implements Logic {
     private CommandResult executeStaged(StagedCommand command) throws CommandException {
         PreparedChange change = command.prepare(model);
         try {
-            storage.saveAddressBook(change.getCandidate());
+            saveCollection(model.getActiveSection(), change.getCandidate());
         } catch (IOException e) {
             throw new CommandException(change.getSaveErrorMessage(), e);
         }
         return change.apply();
+    }
+
+    /** Saves the selected collection before its changes reach the live model. */
+    private void saveCollection(ContactSection section, ReadOnlyAddressBook collection) throws IOException {
+        if (section == ContactSection.FAVOURITES) {
+            storage.saveFavourites(collection);
+        } else {
+            storage.saveAddressBook(collection);
+        }
+    }
+
+    @Override
+    public ContactSection getActiveSection() {
+        return model.getActiveSection();
+    }
+
+    @Override
+    public Path getActiveDataFilePath() {
+        return getActiveSection() == ContactSection.FAVOURITES
+                ? storage.getFavouritesFilePath() : storage.getAddressBookFilePath();
     }
 
     @Override

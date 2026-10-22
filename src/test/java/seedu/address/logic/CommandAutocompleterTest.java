@@ -108,7 +108,8 @@ public class CommandAutocompleterTest {
     public void commandWords_areSortedAndIncludeExpectedCommands() {
         List<String> words = CommandWords.get();
         assertEquals(List.of(
-                "add", "clear", "delete", "edit", "exit", "filter", "find", "help", "list", "view"), words);
+                "add", "clear", "delete", "edit", "exit", "favourite", "filter", "find",
+                "help", "list", "recent", "tab", "view"), words);
         assertEquals(words, words.stream().sorted().toList());
     }
 }

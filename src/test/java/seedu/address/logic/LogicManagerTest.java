@@ -31,11 +31,13 @@ import javafx.collections.ListChangeListener;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.FavouriteCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RecentCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyAddressBook;
@@ -47,6 +49,8 @@ import seedu.address.model.tag.Tag;
 import seedu.address.storage.JsonAddressBookStorage;
 import seedu.address.storage.JsonUserPrefsStorage;
 import seedu.address.storage.StorageManager;
+import seedu.address.testutil.PersonBuilder;
+import seedu.address.testutil.PersonUtil;
 
 public class LogicManagerTest {
     private static final IOException DUMMY_IO_EXCEPTION = new IOException("dummy IO exception");
@@ -86,6 +90,84 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_favouriteFilteredContact_copiesIndependentlyAndKeepsContext() throws Exception {
+        Person target = new PersonBuilder(BOB).withNote("Met in class").build();
+        model.addPerson(ALICE);
+        model.addPerson(target);
+        logic.execute("find Bob");
+
+        assertEquals("Added to Favourites: Bob Choo (index 1).",
+                logic.execute("favourite 1").getFeedbackToUser());
+
+        assertEquals(ContactSection.CONTACTS, logic.getActiveSection());
+        assertEquals(List.of(target), logic.getFilteredPersonList());
+        assertEquals(List.of(ALICE, target), model.getAddressBook().getPersonList());
+        assertFalse(Files.exists(temporaryFolder.resolve("addressBook.json")));
+
+        logic.execute("edit 1 note/Updated original");
+        assertEquals(new Note("Updated original"), model.getAddressBook().getPersonList().get(1).getNote());
+        assertEquals(List.of(target), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        assertEquals(List.of(target), new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
+                .readAddressBook().orElseThrow().getPersonList());
+    }
+
+    @Test
+    public void execute_favouriteInvalidSelectionDuplicateAndWrongSection_reportDistinctErrors() throws Exception {
+        assertThrows(CommandException.class, FavouriteCommand.MESSAGE_EMPTY_LIST, () -> logic.execute("favourite 1"));
+        model.addPerson(ALICE);
+        assertThrows(CommandException.class,
+                String.format(FavouriteCommand.MESSAGE_INDEX_OUT_OF_RANGE, 1), () -> logic.execute("favourite 2"));
+        logic.execute("favourite 1");
+        logic.execute("edit 1 p/88888888");
+        assertThrows(CommandException.class, FavouriteCommand.MESSAGE_DUPLICATE, () -> logic.execute("favourite 1"));
+        logic.execute("tab favourites");
+        assertThrows(CommandException.class, FavouriteCommand.MESSAGE_WRONG_SECTION, ()
+            -> logic.execute("favourite 1"));
+        assertEquals(List.of(ALICE), logic.getFilteredPersonList());
+    }
+
+    @Test
+    public void execute_tab_switchesContextAndScopesContactChanges() throws Exception {
+        model.addPerson(ALICE);
+        logic.execute("tab favourites");
+        assertEquals(ContactSection.FAVOURITES, logic.getActiveSection());
+        assertTrue(logic.getFilteredPersonList().isEmpty());
+        logic.execute(PersonUtil.getAddCommand(BOB));
+        logic.execute("find Nobody");
+        logic.execute("tab favourites");
+        assertTrue(logic.getFilteredPersonList().isEmpty());
+        logic.execute("tab contacts");
+        assertEquals(List.of(ALICE), logic.getFilteredPersonList());
+        logic.execute("tab favourites");
+        assertEquals(List.of(BOB), logic.getFilteredPersonList());
+        assertEquals(temporaryFolder.resolve("favourites.json"), logic.getActiveDataFilePath());
+        logic.execute("delete 1");
+        assertTrue(new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
+                .readAddressBook().orElseThrow().getPersonList().isEmpty());
+        assertEquals(List.of(ALICE), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
+    }
+
+    @Test
+    public void execute_favouriteSaveFailure_preservesContextAndContacts() {
+        model.addPerson(ALICE);
+        StorageManager failing = new StorageManager(
+                new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json")),
+                new JsonUserPrefsStorage(temporaryFolder.resolve("userPrefs.json"))) {
+            @Override
+            public void saveFavourites(ReadOnlyAddressBook favourites) throws IOException {
+                throw DUMMY_IO_EXCEPTION;
+            }
+        };
+        logic = new LogicManager(model, failing);
+
+        assertThrows(CommandException.class, LogicManager.MESSAGE_SAVE_ERROR, () -> logic.execute("favourite 1"));
+
+        assertEquals(ContactSection.CONTACTS, logic.getActiveSection());
+        assertEquals(List.of(ALICE), logic.getFilteredPersonList());
+        assertTrue(model.getAddressBook(ContactSection.FAVOURITES).getPersonList().isEmpty());
+    }
+
+    @Test
     public void execute_recentCommand_updatesDisplayedList() throws Exception {
         model.addPerson(ALICE);
         model.addPerson(BOB);
@@ -95,6 +177,23 @@ public class LogicManagerTest {
         assertEquals(RecentCommand.MESSAGE_SUCCESS, result.getFeedbackToUser());
         assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
         assertEquals(List.of(ALICE, BOB), model.getAddressBook().getPersonList());
+    }
+
+    @Test
+    public void execute_favouriteAfterRecent_copiesDisplayedContact() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+        logic.execute("recent");
+
+        logic.execute("favourite 1");
+
+        assertEquals(List.of(BOB), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
+        logic.execute("tab favourites");
+        logic.execute("recent");
+        assertEquals(List.of(BOB), logic.getFilteredPersonList());
+        logic.execute("tab contacts");
+        assertEquals(List.of(ALICE, BOB), logic.getFilteredPersonList());
     }
 
     @Test
