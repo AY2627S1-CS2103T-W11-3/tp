@@ -21,7 +21,9 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar addressbook.jar`.<br> A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
    ![Ui](images/Ui.jpg)
 
-1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br> Some example commands you can try:
+1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br>
+   While typing the command word, you can press **Tab** to autocomplete it. If several commands share the same prefix, press Tab again to cycle through them. Tab does not autocomplete arguments.<br>
+   Some example commands you can try:
 
    * `list` : Lists all contacts.
 
@@ -53,8 +55,19 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
 * Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`.
 
+* Press **Tab** in the command box to autocomplete the command word (the first word only). Matching is case-sensitive. If more than one command matches the typed prefix, Tab cycles through the matches in alphabetical order. After you type a space and start arguments, Tab no longer changes the text.
+
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </div>
+
+### Autocompleting a command word
+
+While the caret is in the command word, press **Tab** to complete it to a known command.
+
+* Matching uses a case-sensitive prefix. For example, `li` + Tab becomes `list`.
+* If several commands match, Tab cycles through them. For example, `fi` + Tab cycles between `filter` and `find`.
+* Tab does not autocomplete arguments, tags, or prefixes such as `n/` or `t/`.
+* Enter still runs whatever text is currently in the command box.
 
 ### Viewing help: `help`
 
