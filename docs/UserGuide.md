@@ -145,6 +145,17 @@ Examples:
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street note/Known through a dating app`
 
+### Creating and deleting groups, and changing their members: `group`
+
+Create an empty group, then add or remove contacts by their exact names. The contact must already exist in the address book. Group names are case sensitive and must be unique.
+
+* `group add n/CS2103T Team`
+* `group delete g/CS2103T Team`
+* `group member g/CS2103T Team add/John Tan`
+* `group member g/CS2103T Team remove/John Tan`
+
+Groups and their memberships are saved with the contacts. Deleting a group removes its memberships but keeps the contacts. Deleting a contact also removes it from its groups.
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in the active section.
