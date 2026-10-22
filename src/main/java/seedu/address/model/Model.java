@@ -43,6 +43,12 @@ public interface Model {
     boolean hasPerson(Person person);
 
     /**
+     * Returns true if a person with the same identity as {@code person} exists in the address book, excluding
+     * {@code personToExclude}.
+     */
+    boolean hasPersonOtherThan(Person person, Person personToExclude);
+
+    /**
      * Deletes the given person.
      * The person must exist in the address book.
      */
@@ -81,4 +87,9 @@ public interface Model {
      * @throws NullPointerException if {@code predicate} is null.
      */
     void updateFilteredPersonList(Predicate<Person> predicate);
+
+    /**
+     * Updates the filtered person list to show all persons in reverse addition order.
+     */
+    void updateFilteredPersonListToShowRecent();
 }

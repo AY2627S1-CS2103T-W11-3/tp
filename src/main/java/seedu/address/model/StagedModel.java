@@ -78,6 +78,11 @@ public class StagedModel implements Model {
     }
 
     @Override
+    public boolean hasPersonOtherThan(Person person, Person personToExclude) {
+        return candidate.hasPersonOtherThan(person, personToExclude);
+    }
+
+    @Override
     public void deletePerson(Person target) {
         candidate.deletePerson(target);
         changes.add(model -> model.deletePerson(target));
@@ -133,5 +138,11 @@ public class StagedModel implements Model {
     public void updateFilteredPersonList(Predicate<Person> predicate) {
         candidate.updateFilteredPersonList(predicate);
         changes.add(model -> model.updateFilteredPersonList(predicate));
+    }
+
+    @Override
+    public void updateFilteredPersonListToShowRecent() {
+        candidate.updateFilteredPersonListToShowRecent();
+        changes.add(Model::updateFilteredPersonListToShowRecent);
     }
 }

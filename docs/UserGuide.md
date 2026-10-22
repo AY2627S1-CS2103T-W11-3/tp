@@ -21,9 +21,13 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar addressbook.jar`.<br> A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
    ![Ui](images/Ui.jpg)
 
-1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br> Some example commands you can try:
+1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br>
+   While typing the command word, you can press **Tab** to autocomplete it. If several commands share the same prefix, press Tab again to cycle through them. Tab does not autocomplete arguments.<br>
+   Some example commands you can try:
 
    * `list` : Lists all contacts.
+
+   * `recent` : Lists all contacts with the most recently added contact first.
 
    * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01` : Adds a contact named `John Doe` to the Address Book.
 
@@ -32,6 +36,10 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
    * `clear` : Deletes all contacts.
 
    * `exit` : Exits the app.
+
+   Press the Up arrow key to fill the command box with an earlier command. Press it repeatedly to move backward through
+   commands entered during the current launch, and press the Down arrow key to move forward toward newer commands.
+   Command history is cleared whenever AB4 is launched.
 
 1. Refer to the [Features](#features) section below for details of each command.
 
@@ -51,10 +59,21 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
 * Prefixed fields in `add` and `edit` can be in any order, except that `note/NOTE` must be last. For indexed commands such as `edit`, put `INDEX` before the fields.<br> For example, `add p/91234567 n/John Doe e/john@example.com a/NUS note/Met in class` is valid.
 
-* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`.
+* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`. The `recent` command is an exception: it rejects extraneous parameters.
+
+* Press **Tab** in the command box to autocomplete the command word (the first word only). Matching is case-sensitive. If more than one command matches the typed prefix, Tab cycles through the matches in alphabetical order. After you type a space and start arguments, Tab no longer changes the text.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </div>
+
+### Autocompleting a command word
+
+While the caret is in the command word, press **Tab** to complete it to a known command.
+
+* Matching uses a case-sensitive prefix. For example, `li` + Tab becomes `list`.
+* If several commands match, Tab cycles through them. For example, `fi` + Tab cycles between `filter` and `find`.
+* Tab does not autocomplete arguments, tags, or prefixes such as `n/` or `t/`.
+* Enter still runs whatever text is currently in the command box.
 
 ### Viewing help: `help`
 
@@ -98,6 +117,20 @@ Groups and their memberships are saved with the contacts. Deleting a group remov
 Shows a list of all persons in the address book.
 
 Format: `list`
+
+### Viewing recently added contacts: `recent`
+
+Shows all contacts with the most recently added contact first.
+
+Format: `recent`
+
+* Addition order is based on the order in which contacts were added. Editing a contact does not make it recent again.
+* Deleted contacts are omitted. Commands such as `find`, `list`, and `view` do not change addition order.
+* The ordering is preserved after restarting the application.
+* If there are no contacts, the command shows `No contacts available.`
+* The command does not accept parameters.
+
+Example: After adding `John Doe` and then `Betsy Crowe`, `recent` displays Betsy before John.
 
 ### Viewing a person: `view`
 
@@ -164,6 +197,22 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
+### Filtering persons by tag: `filter`
+
+Shows persons who have all of the given tags.
+
+Format: `filter t/TAG [t/TAG]…​`
+
+* Tag matching is case-insensitive; for example, `t/friends` matches `Friends`.
+* Only whole tags match; for example, `t/friend` does not match `friends`.
+* If more than one tag is given, a person must have every listed tag.
+* The index numbers in the result list can be used by commands such as `view`, `edit`, and `delete`.
+* Use `list` to show all persons again.
+
+Examples:
+* `filter t/friends` returns persons tagged `friends`.
+* `filter t/friends t/owesMoney` returns persons who have both tags.
+
 ### Deleting a contact: `delete`
 
 Permanently removes one contact and its contact details, tags, and notes.
@@ -223,11 +272,12 @@ For a failed deletion, the message is: `Could not save changes. Contact was not 
 
 For other changes, the message is: `Could not save changes. No changes were applied. Please try again.`
 
-Commands such as `find`, `list`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+Commands such as `find`, `filter`, `list`, `recent`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+
 
 ### Editing the data file
 
-AB4 data is saved as a human-readable JSON file at `data/addressbook.json`, relative to the directory from which the application is launched. This path is fixed; it cannot be changed through `preferences.json`. Advanced users can edit this UTF-8 file while the application is closed. The `persons` array contains contacts with `name`, `phone`, `email`, `address`, `tags` (objects with a `tagName`), and an optional `note` string. An omitted or `null` note means no note; older files without notes remain supported. Keep the JSON structure and use the same contact values accepted by the application. Duplicate contacts follow the existing exact, case-sensitive name duplicate rule.
+AB4 data is saved as a human-readable JSON file at `data/addressbook.json`, relative to the directory from which the application is launched. This path is fixed; it cannot be changed through `preferences.json`. Advanced users can edit this UTF-8 file while the application is closed. The `persons` array contains contacts with `name`, `phone`, `email`, `address`, `tags` (objects with a `tagName`), and an optional `note` string. An omitted or `null` note means no note; older files without notes remain supported. Keep the JSON structure and use the same contact values accepted by the application. Contacts are duplicates if they have the same phone number or email address; contacts may have the same name.
 
 <div markdown="span" class="alert alert-warning">:exclamation: **Caution:**
 If the file cannot be loaded, AB4 displays a startup error and opens with an empty address book. The error distinguishes a file that cannot be read, corrupted or incorrectly formatted JSON, and invalid contact information (including duplicate contacts). No contacts from an invalid file are loaded. The original file remains on disk until a data-changing command successfully saves new data. Back up or repair the original file before making changes in the application.<br> Furthermore, certain edits can cause AB4 to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
@@ -262,7 +312,9 @@ Action | Format, Examples
 **Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
+**Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`
 **List** | `list`
+**Recent** | `recent`
 **View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
 **Exit** | `exit`
