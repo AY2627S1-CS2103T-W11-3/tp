@@ -194,12 +194,12 @@ after submitting a new command recalls that new command, even if the user had pr
 
 `CommandBox` handles navigation on JavaFX `KEY_PRESSED` events:
 
-1. When the user presses Up, `getPreviousCommand` moves the index toward the beginning of the list and returns the
+- When the user presses Up, `getPreviousCommand` moves the index toward the beginning of the list and returns the
    older command.
-1. When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns the newer
+- When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns the newer
    command.
-1. `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
-1. If the index is already at the oldest or newest available command, the corresponding method returns an empty
+- `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
+- If the index is already at the oldest or newest available command, the corresponding method returns an empty
    `Optional`; the input remains unchanged. Down does not clear the newest command or restore an earlier draft.
 
 The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key
@@ -676,11 +676,11 @@ Use disposable test contacts and a separate data file for these checks.
 
 1. Enter `list`, then enter `find Alex`. Press Up once and expect `find Alex`. Press Up again and expect `list`.
    Pressing Up again should leave `list` unchanged.
-1. From `list`, press Down once and expect `find Alex`. Pressing Down again should leave `find Alex` unchanged. The
+2. From `list`, press Down once and expect `find Alex`. Pressing Down again should leave `find Alex` unchanged. The
    caret should be at the end of each recalled command.
-1. Enter an invalid command such as `notACommand`, replace it with `list`, and press Enter. Press Up to recall `list`,
+3. Enter an invalid command such as `notACommand`, press `Enter`, then replace it with `list`, and press Enter. Press Up to recall `list`,
    then press Up again. Expect `notACommand`, confirming that failed commands are also recorded.
-1. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty,
+4. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty,
    confirming that history from the previous launch was cleared.
 
 ### Saving data
