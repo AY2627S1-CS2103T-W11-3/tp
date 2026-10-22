@@ -7,6 +7,7 @@ import static seedu.address.model.Model.PREDICATE_SHOW_ALL_PERSONS;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.BENSON;
+import static seedu.address.testutil.TypicalPersons.CARL;
 
 import java.util.List;
 
@@ -71,6 +72,18 @@ public class ModelManagerTest {
     @Test
     public void getFilteredPersonList_modifyList_throwsUnsupportedOperationException() {
         assertThrows(UnsupportedOperationException.class, () -> modelManager.getFilteredPersonList().remove(0));
+    }
+
+    @Test
+    public void updateFilteredPersonListToShowRecent_showsPersonsInReverseAdditionOrder() {
+        modelManager.addPerson(ALICE);
+        modelManager.addPerson(BENSON);
+        modelManager.addPerson(CARL);
+
+        modelManager.updateFilteredPersonListToShowRecent();
+
+        assertEquals(List.of(CARL, BENSON, ALICE), modelManager.getFilteredPersonList());
+        assertEquals(List.of(ALICE, BENSON, CARL), modelManager.getAddressBook().getPersonList());
     }
 
     @Test

@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.model.person.Person;
@@ -21,6 +22,7 @@ public class ModelManager implements Model {
     private final AddressBook addressBook;
     private final UserPrefs userPrefs;
     private final FilteredList<Person> filteredPersons;
+    private final SortedList<Person> displayedPersons;
 
     /**
      * Initializes a ModelManager with the given addressBook and userPrefs.
@@ -33,6 +35,7 @@ public class ModelManager implements Model {
         this.addressBook = new AddressBook(addressBook);
         this.userPrefs = new UserPrefs(userPrefs);
         filteredPersons = new FilteredList<>(this.addressBook.getPersonList());
+        displayedPersons = new SortedList<>(filteredPersons);
     }
 
     public ModelManager() {
@@ -107,13 +110,21 @@ public class ModelManager implements Model {
      */
     @Override
     public ObservableList<Person> getFilteredPersonList() {
-        return filteredPersons;
+        return displayedPersons;
     }
 
     @Override
     public void updateFilteredPersonList(Predicate<Person> predicate) {
         requireNonNull(predicate);
+        displayedPersons.setComparator(null);
         filteredPersons.setPredicate(predicate);
+    }
+
+    @Override
+    public void updateFilteredPersonListToShowRecent() {
+        filteredPersons.setPredicate(PREDICATE_SHOW_ALL_PERSONS);
+        displayedPersons.setComparator((first, second) -> Integer.compare(
+                addressBook.getPersonList().indexOf(second), addressBook.getPersonList().indexOf(first)));
     }
 
     @Override
@@ -129,7 +140,7 @@ public class ModelManager implements Model {
 
         return addressBook.equals(otherModelManager.addressBook)
                 && userPrefs.equals(otherModelManager.userPrefs)
-                && filteredPersons.equals(otherModelManager.filteredPersons);
+                && displayedPersons.equals(otherModelManager.displayedPersons);
     }
 
 }
