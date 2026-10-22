@@ -69,9 +69,10 @@ public class MainApp extends Application {
      * The data from the sample address book will be used instead if
      * {@code storage}'s address book is not found,
      * or an empty address book will be used instead if errors occur when reading
-     * {@code storage}'s address book.
+     * {@code storage}'s address book. Favorites load independently, defaulting to an empty collection.
      */
-    private Model initModelManager(Storage storage, ReadOnlyUserPrefs userPrefs) {
+    protected Model initModelManager(Storage storage, ReadOnlyUserPrefs userPrefs) {
+        contactLoadError = null;
         logger.info("Using data file : " + storage.getAddressBookFilePath());
 
         Optional<ReadOnlyAddressBook> addressBookOptional;
@@ -90,9 +91,21 @@ public class MainApp extends Application {
             contactLoadError = e instanceof ContactDataLoadingException
                     ? e.getMessage()
                     : ContactDataLoadingException.MESSAGE_UNREADABLE;
+            contactLoadError = "Contacts (" + storage.getAddressBookFilePath() + "): " + contactLoadError;
         }
 
-        return new ModelManager(initialData, userPrefs);
+        ReadOnlyAddressBook favourites;
+        try {
+            favourites = storage.readFavourites().orElseGet(AddressBook::new);
+        } catch (DataLoadingException e) {
+            String detail = e instanceof ContactDataLoadingException
+                    ? e.getMessage() : ContactDataLoadingException.MESSAGE_UNREADABLE;
+            String error = "Favourites (" + storage.getFavouritesFilePath() + "): " + detail;
+            logger.warning(error);
+            contactLoadError = contactLoadError == null ? error : contactLoadError + "\n\n" + error;
+            favourites = new AddressBook();
+        }
+        return new ModelManager(initialData, favourites, userPrefs);
     }
 
     /**

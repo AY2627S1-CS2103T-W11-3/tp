@@ -25,7 +25,7 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
    While typing the command word, you can press **Tab** to autocomplete it. If several commands share the same prefix, press Tab again to cycle through them. Tab does not autocomplete arguments.<br>
    Some example commands you can try:
 
-   * `list` : Lists all contacts.
+   * `list` : Lists all contacts in the active section.
 
    * `recent` : Lists all contacts with the most recently added contact first.
 
@@ -33,9 +33,13 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
    * `delete 3` : Deletes the 3rd contact shown in the current list.
 
-   * `clear` : Deletes all contacts.
+   * `favourite 1` : Copies the first displayed contact into Favourites.
 
-   * `undo` : Restores the contact data before the most recent change in this session.
+   * `tab favourites` : Switches to Favourites. Use `tab contacts` to return to Contacts.
+
+   * `clear` : Deletes all contacts in the active section.
+
+   * `undo` : Restores Contacts before its most recent change in this session.
 
    * `exit` : Exits the app.
 
@@ -77,6 +81,44 @@ While the caret is in the command word, press **Tab** to complete it to a known 
 * Tab does not autocomplete arguments, tags, or prefixes such as `n/` or `t/`.
 * Enter still runs whatever text is currently in the command box.
 
+### Switching contact sections: `tab`
+
+AB4 has two independent collections: **Contacts** and **Favourites**. The application starts on Contacts. The label above the list shows the active section, and the footer shows its data file.
+
+Format: `tab contacts` or `tab favourites`
+
+* Switch sections by typing a command; the section label is not a clickable tab.
+* `add`, `edit`, `delete`, `clear`, `find`, `filter`, `list`, `recent`, and `view` operate only on the active section. You can also use `add` to create a contact directly in Favourites.
+* Switching to a different section shows all contacts there. Returning to a section resets its previous search. Selecting the section that is already active keeps its current search.
+* Switching sections does not save or modify contact data. Success shows `Showing Contacts.` or `Showing Favourites.`
+* Use the exact lowercase names `contacts` and `favourites`. A missing, unknown, or extra section produces `Invalid command format!` followed by the `tab` usage, without switching sections.
+
+### Marking a contact as a favourite: `favourite`
+
+Copies a contact from Contacts into Favourites, including its phone number, email, address, tags, and note.
+
+Format: `favourite INDEX`
+
+* Run this command in Contacts. `INDEX` refers to the currently displayed list, including search results.
+* Supply exactly one positive ASCII integer without leading zeros, such as `1` or `12`. Signs, decimals, names, and extra arguments are rejected. Surrounding spaces and tabs are allowed.
+* Success appends the copy to Favourites and shows `Added to Favourites: NAME (index INDEX).` Contacts remains selected, its search stays active, and the input clears.
+* The copy is independent. Later edits, deletions, and clearing affect only the selected collection. A favourite can remain after its original contact is deleted.
+* A contact with the same phone number or email address cannot appear twice in Favourites. Contacts may share the same name. Repeating the command does not update or overwrite the existing favourite.
+* To remove a favourite, run `tab favourites` and then `delete INDEX`. You can favourite the original again after removing its copy.
+
+For example, run `tab contacts`, then `find Betsy`, then `favourite 1` to copy the first matching contact. Run `tab favourites` to see the saved copy.
+
+Validation follows the table order. `N` is the number of displayed contacts. Failures retain the entered command and leave both collections unchanged.
+
+| Condition | Message |
+| --- | --- |
+| Missing, extra, or malformed index, such as `favourite`, `favourite 1 2`, or `favourite 01` | `Invalid command format!` followed by the `favourite` usage |
+| Active section is Favourites | `You are already in Favourites. Switch to Contacts to favourite a contact.` |
+| No displayed contacts | `No contacts are displayed. Nothing to favourite.` |
+| Index exceeds the displayed count, including an extremely large valid integer | `Contact index out of range. Choose an index from 1 to N.` |
+| The phone number or email address already exists in Favourites | `This contact is already in Favourites.` |
+| Saving fails | `Could not save changes. No changes were applied. Please try again.` |
+
 ### Viewing help: `help`
 
 Shows a message explaining how to access the help page.
@@ -87,7 +129,7 @@ Format: `help`
 
 ### Adding a person: `add`
 
-Adds a person to the address book.
+Adds a person to the active section.
 
 Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]…​ [note/NOTE]`
 
@@ -105,7 +147,7 @@ Examples:
 
 ### Listing all persons: `list`
 
-Shows a list of all persons in the address book.
+Shows a list of all persons in the active section.
 
 Format: `list`
 
@@ -148,7 +190,7 @@ Examples:
 
 ### Editing a person: `edit`
 
-Edits an existing person in the address book.
+Edits an existing person in the active section.
 
 Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`
 
@@ -167,7 +209,7 @@ Examples:
 
 ### Locating persons by name, tag, or note: `find`
 
-Finds persons whose names, tags, or notes contain any of the given keywords.
+Finds persons in the active section whose names, tags, or notes contain any of the given keywords.
 
 
 Format: `find KEYWORD [MORE_KEYWORDS]`
@@ -206,7 +248,7 @@ Examples:
 
 ### Deleting a contact: `delete`
 
-Removes one contact and its contact details, tags, and notes. A recent deletion can be reversed using [undo](#undoing-a-contact-change-undo) while its history is available.
+Removes one contact and its contact details, tags, and notes from the active section. A recent deletion from Contacts can be reversed using [undo](#undoing-a-contact-change-undo) while history is available. Favourites deletions cannot be undone yet. Deleting a favourite does not delete its original in Contacts, and deleting an original does not delete its favourite copy.
 
 Format: `delete <INDEX>`
 
@@ -243,30 +285,31 @@ Example: delete 1
 
 ### Clearing all entries: `clear`
 
-Clears all entries from the address book.
+Clears all entries from the active section. Clearing Contacts leaves Favourites unchanged, and clearing Favourites leaves Contacts unchanged.
 
 Format: `clear`
 
 ### Undoing a contact change: `undo`
 
-Restores the full contact data from before the most recent successful `add`, `delete`, `edit`, or `clear` that changed contacts.
+Restores Contacts from before its most recent successful `add`, `delete`, `edit`, or `clear` that changed data. Undo is available only in Contacts; use `tab contacts` to switch. Favourites changes, including the `favourite` command, cannot be undone in this milestone and do not consume Contacts history.
 
 Format: `undo`
 
 * Use lowercase `undo` with no arguments. Surrounding spaces and tabs are accepted.
-* Undo restores all contact fields, tags, notes, and contact order, then shows all contacts. The previous search filter is not restored.
-* Up to five data changes can be undone, most recent first. Making a sixth change removes the oldest available undo entry.
+* Undo restores all Contacts fields, tags, notes, and contact order, then shows all Contacts. Favourites remains unchanged. The previous search filter is not restored.
+* Up to five Contacts changes can be undone, most recent first. A sixth Contacts change removes the oldest available undo entry. Switching tabs and changing Favourites do not consume this history.
 * Failed commands, identical edits, and clearing an already empty address book do not consume history. Commands such as `find`, `list`, and `view` leave it unchanged.
 * Each successful undo consumes one history entry. Undo itself does not create an entry, and there is no redo command.
 * History lasts only for the current app session. Closing and reopening the app clears undo history; the contact data saved by a successful undo remains saved.
 * Success clears the input box. Failures retain the command and leave the contact data, displayed list, saved file, and available history unchanged.
 
-For example, with at least one contact displayed, execute `delete 1` and then `undo`. The deleted contact returns to its original position, and the full contact list is shown. If you next make another change, undo reverses that new change before reaching earlier history entries.
+For example, in Contacts with at least one contact displayed, execute `delete 1` and then `undo`. The deleted contact returns to its original position, and the full contact list is shown. If you next make another change, undo reverses that new change before reaching earlier history entries.
 
 | Condition | Message |
 | --- | --- |
 | Undo succeeds | `Undo successful.` |
-| No history is available, including after restart | `No changes to undo.` |
+| Favourites is active | `Undo is only available in Contacts. Switch using tab contacts.` |
+| No Contacts history is available, including after restart | `No changes to undo.` |
 | Extra arguments, such as `undo 1` | `Invalid command format!` followed by the `undo` usage |
 | A backup is missing, unreadable, or corrupted | `Could not read undo history. Nothing was undone. Please try again.` |
 | Saving the restored data fails | `Could not save changes. Nothing was undone. Please try again.` |
@@ -275,7 +318,7 @@ For example, entering `undo 1` displays:
 
 ```text
 Invalid command format!
-undo: Undoes the most recent change to the address book.
+undo: Undoes the most recent change to Contacts.
 Example: undo
 ```
 
@@ -287,7 +330,7 @@ Format: `exit`
 
 ### Saving the data
 
-AB4 automatically saves contact data after a successful `add`, `edit`, `delete`, `clear`, or `undo`. Commands such as an identical edit or clearing an empty address book still save, but do not add undo history. This allows `clear` to replace a corrupted file after startup has opened an empty address book. You do not need to save manually. Contacts, tags, and notes are restored when you next open the application. Undo history resets on restart. If no data file exists, AB4 starts with its sample contacts.
+AB4 automatically saves the active section after a successful `add`, `edit`, `delete`, `clear`, or `undo`. A successful `favourite` saves only Favourites. Identical edits and clearing an empty collection still save without adding undo history, allowing `clear` to repair a corrupted file after startup has opened an empty collection. Both collections, including tags and notes, persist across restarts; Contacts undo history resets. The app starts on Contacts. Missing Contacts data uses sample contacts; a missing favourites file starts with an empty Favourites collection. You do not need to save manually.
 
 Changes appear only after saving succeeds. If saving fails, contacts, the displayed list, and the previous data file remain unchanged. The command stays in the input box so you can retry.
 
@@ -295,17 +338,24 @@ For a failed deletion, the message is: `Could not save changes. Contact was not 
 
 For a failed undo save, the message is: `Could not save changes. Nothing was undone. Please try again.`
 
-For failed saves through `add`, `edit`, or `clear`, the message is: `Could not save changes. No changes were applied. Please try again.`
+For failed saves through `add`, `edit`, `clear`, or `favourite`, the message is: `Could not save changes. No changes were applied. Please try again.`
 
-Commands such as `find`, `filter`, `list`, `recent`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+Commands such as `tab`, `find`, `filter`, `list`, `recent`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
 
 
-### Editing the data file
+### Editing the data files
 
-AB4 data is saved as a human-readable JSON file at `data/addressbook.json`, relative to the directory from which the application is launched. This path is fixed; it cannot be changed through `preferences.json`. Advanced users can edit this UTF-8 file while the application is closed. The `persons` array contains contacts with `name`, `phone`, `email`, `address`, `tags` (objects with a `tagName`), and an optional `note` string. An omitted or `null` note means no note; older files without notes remain supported. Keep the JSON structure and use the same contact values accepted by the application. Contacts are duplicates if they have the same phone number or email address; contacts may have the same name.
+AB4 saves two human-readable JSON files, relative to the directory from which the application is launched:
+
+| Collection | File |
+| --- | --- |
+| Contacts | `data/addressbook.json` |
+| Favourites | `data/favourites.json` |
+
+These paths are fixed; they cannot be changed through `preferences.json`. Both files use the same UTF-8 format and can be edited while the application is closed. The `persons` array contains contacts with `name`, `phone`, `email`, `address`, `tags` (objects with a `tagName`), and an optional `note` string. An omitted or `null` note means no note; older files without notes remain supported. Keep the JSON structure and use the same contact values accepted by the application. Within each file, contacts are duplicates if they share a phone number or email address; contacts may share the same name. The files contain independent contacts, with no links between copies.
 
 <div markdown="span" class="alert alert-warning">:exclamation: **Caution:**
-If the file cannot be loaded, AB4 displays a startup error and opens with an empty address book. The error distinguishes a file that cannot be read, corrupted or incorrectly formatted JSON, and invalid contact information (including duplicate contacts). No contacts from an invalid file are loaded. The original file remains on disk until a data-changing command successfully saves new data. Back up or repair the original file before making changes in the application.<br> Furthermore, certain edits can cause AB4 to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
+If a file cannot be loaded, AB4 displays a startup error naming the affected collection and file, and starts that collection empty. The other collection loads independently. The error distinguishes a file that cannot be read, corrupted or incorrectly formatted JSON, and invalid contact information (including duplicate contacts). No contacts from an invalid file are loaded. The original file remains on disk until a command successfully saves new data to that collection. Back up or repair the original file before changing that collection; favouriting a contact also writes to the favourites file.
 </div>
 
 ### Archiving data files `[coming in v2.0]`
@@ -317,7 +367,7 @@ _Details coming soon ..._
 ## FAQ
 
 **Q**: How do I transfer my data to another computer?<br>
-**A**: Install the app on the other computer and overwrite the data file it creates with the data file from your previous AB4 home folder.
+**A**: Install the app on the other computer. With the app closed on both computers, copy both `data/addressbook.json` and `data/favourites.json` from your previous AB4 home folder into the new home folder's `data` directory. Copy only the files that exist, and back up any destination files before replacing them.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -337,6 +387,8 @@ Action | Format, Examples
 **Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
+**Favourite** | `favourite INDEX`<br> e.g., `favourite 1` (from Contacts)
+**Switch section** | `tab contacts` or `tab favourites`
 **Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`
 **List** | `list`
 **Recent** | `recent`

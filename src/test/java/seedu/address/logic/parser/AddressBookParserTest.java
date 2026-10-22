@@ -7,6 +7,7 @@ import static seedu.address.logic.Messages.MESSAGE_UNKNOWN_COMMAND;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -16,18 +17,22 @@ import org.junit.jupiter.api.Test;
 
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
+import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.logic.commands.ExitCommand;
+import seedu.address.logic.commands.FavouriteCommand;
 import seedu.address.logic.commands.FilterCommand;
 import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RecentCommand;
+import seedu.address.logic.commands.TabCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.ViewCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UndoHistory;
 import seedu.address.model.person.Note;
@@ -52,6 +57,39 @@ public class AddressBookParserTest {
             throw new AssertionError("Parsing must not consume undo history");
         }
     });
+
+    @Test
+    public void parseCommand_favourite_returnsFavouriteCommand() throws Exception {
+        FavouriteCommand expected = new FavouriteCommand(BigInteger.ONE);
+        Command actual = parser.parseCommand("favourite \t1 ");
+        assertEquals(expected, actual);
+        assertEquals(expected.hashCode(), actual.hashCode());
+    }
+
+    @Test
+    public void parseCommand_favouriteInvalidArguments_reportsUsage() {
+        String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FavouriteCommand.MESSAGE_USAGE);
+        for (String input : List.of("favourite", "favourite 0", "favourite 1 2")) {
+            assertThrows(ParseException.class, expected, () -> parser.parseCommand(input));
+        }
+    }
+
+    @Test
+    public void parseCommand_tab_returnsSelectedSection() throws Exception {
+        assertEquals(new TabCommand(ContactSection.CONTACTS), parser.parseCommand("tab contacts"));
+        TabCommand expected = new TabCommand(ContactSection.FAVOURITES);
+        Command actual = parser.parseCommand("tab favourites");
+        assertEquals(expected, actual);
+        assertEquals(expected.hashCode(), actual.hashCode());
+    }
+
+    @Test
+    public void parseCommand_tabInvalidArguments_reportsUsage() {
+        String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, TabCommand.MESSAGE_USAGE);
+        for (String input : List.of("tab", "tab other", "tab favourites extra")) {
+            assertThrows(ParseException.class, expected, () -> parser.parseCommand(input));
+        }
+    }
 
     @Test
     public void parseCommand_add() throws Exception {

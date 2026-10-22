@@ -22,6 +22,11 @@ public class StatusBarFooter extends UiPart<Region> {
      */
     public StatusBarFooter(Path saveLocation) {
         super(FXML);
+        setSaveLocation(saveLocation);
+    }
+
+    /** Shows the data file for the active collection. */
+    public void setSaveLocation(Path saveLocation) {
         saveLocationStatus.setText(Paths.get(".").resolve(saveLocation).toString());
     }
 

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyAddressBook;
@@ -52,6 +53,13 @@ public class UndoCommandTest {
     public void prepare_unreadableHistory_throwsWithoutChangingModelOrHistory() {
         history.failure = new DataLoadingException(new IOException("Unreadable snapshot"));
         assertPreparationFailure(UndoCommand.MESSAGE_LOAD_ERROR);
+    }
+
+    @Test
+    public void prepare_favourites_throwsBeforeReadingContactsHistory() {
+        model.setActiveSection(ContactSection.FAVOURITES);
+        history.failure = new DataLoadingException(new IOException("History must not be read"));
+        assertPreparationFailure(UndoCommand.MESSAGE_WRONG_SECTION);
     }
 
     private void assertPreparationFailure(String message) {

@@ -20,6 +20,7 @@ public class StorageManager implements Storage {
 
     private static final Logger logger = LogsCenter.getLogger(StorageManager.class);
     private JsonAddressBookStorage addressBookStorage;
+    private JsonAddressBookStorage favouritesStorage;
     private JsonUserPrefsStorage userPrefsStorage;
     private final UndoSnapshotStorage undoSnapshotStorage;
 
@@ -27,7 +28,16 @@ public class StorageManager implements Storage {
      * Creates a {@code StorageManager} with the given address book and user prefs storage.
      */
     public StorageManager(JsonAddressBookStorage addressBookStorage, JsonUserPrefsStorage userPrefsStorage) {
+        this(addressBookStorage, new JsonAddressBookStorage(
+                requireNonNull(addressBookStorage).getAddressBookFilePath().resolveSibling("favourites.json")),
+                userPrefsStorage);
+    }
+
+    /** Creates storage for independent contact collections and shared preferences. */
+    public StorageManager(JsonAddressBookStorage addressBookStorage, JsonAddressBookStorage favouritesStorage,
+            JsonUserPrefsStorage userPrefsStorage) {
         this.addressBookStorage = requireNonNull(addressBookStorage);
+        this.favouritesStorage = requireNonNull(favouritesStorage);
         this.userPrefsStorage = requireNonNull(userPrefsStorage);
         undoSnapshotStorage = new UndoSnapshotStorage(addressBookStorage);
     }
@@ -87,6 +97,21 @@ public class StorageManager implements Storage {
     @Override
     public void closeUndoHistory() {
         undoSnapshotStorage.close();
+    }
+
+    @Override
+    public Path getFavouritesFilePath() {
+        return favouritesStorage.getAddressBookFilePath();
+    }
+
+    @Override
+    public Optional<ReadOnlyAddressBook> readFavourites() throws DataLoadingException {
+        return favouritesStorage.readAddressBook();
+    }
+
+    @Override
+    public void saveFavourites(ReadOnlyAddressBook favourites) throws IOException {
+        favouritesStorage.saveAddressBook(favourites);
     }
 
 }

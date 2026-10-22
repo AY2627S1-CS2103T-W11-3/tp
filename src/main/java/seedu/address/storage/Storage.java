@@ -57,7 +57,7 @@ public interface Storage extends UndoHistory {
     void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException;
 
     /**
-     * Saves a contact change with its previous data in session undo history.
+     * Saves a Contacts change with its previous data in session undo history.
      * Identical data is saved without adding history. A failed backup or save preserves saved data and history.
      */
     void saveUndoableChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException;
@@ -66,5 +66,14 @@ public interface Storage extends UndoHistory {
      * Ends the undo session and attempts to remove its backup files without throwing cleanup errors.
      */
     void closeUndoHistory();
+
+    /** Returns the file path of the independent favorites collection. */
+    Path getFavouritesFilePath();
+
+    /** Reads favorites, returning an empty optional if the file does not exist. */
+    Optional<ReadOnlyAddressBook> readFavourites() throws DataLoadingException;
+
+    /** Saves favorites atomically, preserving the previous file if saving fails. */
+    void saveFavourites(ReadOnlyAddressBook favourites) throws IOException;
 
 }

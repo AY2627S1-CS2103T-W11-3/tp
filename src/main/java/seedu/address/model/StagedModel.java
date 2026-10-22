@@ -1,8 +1,9 @@
 package seedu.address.model;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -15,22 +16,47 @@ import seedu.address.model.person.Person;
  * Commands must use the Model API for all changes. Persons are immutable and can be shared safely.
  */
 public class StagedModel implements Model {
-    private final Model candidate;
+    private final ModelManager candidate;
     private final List<Consumer<Model>> changes = new ArrayList<>();
-    private boolean hasContactChanges;
+    private ContactSection changedSection;
 
     /**
      * Copies all contacts and the currently visible contacts used to resolve command indices.
      * The live model's filter remains untouched unless the command explicitly changes it.
      */
     public StagedModel(Model source) {
-        candidate = new ModelManager(source.getAddressBook(), source.getUserPrefs());
-        Set<Person> visiblePersons = Set.copyOf(source.getFilteredPersonList());
-        candidate.updateFilteredPersonList(visiblePersons::contains);
+        candidate = new ModelManager(source.getAddressBook(ContactSection.CONTACTS),
+                source.getAddressBook(ContactSection.FAVOURITES), source.getUserPrefs());
+        candidate.setActiveSection(source.getActiveSection());
+        candidate.copyPersonListView(source);
     }
 
     public boolean hasContactChanges() {
-        return hasContactChanges;
+        return changedSection != null;
+    }
+
+    /** Returns the collection changed by this command, after a contact change has been recorded. */
+    public ContactSection getChangedSection() {
+        return requireNonNull(changedSection);
+    }
+
+    /** Each command saves one collection, so reject changes spanning multiple files. */
+    private void recordContactChange(ContactSection section) {
+        if (changedSection != null && changedSection != section) {
+            throw new IllegalStateException("A command cannot change both contact collections");
+        }
+        changedSection = section;
+    }
+
+    @Override
+    public ContactSection getActiveSection() {
+        return candidate.getActiveSection();
+    }
+
+    @Override
+    public void setActiveSection(ContactSection section) {
+        candidate.setActiveSection(section);
+        changes.add(model -> model.setActiveSection(section));
     }
 
     /**
@@ -61,14 +87,19 @@ public class StagedModel implements Model {
     @Override
     public void setAddressBook(ReadOnlyAddressBook addressBook) {
         AddressBook snapshot = new AddressBook(addressBook);
+        recordContactChange(candidate.getActiveSection());
         candidate.setAddressBook(snapshot);
         changes.add(model -> model.setAddressBook(snapshot));
-        hasContactChanges = true;
     }
 
     @Override
     public ReadOnlyAddressBook getAddressBook() {
         return candidate.getAddressBook();
+    }
+
+    @Override
+    public ReadOnlyAddressBook getAddressBook(ContactSection section) {
+        return candidate.getAddressBook(section);
     }
 
     @Override
@@ -83,23 +114,30 @@ public class StagedModel implements Model {
 
     @Override
     public void deletePerson(Person target) {
+        recordContactChange(candidate.getActiveSection());
         candidate.deletePerson(target);
         changes.add(model -> model.deletePerson(target));
-        hasContactChanges = true;
     }
 
     @Override
     public void addPerson(Person person) {
+        recordContactChange(candidate.getActiveSection());
         candidate.addPerson(person);
         changes.add(model -> model.addPerson(person));
-        hasContactChanges = true;
+    }
+
+    @Override
+    public void addFavourite(Person person) {
+        recordContactChange(ContactSection.FAVOURITES);
+        candidate.addFavourite(person);
+        changes.add(model -> model.addFavourite(person));
     }
 
     @Override
     public void setPerson(Person target, Person editedPerson) {
+        recordContactChange(candidate.getActiveSection());
         candidate.setPerson(target, editedPerson);
         changes.add(model -> model.setPerson(target, editedPerson));
-        hasContactChanges = true;
     }
 
     @Override

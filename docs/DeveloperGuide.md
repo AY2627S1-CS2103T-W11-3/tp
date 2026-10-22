@@ -87,6 +87,8 @@ The `UI` component,
 * keeps a reference to the `Logic` component, because the `UI` relies on the `Logic` to execute commands.
 * depends on some classes in the `Model` component because it displays `Person` objects from the model.
 
+`MainWindow.refreshActiveSection` updates the active-section label, rebinds `PersonListPanel` to the selected collection's filtered list, and updates the footer's save path after successful commands. Section switching is command-only; the label does not handle clicks.
+
 ### Logic component
 
 **API** : [`Logic.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/logic/Logic.java)
@@ -106,10 +108,8 @@ How the `Logic` component works:
 
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
-1. The command executes against a `StagedModel`, which copies the contacts and records model operations.
-1. If the command changes contacts, `LogicManager` saves the full candidate address book before applying
-   the recorded operations to the live model. If saving fails, the candidate is discarded and a
-   `CommandException` is thrown. Commands that only change the view do not save contact data.
+1. Commands without the `StagedCommand` capability execute against a `StagedModel`, which copies both collections and records model operations. Commands implementing `StagedCommand`, such as deletion, return a `PreparedChange` instead.
+1. If the command changes contacts, `LogicManager` saves the full candidate collection to its corresponding file before applying changes to the live model. If saving fails, the candidate is discarded and a `CommandException` is thrown. Commands that only change the view or active section do not save contact data.
 1. After committing, the `CommandResult` is returned to the UI. The sequence diagram above omits the
    staging and storage interactions; the persistence flow is described below.
 
@@ -129,10 +129,12 @@ How the parsing works:
 
 The `Model` component,
 
-* stores the address book data i.e., all `Person` objects (which are contained in a `UniquePersonList` object).
+* stores independent Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects.
 * stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
+
+`getAddressBook()` and ordinary contact operations use the active section; `getAddressBook(section)` reads a specific complete collection. Switching sections rebuilds the active filtered view and shows all contacts. Selecting the current section preserves its filter. GUI preferences remain shared across sections. The partial class diagram above omits this section-selection state.
 
 <div markdown="span" class="alert alert-info">:information_source: **Note:** The alternative, arguably more object-oriented, design below keeps a unique list of tags in `AddressBook`, and each `Person` references tags from that list. This lets `AddressBook` maintain one `Tag` object per unique tag instead of each `Person` holding its own `Tag` objects.<br>
 
@@ -148,8 +150,9 @@ The `Model` component,
 <img src="images/StorageClassDiagram.png" width="550" />
 
 The `Storage` component,
-* can save both address book data and user preference data in JSON format, and read them back into corresponding objects.
-* is implemented by `StorageManager`, which delegates the actual JSON file access to `JsonAddressBookStorage` and `JsonUserPrefsStorage` (one class per data file).
+
+* saves Contacts, Favourites, and user preferences in JSON format, and reads them back into corresponding objects.
+* is implemented by `StorageManager`, which uses separate `JsonAddressBookStorage` instances for `data/addressbook.json` and `data/favourites.json`, and `JsonUserPrefsStorage` for preferences. Both contact files use the existing address-book JSON schema.
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
 
 ### Common classes
@@ -166,7 +169,7 @@ This section describes some noteworthy details on how certain features are imple
 
 `DeleteCommandParser` checks argument count, then delegates ASCII positive-integer validation to `ParserUtil.parsePositiveInteger`. A `BigInteger` retains oversized inputs until empty-list and range validation; conversion to an `int` occurs only after checking the displayed count.
 
-`DeleteCommand` extends `UndoableCommand` and implements `StagedCommand`. Its `prepare` method resolves the displayed index once and returns a `PreparedChange`: a full candidate collection, an operation capturing the selected contact, success feedback, and the save-error message. `LogicManager` saves the candidate and registers its undo snapshot before applying that operation. It depends on the staging interface, not a concrete deletion command. A failed save produces no observable live-model changes. Both staging paths require synchronous execution without intervening commands.
+`DeleteCommand` extends `UndoableCommand` and implements `StagedCommand`. Its `prepare` method resolves the displayed index once and returns a `PreparedChange`: a full candidate collection, an operation capturing the selected contact, success feedback, and the save-error message. `LogicManager` saves the candidate before applying that operation. Deletions in Contacts also register an undo snapshot; deletions in Favourites do not. It depends on the staging interface, not a concrete deletion command. A failed save produces no observable live-model changes. Both staging paths require synchronous execution without intervening commands.
 
 The existing duplicate rules remain owned by contact creation. Deletion removes the selected contact object; it does not search by name. Notes are part of that immutable contact, and other contacts retain their own tags and notes.
 
@@ -219,7 +222,7 @@ failed command on the JavaFX application thread. Run them with
 
 ### Automatic contact persistence (F5)
 
-`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds the full contact collection and uses a snapshot of the visible contacts for indexed operations. It records calls to `addPerson`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations trigger a save; undoable commands with identical candidate data still save but do not register undo history. View-only commands do not save contact data. The current UI runs commands synchronously, so the live model remains unchanged between preparing and committing a command.
+`LogicManager` executes commands without the `StagedCommand` capability once against `StagedModel`. The candidate holds both complete collections and uses a snapshot of the visible contacts for indexed operations. It records calls to `addPerson`, `addFavourite`, `setPerson`, `deletePerson`, `setAddressBook`, and view/preference setters. Contact mutations identify the changed section and trigger a save of that collection; unchanged data still saves without adding undo history. View-only commands do not save contact data. A command may change only one collection, enforced by `recordContactChange`, so saving never requires a transaction spanning both files. The current UI runs commands synchronously, so the live model remains unchanged between preparing and committing a command.
 
 After saving, recorded operations are applied to the live model. This preserves incremental list
 notifications instead of replacing the whole list for every change. A deletion leaves the live search
@@ -230,10 +233,7 @@ selection and the input command. The UI displays success only after `LogicManage
 then atomically replaces the destination. It rejects saves if atomic replacement is unavailable and
 attempts to clean up temporary files. It never falls back to truncating the original file.
 
-Loading distinguishes a missing file (sample contacts), an unreadable file, malformed JSON, and invalid
-contact values. Conversion validates the whole collection before exposing any contacts. A load error
-starts an empty model and is displayed by `UiManager` after the window opens. The existing file remains
-untouched until a data-changing command successfully saves a replacement.
+`MainApp` loads both collections independently and always starts on Contacts. A missing Contacts file uses sample contacts; a missing Favourites file uses an empty collection. Loading distinguishes unreadable files, malformed JSON, and invalid contact values. Conversion validates a whole collection before exposing its contacts. A load error starts only the affected collection empty, and `UiManager` reports its section and path after the window opens. If both files fail, both errors are reported. Existing files remain untouched until a command successfully saves a replacement for that collection.
 
 Integration with the other MVP features:
 
@@ -246,35 +246,49 @@ Integration with the other MVP features:
 * `edit` supports the final `note/` argument with the same parsing and validation as `add`. Other edits
   retain the existing note. A failed save leaves the original note and tags untouched.
 * Any new Model mutation must also be implemented and recorded by `StagedModel`. Keep `Person` immutable
-  so copying the collection safely isolates candidate changes. Future sorting or multi-step commands
-  may need to copy additional view state beyond the current filtered-contact snapshot.
+  so copying the collection safely isolates candidate changes. Staging copies both visible membership
+  and display order, so indexed commands also resolve correctly after `recent`.
+
+### Favourites and section switching
+
+`TabCommandParser` accepts exactly `contacts` or `favourites` after trimming surrounding whitespace. `TabCommand` calls `Model.setActiveSection` through staging. This changes the visible collection without marking contact data as changed, so navigation remains available when saving fails. Existing commands keep using the active collection through the `Model` interface. The prepared deletion path also saves the active section's file.
+
+`FavouriteCommandParser` delegates index validation to `ParserUtil.parsePositiveInteger`, retaining a `BigInteger` until the displayed-list range check passes. Missing, extra, or malformed arguments produce the favourite usage message. Execution then validates the active section, empty-list condition, index range, and duplicate identity, in that order.
+
+`FavouriteCommand` selects from the displayed Contacts list and calls `Model.addFavourite`. This appends to Favourites without changing the active section or filter. `StagedModel.getChangedSection()` identifies Favourites as the destination even though Contacts stays active. `LogicManager` saves the full candidate Favourites collection before replaying the append on the live model. Failed saves leave both collections, files, and observable lists unchanged.
+
+Duplicate detection uses `Person.isSamePerson`: matching phone numbers or email addresses. Both files store full contact records, without a favorite flag or cross-file identifier. `Person` is immutable, so sharing its value when copying is safe; later edits replace a record in only one collection. Removing a favorite uses the existing `delete` command while Favourites is active.
+
+The favourites cases in `LogicManagerTest` cover copying a displayed contact, duplicate and selection errors, wrong-section errors, save failure, and context switching with contact commands scoped to the selected collection. `AddressBookParserTest` checks the `favourite` and `tab` command formats. Broader regression testing is deferred to the next milestone. Use the manual scenarios below to verify visible feedback and command-input behavior.
 
 ### Session undo
 
-The `undo` command restores the contact data before the most recent successful data-changing command. History contains at most five full contact snapshots and lasts for the current application session. Redo and history recovery across restarts are not implemented.
+The `undo` command restores Contacts before its most recent successful data-changing command. It keeps at most five full Contacts snapshots for the current application session. Favourites changes do not participate in history, and undo is rejected while Favourites is active. Favourites undo is deferred to the next milestone. Redo and history recovery across restarts are not implemented.
 
 #### Recording changes
 
 `AddCommand`, `DeleteCommand`, `EditCommand`, and `ClearCommand` extend the abstract `UndoableCommand`. Its `createSnapshot(Model)` helper copies the full pre-command address book, preserving contact order and all fields, including tags and notes. This is a JSON snapshot of model data rather than a diff or a byte-for-byte copy of the existing data file, so it also works before the first data file has been created.
 
-`LogicManager` captures that snapshot before execution. Both existing execution paths use it: commands executed against `StagedModel`, and commands implementing `StagedCommand` that return a `PreparedChange`. For an undoable change, `StorageManager.saveUndoableChange(previous, candidate)` delegates to `UndoSnapshotStorage`:
+`LogicManager` captures a snapshot only when Contacts is active and the command extends `UndoableCommand`. Both existing execution paths use it: commands executed against `StagedModel`, and commands implementing `StagedCommand` that return a `PreparedChange`. For an undoable Contacts change, `StorageManager.saveUndoableChange(previous, candidate)` delegates to `UndoSnapshotStorage`:
 
 1. Compare the full contact lists. If identical, save the candidate without adding history, then return. This lets `clear` repair an invalid data file when startup has fallen back to an empty model.
 1. Save the previous data as a complete JSON backup, then atomically save the candidate as the current data file.
 1. Register the backup only after saving succeeds. If history exceeds five entries, remove the oldest entry and attempt to delete its backup.
 1. Return to logic, which publishes the prepared changes to the live model.
 
+Changes targeting Favourites, including `FavouriteCommand`, use `Storage.saveFavourites` without recording history.
+
 A rejected command or failed backup/save leaves live contacts and existing history unchanged. Failed commands and unchanged data consume no history slots; view-only commands do not participate in history.
 
-New commands that change contact data must extend `UndoableCommand` to participate in undo history. Keep snapshot registration in the shared logic/storage path rather than adding command-specific inverse operations.
+New commands that change Contacts data must extend `UndoableCommand` to participate in undo history. Keep snapshot registration in the shared logic/storage path rather than adding command-specific inverse operations.
 
 #### Restoring a snapshot
 
-The model-level `UndoHistory` interface exposes `readLatestSnapshot()` and `discardLatestSnapshot()` without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` delegates its implementation to `UndoSnapshotStorage`. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
+The model-level `UndoHistory` interface exposes `readLatestSnapshot()` and `discardLatestSnapshot()` without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` owns a single `UndoSnapshotStorage` for Contacts. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
 
 `UndoCommand` implements `StagedCommand` and owns undo behavior:
 
-1. `prepare(model)` reads the latest snapshot without consuming it. Empty history produces `No changes to undo.`; missing, unreadable, or invalid backup data produces the command's load-error message.
+1. `prepare(model)` rejects Favourites before accessing Contacts history, then reads the latest snapshot without consuming it. Empty history produces `No changes to undo.`; missing, unreadable, or invalid backup data produces the command's load-error message.
 1. The command returns a `PreparedChange` containing the snapshot, success feedback, the undo save-error message, and the operation to apply after saving.
 1. The generic staged-command path in `LogicManager` saves the snapshot using `Storage.saveAddressBook`. A failed save leaves the model, filter, current file, and history unchanged.
 1. After saving succeeds, the prepared operation replaces the model data, shows all contacts, and consumes the history entry.
@@ -285,7 +299,7 @@ The model-level `UndoHistory` interface exposes `readLatestSnapshot()` and `disc
 
 `UndoSnapshotStorage` lazily creates a unique `.addressbook-undo-*` directory beside the address-book file. Its deque stores backup paths, with the latest entry at the end. It removes unused backups after failed saves and attempts cleanup after eviction or consumption. Cleanup errors are logged without reporting an already completed change as a failure.
 
-`MainApp.stop()` calls `Storage.closeUndoHistory()` even if saving preferences fails. Each new session starts with empty history. An abnormal exit can leave backup files on disk; the next session does not recover or reuse them. Persistent history and interrupted-operation recovery are deferred to the next milestone.
+`MainApp.stop()` calls `Storage.closeUndoHistory()` to clean up Contacts history even if saving preferences fails. Each new session starts with empty history. An abnormal exit can leave backup files on disk; the next session does not recover or reuse them. Persistent history and interrupted-operation recovery are deferred to the next milestone.
 
 Full snapshots avoid command-specific inverse operations and restore contact order and complete records together. The five-entry bound limits active history, but each change serializes the full contact collection. Failed cleanup can leave unreferenced files beyond that bound. Search predicates and GUI preferences are outside snapshots; successful undo deliberately shows all contacts.
 
@@ -516,6 +530,35 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
       Use case resumes at step 2.
 
+**Use case: Favourite a contact**
+
+**MSS**
+
+1. User selects Contacts and lists or searches for contacts.
+1. AddressBook displays the matching contacts with indices.
+1. User requests to favourite a displayed contact by index.
+1. AddressBook saves an independent copy in Favourites and confirms success, keeping Contacts and its current search selected.
+
+Use case ends.
+
+**Extensions**
+
+* 3a. The index is malformed, missing, or outside the displayed list, or the list is empty.
+
+  AddressBook reports the error and retains the entered command. No data changes.
+
+* 3b. A contact with the same phone number or email address already exists in Favourites.
+
+  AddressBook reports that the contact is already in Favourites. The existing copy is preserved.
+
+* 3c. The user makes the request while Favourites is active.
+
+  AddressBook reports that the user must switch to Contacts to favourite a contact.
+
+* 4a. Saving Favourites fails.
+
+  AddressBook reports a save error and retains both files, live collections, and entered command unchanged.
+
 **Use case: Add a person to a group**
 
 **MSS**
@@ -626,13 +669,13 @@ Use disposable test contacts and a separate data file for these checks.
 
 ### Undoing contact changes
 
-Use a disposable app folder with its own `data/addressbook.json`, since these checks change and restore contacts.
+Use a disposable app folder with its own `data/addressbook.json`, since these checks change and restore contacts. Select Contacts with `tab contacts` before these checks.
 
 1. With at least two contacts present, run `add n/Undo Test p/91234567 e/undo@example.com a/NUS t/project note/Original note`, `edit 1 note/Changed note`, `delete 2`, and `clear`. Run `undo` four times. Each reports `Undo successful.` and restores the previous full collection, including order, tags, and notes. A fifth undo reports `No changes to undo.`. Check that successful commands clear input and failed commands retain it.
 1. After a data change, run `find NoSuchUndoContact` to show no matches, then `undo`. Expect all restored contacts to be displayed. Make another change and undo it; confirm earlier history is still available afterward.
 1. In a fresh session with a contact at index 1, use `edit 1 note/Step 1` through `edit 1 note/Step 6`. Five undos restore notes `Step 5` through `Step 1`; the sixth reports no history. The state before `Step 1` is no longer available.
 1. In a fresh session, try `delete 0` and an edit that sets a field to its existing value. Neither creates undo history. After `clear`, issue `clear` again: a single undo restores the contacts; the next reports no history.
-1. Enter `undo 1` and compare the exact usage message with the User Guide. `Undo` is an unknown command. Surrounding spaces and tabs around lowercase `undo` are accepted.
+1. Enter `undo 1` and compare the exact usage message with the User Guide. `Undo` is an unknown command. Surrounding spaces and tabs around lowercase `undo` are accepted. In Favourites, `undo` reports `Undo is only available in Contacts. Switch using tab contacts.` and leaves Contacts history untouched.
 1. After a successful undo, close and reopen the app. Confirm the restored contacts persist and `undo` reports no history. No earlier session's backups should be available for undo.
 1. For a save-failure check, create a change, activate a search filter, then make the disposable data directory unwritable. Run `undo`: expect `Could not save changes. Nothing was undone. Please try again.`, unchanged contacts/search results/file contents, and retained input. Restore permissions and retry: the same snapshot remains available.
 1. For a read-failure check, make one data change in a fresh session, then temporarily move its backup JSON out of the `.addressbook-undo-*` directory beside the current data file. Run `undo`: expect `Could not read undo history. Nothing was undone. Please try again.` and unchanged contacts, search results, and data file. Return the backup to its original path and retry successfully. Do not edit the main data file while the app is running.
@@ -646,8 +689,26 @@ Use a disposable app folder with its own `data/addressbook.json`, since these ch
 
 ### Saving data
 
-1. Dealing with missing/corrupted data files
+1. In a disposable launch folder with no data files, launch the app. Expect sample Contacts, an active Contacts label, and an empty Favourites section after `tab favourites`.
+1. Add a contact directly in Favourites, restart, and run `tab favourites`. Expect the saved contact; startup itself still selects Contacts.
+1. With the app closed, back up both contact files and replace `data/favourites.json` with malformed JSON. Relaunch. Expect an error naming Favourites and its path, an empty Favourites collection, and intact Contacts. Restore the backup before changing Favourites in the app.
+1. Repeat with invalid Contacts data and valid Favourites data. Expect empty Contacts and intact Favourites. If both files are invalid, expect both errors. No startup load should overwrite either file.
 
-   1. _{Explain how to simulate missing or corrupted data files and state the expected behavior.}_
+### Favourites and section switching
 
-1. _{ more test cases …​ }_
+Use a disposable launch folder. Prepare contacts with distinct names, tags, and notes; do not clear personal data for these checks.
+
+1. Run `tab favourites` and `tab contacts`. Expect the section label, contact list, and footer file path to change together. Try `tab`, `tab other`, and `tab contacts favourites`; expect usage feedback, retained input, and no section change.
+1. In Contacts, search for a contact that is not first in the full list, then run `favourite 1`. Expect the first displayed result to be copied, a success message with its name and displayed index, cleared input, and the same Contacts search still visible.
+1. Run `tab favourites` and `view 1`. Expect the copied fields, tags, and note. Switching back to Contacts shows all contacts. Searching and then selecting the section that is already active preserves that search.
+1. Repeat favouriting the same contact from Contacts, including after changing only its phone number while keeping its email address unchanged. Expect the duplicate error and no overwrite of the saved favorite. Run `favourite 1` in Favourites and expect the distinct wrong-section error. Both errors retain input.
+1. In Contacts, try `favourite`, `favourite 1 2`, `favourite 01`, `favourite 0`, and a 100-digit positive index. Compare feedback with the User Guide. Search for a nonexistent name and try `favourite 1`; expect the empty-list error.
+1. Edit or delete the original in Contacts. Expect its favorite copy to remain unchanged. Delete the copy in Favourites; expect the original, if still present, to remain. Favourite it again to confirm removal permits a new copy.
+1. Exercise `add`, `edit`, `delete`, `clear`, `find`, `list`, and `view` in Favourites. Expect them to operate only on Favourites. Restart and verify that both files restore their respective collections and the active section starts on Contacts.
+1. Use `LogicManagerTest` to check favourite save-error handling and the shared persistence failure cases. For manual feedback checks, make the disposable data location unwritable, attempt `favourite 1`, and expect the save-error message with input, files, and displayed data unchanged. Navigation and read-only commands must remain available; restore permissions before retrying.
+
+Run the focused backend checks with:
+
+```bash
+./gradlew test --tests '*LogicManagerTest' --tests '*AddressBookParserTest'
+```
