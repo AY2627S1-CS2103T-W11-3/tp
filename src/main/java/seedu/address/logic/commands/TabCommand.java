@@ -29,4 +29,9 @@ public class TabCommand extends Command {
     public boolean equals(Object other) {
         return other == this || other instanceof TabCommand command && section == command.section;
     }
+
+    @Override
+    public int hashCode() {
+        return section.hashCode();
+    }
 }

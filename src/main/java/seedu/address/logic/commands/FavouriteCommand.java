@@ -58,4 +58,9 @@ public class FavouriteCommand extends Command {
     public boolean equals(Object other) {
         return other == this || other instanceof FavouriteCommand command && targetIndex.equals(command.targetIndex);
     }
+
+    @Override
+    public int hashCode() {
+        return targetIndex.hashCode();
+    }
 }

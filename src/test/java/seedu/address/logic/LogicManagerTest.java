@@ -89,7 +89,7 @@ public class LogicManagerTest {
     }
 
     @Test
-    public void execute_favouriteFilteredContact_copiesAllFieldsAndKeepsContext() throws Exception {
+    public void execute_favouriteFilteredContact_copiesIndependentlyAndKeepsContext() throws Exception {
         Person target = new PersonBuilder(BOB).withNote("Met in class").build();
         model.addPerson(ALICE);
         model.addPerson(target);
@@ -101,9 +101,13 @@ public class LogicManagerTest {
         assertEquals(ContactSection.CONTACTS, logic.getActiveSection());
         assertEquals(List.of(target), logic.getFilteredPersonList());
         assertEquals(List.of(ALICE, target), model.getAddressBook().getPersonList());
+        assertFalse(Files.exists(temporaryFolder.resolve("addressBook.json")));
+
+        logic.execute("edit 1 note/Updated original");
+        assertEquals(new Note("Updated original"), model.getAddressBook().getPersonList().get(1).getNote());
+        assertEquals(List.of(target), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
         assertEquals(List.of(target), new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
                 .readAddressBook().orElseThrow().getPersonList());
-        assertFalse(Files.exists(temporaryFolder.resolve("addressBook.json")));
     }
 
     @Test

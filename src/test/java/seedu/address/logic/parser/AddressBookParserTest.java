@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
+import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
@@ -40,7 +41,10 @@ public class AddressBookParserTest {
 
     @Test
     public void parseCommand_favourite_returnsFavouriteCommand() throws Exception {
-        assertEquals(new FavouriteCommand(BigInteger.ONE), parser.parseCommand("favourite \t1 "));
+        FavouriteCommand expected = new FavouriteCommand(BigInteger.ONE);
+        Command actual = parser.parseCommand("favourite \t1 ");
+        assertEquals(expected, actual);
+        assertEquals(expected.hashCode(), actual.hashCode());
     }
 
     @Test
@@ -54,7 +58,10 @@ public class AddressBookParserTest {
     @Test
     public void parseCommand_tab_returnsSelectedSection() throws Exception {
         assertEquals(new TabCommand(ContactSection.CONTACTS), parser.parseCommand("tab contacts"));
-        assertEquals(new TabCommand(ContactSection.FAVOURITES), parser.parseCommand("tab favourites"));
+        TabCommand expected = new TabCommand(ContactSection.FAVOURITES);
+        Command actual = parser.parseCommand("tab favourites");
+        assertEquals(expected, actual);
+        assertEquals(expected.hashCode(), actual.hashCode());
     }
 
     @Test

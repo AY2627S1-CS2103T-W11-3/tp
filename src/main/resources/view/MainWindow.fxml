@@ -51,7 +51,7 @@
           <padding>
             <Insets top="10" right="10" bottom="10" left="10" />
           </padding>
-          <Label fx:id="activeSectionLabel" text="Contacts" style="-fx-text-fill: white; -fx-font-size: 16px;" />
+          <Label fx:id="activeSectionLabel" text="Contacts" styleClass="active-section-label" />
           <StackPane fx:id="personListPanelPlaceholder" VBox.vgrow="ALWAYS"/>
         </VBox>
 
