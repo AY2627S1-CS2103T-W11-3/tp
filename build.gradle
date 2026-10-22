@@ -10,7 +10,7 @@ application {
     mainClass = 'seedu.address.Main'
 }
 
-tasks.named('run', JavaExec) {
+run {
     enableAssertions = true
 }
 

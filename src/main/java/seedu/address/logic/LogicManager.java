@@ -1,6 +1,7 @@
 package seedu.address.logic;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
@@ -74,6 +75,11 @@ public class LogicManager implements Logic {
             throw new CommandException(change.getSaveErrorMessage(), e);
         }
         return change.apply();
+    }
+
+    @Override
+    public List<String> getCommandWords() {
+        return CommandWords.get();
     }
 
     @Override
