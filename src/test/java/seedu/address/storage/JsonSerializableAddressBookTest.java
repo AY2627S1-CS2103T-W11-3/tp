@@ -5,6 +5,8 @@ import static seedu.address.testutil.Assert.assertThrows;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +44,43 @@ public class JsonSerializableAddressBookTest {
                 JsonSerializableAddressBook.class).get();
         assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_DUPLICATE_PERSON,
                 dataFromFile::toModelType);
+    }
+
+    @Test
+    public void toModelType_invalidGroups_throwsIllegalValueException() {
+        JsonAdaptedGroup group = new JsonAdaptedGroup("Team", List.of());
+        JsonSerializableAddressBook nullGroup = new JsonSerializableAddressBook(
+                List.of(), Arrays.asList((JsonAdaptedGroup) null));
+        JsonSerializableAddressBook duplicateGroups = new JsonSerializableAddressBook(List.of(), List.of(group, group));
+        JsonSerializableAddressBook missingMember = new JsonSerializableAddressBook(
+                List.of(), List.of(new JsonAdaptedGroup("Team", List.of("Missing Contact"))));
+        JsonSerializableAddressBook invalidName = new JsonSerializableAddressBook(
+                List.of(), List.of(new JsonAdaptedGroup(" ", List.of())));
+
+        assertThrows(IllegalValueException.class, nullGroup::toModelType);
+        assertThrows(IllegalValueException.class, duplicateGroups::toModelType);
+        assertThrows(IllegalValueException.class, missingMember::toModelType);
+        assertThrows(IllegalValueException.class, invalidName::toModelType);
+    }
+
+    @Test
+    public void toModelType_invalidGroupMembers_throwsIllegalValueException() {
+        JsonAdaptedGroup nullMembers = new JsonAdaptedGroup("Team", null);
+        JsonAdaptedGroup nullMember = new JsonAdaptedGroup("Team", Arrays.asList((String) null));
+        JsonAdaptedGroup duplicateMembers = new JsonAdaptedGroup("Team", List.of("Alice Pauline", "Alice Pauline"));
+        JsonAdaptedGroup invalidMember = new JsonAdaptedGroup("Team", List.of("invalid/name"));
+
+        assertThrows(IllegalValueException.class, nullMembers::toModelType);
+        assertThrows(IllegalValueException.class, nullMember::toModelType);
+        assertThrows(IllegalValueException.class, duplicateMembers::toModelType);
+        assertThrows(IllegalValueException.class, invalidMember::toModelType);
+    }
+
+    @Test
+    public void toModelType_legacyConstructor_defaultsToNoGroups() throws Exception {
+        JsonSerializableAddressBook legacyBook = new JsonSerializableAddressBook(List.of());
+
+        assertEquals(List.of(), legacyBook.toModelType().getGroupList());
     }
 
 }

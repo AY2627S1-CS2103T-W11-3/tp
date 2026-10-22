@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 
 import javafx.collections.ObservableList;
 import seedu.address.commons.core.GuiSettings;
+import seedu.address.model.group.Group;
 import seedu.address.model.person.Person;
 
 /**
@@ -138,6 +139,32 @@ public class StagedModel implements Model {
         recordContactChange(candidate.getActiveSection());
         candidate.setPerson(target, editedPerson);
         changes.add(model -> model.setPerson(target, editedPerson));
+    }
+
+    @Override
+    public Group getGroup(String name) {
+        return candidate.getGroup(name);
+    }
+
+    @Override
+    public void addGroup(Group group) {
+        candidate.addGroup(group);
+        changes.add(model -> model.addGroup(group));
+        hasContactChanges = true;
+    }
+
+    @Override
+    public void deleteGroup(String name) {
+        candidate.deleteGroup(name);
+        changes.add(model -> model.deleteGroup(name));
+        hasContactChanges = true;
+    }
+
+    @Override
+    public void setGroup(Group group) {
+        candidate.setGroup(group);
+        changes.add(model -> model.setGroup(group));
+        hasContactChanges = true;
     }
 
     @Override
