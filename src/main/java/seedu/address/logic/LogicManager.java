@@ -12,6 +12,7 @@ import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.PreparedChange;
 import seedu.address.logic.commands.StagedCommand;
+import seedu.address.logic.commands.UndoableCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -42,7 +43,7 @@ public class LogicManager implements Logic {
     public LogicManager(Model model, Storage storage) {
         this.model = model;
         this.storage = storage;
-        addressBookParser = new AddressBookParser();
+        addressBookParser = new AddressBookParser(storage);
     }
 
     @Override
@@ -50,8 +51,11 @@ public class LogicManager implements Logic {
         logger.info("----------------[USER COMMAND][" + commandText + "]");
 
         Command command = addressBookParser.parseCommand(commandText);
+        ReadOnlyAddressBook snapshot = model.getActiveSection() == ContactSection.CONTACTS
+                && command instanceof UndoableCommand undoableCommand
+                ? undoableCommand.createSnapshot(model) : null;
         if (command instanceof StagedCommand stagedCommand) {
-            return executeStaged(stagedCommand);
+            return executeStaged(stagedCommand, snapshot);
         }
         StagedModel stagedModel = new StagedModel(model);
         CommandResult commandResult = command.execute(stagedModel);
@@ -59,7 +63,7 @@ public class LogicManager implements Logic {
         if (stagedModel.hasContactChanges()) {
             try {
                 ContactSection changedSection = stagedModel.getChangedSection();
-                saveCollection(changedSection, stagedModel.getAddressBook(changedSection));
+                saveChange(changedSection, snapshot, stagedModel.getAddressBook(changedSection));
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
@@ -71,22 +75,28 @@ public class LogicManager implements Logic {
     }
 
     /** Saves a prepared change before applying it to the observable model. */
-    private CommandResult executeStaged(StagedCommand command) throws CommandException {
+    private CommandResult executeStaged(StagedCommand command, ReadOnlyAddressBook snapshot) throws CommandException {
         PreparedChange change = command.prepare(model);
         try {
-            saveCollection(model.getActiveSection(), change.getCandidate());
+            saveChange(model.getActiveSection(), snapshot, change.getCandidate());
         } catch (IOException e) {
+            logger.warning("Could not save prepared contact changes: " + e.getMessage());
             throw new CommandException(change.getSaveErrorMessage(), e);
         }
         return change.apply();
     }
 
-    /** Saves the selected collection before its changes reach the live model. */
-    private void saveCollection(ContactSection section, ReadOnlyAddressBook collection) throws IOException {
+    /**
+     * Saves the changed collection and registers its previous data only after a successful save.
+     */
+    private void saveChange(ContactSection section, ReadOnlyAddressBook snapshot, ReadOnlyAddressBook candidate)
+            throws IOException {
         if (section == ContactSection.FAVOURITES) {
-            storage.saveFavourites(collection);
+            storage.saveFavourites(candidate);
+        } else if (snapshot == null) {
+            storage.saveAddressBook(candidate);
         } else {
-            storage.saveAddressBook(collection);
+            storage.saveUndoableChange(snapshot, candidate);
         }
     }
 

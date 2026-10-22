@@ -33,7 +33,7 @@ import seedu.address.ui.UiManager;
  */
 public class MainApp extends Application {
 
-    public static final String VERSION = "V0.5.1";
+    public static final String VERSION = "V1.4";
 
     private static final Logger logger = LogsCenter.getLogger(MainApp.class);
     private static final Path USER_PREFS_FILE_PATH = Paths.get("preferences.json");
@@ -99,7 +99,8 @@ public class MainApp extends Application {
             favourites = storage.readFavourites().orElseGet(AddressBook::new);
         } catch (DataLoadingException e) {
             String detail = e instanceof ContactDataLoadingException
-                    ? e.getMessage() : ContactDataLoadingException.MESSAGE_UNREADABLE;
+                    ? e.getMessage()
+                    : ContactDataLoadingException.MESSAGE_UNREADABLE;
             String error = "Favourites (" + storage.getFavouritesFilePath() + "): " + detail;
             logger.warning(error);
             contactLoadError = contactLoadError == null ? error : contactLoadError + "\n\n" + error;
@@ -155,6 +156,8 @@ public class MainApp extends Application {
             storage.saveUserPrefs(model.getUserPrefs());
         } catch (IOException e) {
             logger.severe("Failed to save preferences " + StringUtil.getDetails(e));
+        } finally {
+            storage.closeUndoHistory();
         }
     }
 }

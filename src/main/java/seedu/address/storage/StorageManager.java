@@ -1,5 +1,7 @@
 package seedu.address.storage;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -20,21 +22,24 @@ public class StorageManager implements Storage {
     private JsonAddressBookStorage addressBookStorage;
     private JsonAddressBookStorage favouritesStorage;
     private JsonUserPrefsStorage userPrefsStorage;
+    private final UndoSnapshotStorage undoSnapshotStorage;
 
     /**
      * Creates a {@code StorageManager} with the given address book and user prefs storage.
      */
     public StorageManager(JsonAddressBookStorage addressBookStorage, JsonUserPrefsStorage userPrefsStorage) {
         this(addressBookStorage, new JsonAddressBookStorage(
-                addressBookStorage.getAddressBookFilePath().resolveSibling("favourites.json")), userPrefsStorage);
+                requireNonNull(addressBookStorage).getAddressBookFilePath().resolveSibling("favourites.json")),
+                userPrefsStorage);
     }
 
     /** Creates storage for independent contact collections and shared preferences. */
     public StorageManager(JsonAddressBookStorage addressBookStorage, JsonAddressBookStorage favouritesStorage,
             JsonUserPrefsStorage userPrefsStorage) {
-        this.addressBookStorage = addressBookStorage;
-        this.favouritesStorage = favouritesStorage;
-        this.userPrefsStorage = userPrefsStorage;
+        this.addressBookStorage = requireNonNull(addressBookStorage);
+        this.favouritesStorage = requireNonNull(favouritesStorage);
+        this.userPrefsStorage = requireNonNull(userPrefsStorage);
+        undoSnapshotStorage = new UndoSnapshotStorage(addressBookStorage);
     }
 
     // ================ UserPrefs methods ==============================
@@ -72,6 +77,26 @@ public class StorageManager implements Storage {
     public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
         logger.fine("Attempting to write to data file: " + addressBookStorage.getAddressBookFilePath());
         addressBookStorage.saveAddressBook(addressBook);
+    }
+
+    @Override
+    public void saveUndoableChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException {
+        undoSnapshotStorage.saveChange(previous, candidate);
+    }
+
+    @Override
+    public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
+        return undoSnapshotStorage.readLatestSnapshot();
+    }
+
+    @Override
+    public void discardLatestSnapshot() {
+        undoSnapshotStorage.discardLatestSnapshot();
+    }
+
+    @Override
+    public void closeUndoHistory() {
+        undoSnapshotStorage.close();
     }
 
     @Override

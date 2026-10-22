@@ -14,6 +14,7 @@ import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RecentCommand;
 import seedu.address.logic.commands.TabCommand;
+import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.ViewCommand;
 
 /**
@@ -35,6 +36,7 @@ public final class CommandWords {
             ListCommand.COMMAND_WORD,
             RecentCommand.COMMAND_WORD,
             TabCommand.COMMAND_WORD,
+            UndoCommand.COMMAND_WORD,
             ViewCommand.COMMAND_WORD
     ).stream().sorted().toList();
 

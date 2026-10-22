@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.ModelManager;
 import seedu.address.model.group.Group;
 import seedu.address.storage.JsonAddressBookStorage;
@@ -45,6 +46,32 @@ public class GroupCommandIntegrationTest {
         assertEquals(0, model.getGroup("CS2103T Team").getMembers().size());
         assertEquals(model.getGroup("CS2103T Team"),
                 addressBookStorage.readAddressBook().orElseThrow().getGroupList().get(0));
+    }
+
+    @Test
+    public void execute_favouritesGroupChanges_preserveContactsGroups() throws Exception {
+        ModelManager model = new ModelManager();
+        model.addPerson(ALICE);
+        model.addFavourite(ALICE);
+        JsonAddressBookStorage contactsStorage = new JsonAddressBookStorage(temporaryFolder.resolve("contacts.json"));
+        JsonAddressBookStorage favouritesStorage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"));
+        StorageManager storage = new StorageManager(contactsStorage, favouritesStorage,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json")));
+        LogicManager logic = new LogicManager(model, storage);
+
+        logic.execute("group add n/Team");
+        logic.execute("tab favourites");
+        logic.execute("group add n/Team");
+        logic.execute("group member g/Team add/Alice Pauline");
+        assertEquals(1, model.getGroup("Team").getMembers().size());
+        assertEquals(model.getGroup("Team"),
+                favouritesStorage.readAddressBook().orElseThrow().getGroupList().get(0));
+
+        logic.execute("group delete g/Team");
+        assertEquals(0, favouritesStorage.readAddressBook().orElseThrow().getGroupList().size());
+        assertEquals(1, model.getAddressBook(ContactSection.CONTACTS).getGroupList().size());
+        assertEquals(0, contactsStorage.readAddressBook().orElseThrow().getGroupList().get(0).getMembers().size());
     }
 
     @Test

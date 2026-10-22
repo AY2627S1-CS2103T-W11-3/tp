@@ -9,6 +9,7 @@ import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,9 +29,12 @@ import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RecentCommand;
 import seedu.address.logic.commands.TabCommand;
+import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.ViewCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.ContactSection;
+import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.UndoHistory;
 import seedu.address.model.person.Note;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.PersonContainsKeywordsPredicate;
@@ -42,7 +46,17 @@ import seedu.address.testutil.PersonUtil;
 
 public class AddressBookParserTest {
 
-    private final AddressBookParser parser = new AddressBookParser();
+    private final AddressBookParser parser = new AddressBookParser(new UndoHistory() {
+        @Override
+        public Optional<ReadOnlyAddressBook> readLatestSnapshot() {
+            throw new AssertionError("Parsing must not read undo history");
+        }
+
+        @Override
+        public void discardLatestSnapshot() {
+            throw new AssertionError("Parsing must not consume undo history");
+        }
+    });
 
     @Test
     public void parseCommand_favourite_returnsFavouriteCommand() throws Exception {
@@ -183,6 +197,19 @@ public class AddressBookParserTest {
         ViewCommand command = (ViewCommand) parser.parseCommand(
                 ViewCommand.COMMAND_WORD + " " + INDEX_FIRST_PERSON.getOneBased());
         assertEquals(new ViewCommand(INDEX_FIRST_PERSON), command);
+    }
+
+    @Test
+    public void parseCommand_undoWithoutArguments_returnsUndoCommand() throws Exception {
+        assertTrue(parser.parseCommand("undo") instanceof UndoCommand);
+        assertTrue(parser.parseCommand(" \tundo \t ") instanceof UndoCommand);
+    }
+
+    @Test
+    public void parseCommand_undoWithArgumentsOrWrongCase_throwsParseException() {
+        String usage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, UndoCommand.MESSAGE_USAGE);
+        assertThrows(ParseException.class, usage, () -> parser.parseCommand("undo 1"));
+        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("Undo"));
     }
 
     @Test

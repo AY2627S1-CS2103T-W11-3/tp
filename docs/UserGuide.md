@@ -39,6 +39,8 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
    * `clear` : Deletes all contacts in the active section.
 
+   * `undo` : Restores Contacts before its most recent change in this session.
+
    * `exit` : Exits the app.
 
    Press the Up arrow key to fill the command box with an earlier command. Press it repeatedly to move backward through
@@ -63,7 +65,7 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
 * Prefixed fields in `add` and `edit` can be in any order, except that `note/NOTE` must be last. For indexed commands such as `edit`, put `INDEX` before the fields.<br> For example, `add p/91234567 n/John Doe e/john@example.com a/NUS note/Met in class` is valid.
 
-* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`. The `recent` command is an exception: it rejects extraneous parameters.
+* Extraneous parameters for `help`, `list`, `exit`, and `clear` are ignored.<br> For example, `help 123` is interpreted as `help`. The `undo` and `recent` commands reject extra parameters.
 
 * Press **Tab** in the command box to autocomplete the command word (the first word only). Matching is case-sensitive. If more than one command matches the typed prefix, Tab cycles through the matches in alphabetical order. After you type a space and start arguments, Tab no longer changes the text.
 
@@ -257,7 +259,7 @@ Examples:
 
 ### Deleting a contact: `delete`
 
-Permanently removes one contact and its contact details, tags, and notes from the active section. Deleting a favourite does not delete its original in Contacts, and deleting an original does not delete its favourite copy.
+Removes one contact and its contact details, tags, and notes from the active section. A recent deletion from Contacts can be reversed using [undo](#undoing-a-contact-change-undo) while history is available. Favourites deletions cannot be undone yet. Deleting a favourite does not delete its original in Contacts, and deleting an original does not delete its favourite copy.
 
 Format: `delete <INDEX>`
 
@@ -298,6 +300,39 @@ Clears all entries from the active section. Clearing Contacts leaves Favourites 
 
 Format: `clear`
 
+### Undoing a contact change: `undo`
+
+Restores Contacts from before its most recent successful `add`, `delete`, `edit`, or `clear` that changed data. Undo is available only in Contacts; use `tab contacts` to switch. Favourites changes, including the `favourite` command, cannot be undone in this milestone and do not consume Contacts history.
+
+Format: `undo`
+
+* Use lowercase `undo` with no arguments. Surrounding spaces and tabs are accepted.
+* Undo restores all Contacts fields, tags, notes, and contact order, then shows all Contacts. Favourites remains unchanged. The previous search filter is not restored.
+* Up to five Contacts changes can be undone, most recent first. A sixth Contacts change removes the oldest available undo entry. Switching tabs and changing Favourites do not consume this history.
+* Failed commands, identical edits, and clearing an already empty address book do not consume history. Commands such as `find`, `list`, and `view` leave it unchanged.
+* Each successful undo consumes one history entry. Undo itself does not create an entry, and there is no redo command.
+* History lasts only for the current app session. Closing and reopening the app clears undo history; the contact data saved by a successful undo remains saved.
+* Success clears the input box. Failures retain the command and leave the contact data, displayed list, saved file, and available history unchanged.
+
+For example, in Contacts with at least one contact displayed, execute `delete 1` and then `undo`. The deleted contact returns to its original position, and the full contact list is shown. If you next make another change, undo reverses that new change before reaching earlier history entries.
+
+| Condition | Message |
+| --- | --- |
+| Undo succeeds | `Undo successful.` |
+| Favourites is active | `Undo is only available in Contacts. Switch using tab contacts.` |
+| No Contacts history is available, including after restart | `No changes to undo.` |
+| Extra arguments, such as `undo 1` | `Invalid command format!` followed by the `undo` usage |
+| A backup is missing, unreadable, or corrupted | `Could not read undo history. Nothing was undone. Please try again.` |
+| Saving the restored data fails | `Could not save changes. Nothing was undone. Please try again.` |
+
+For example, entering `undo 1` displays:
+
+```text
+Invalid command format!
+undo: Undoes the most recent change to Contacts.
+Example: undo
+```
+
 ### Exiting the program: `exit`
 
 Exits the program.
@@ -306,13 +341,15 @@ Format: `exit`
 
 ### Saving the data
 
-AB4 automatically saves the active section after a successful `add`, `edit`, `delete`, or `clear` command. A successful `favourite` command saves only Favourites. You do not need to save manually. Both collections, including tags and notes, are restored when you next open the application, which always starts on Contacts. Missing Contacts data uses sample contacts; a missing favourites file starts with an empty Favourites collection.
+AB4 automatically saves the active section after a successful `add`, `edit`, `delete`, `clear`, or `undo`. A successful `favourite` saves only Favourites. Identical edits and clearing an empty collection still save without adding undo history, allowing `clear` to repair a corrupted file after startup has opened an empty collection. Both collections, including tags and notes, persist across restarts; Contacts undo history resets. The app starts on Contacts. Missing Contacts data uses sample contacts; a missing favourites file starts with an empty Favourites collection. You do not need to save manually.
 
 Changes appear only after saving succeeds. If saving fails, contacts, the displayed list, and the previous data file remain unchanged. The command stays in the input box so you can retry.
 
 For a failed deletion, the message is: `Could not save changes. Contact was not deleted. Please try again.`
 
-For other changes, the message is: `Could not save changes. No changes were applied. Please try again.`
+For a failed undo save, the message is: `Could not save changes. Nothing was undone. Please try again.`
+
+For failed saves through `add`, `edit`, `clear`, or `favourite`, the message is: `Could not save changes. No changes were applied. Please try again.`
 
 Commands such as `tab`, `find`, `filter`, `list`, `recent`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
 
@@ -366,6 +403,7 @@ Action | Format, Examples
 **Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`
 **List** | `list`
 **Recent** | `recent`
+**Undo** | `undo`
 **View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
 **Exit** | `exit`

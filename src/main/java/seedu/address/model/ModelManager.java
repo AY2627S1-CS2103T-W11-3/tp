@@ -141,22 +141,22 @@ public class ModelManager implements Model {
 
     @Override
     public Group getGroup(String name) {
-        return addressBook.getGroup(name);
+        return addressBooks.get(activeSection).getGroup(name);
     }
 
     @Override
     public void addGroup(Group group) {
-        addressBook.addGroup(group);
+        addressBooks.get(activeSection).addGroup(group);
     }
 
     @Override
     public void deleteGroup(String name) {
-        addressBook.removeGroup(name);
+        addressBooks.get(activeSection).removeGroup(name);
     }
 
     @Override
     public void setGroup(Group group) {
-        addressBook.setGroup(group);
+        addressBooks.get(activeSection).setGroup(group);
     }
 
     //=========== Filtered Person List Accessors =============================================================

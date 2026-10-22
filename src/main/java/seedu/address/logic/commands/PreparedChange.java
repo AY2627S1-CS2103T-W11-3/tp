@@ -14,7 +14,7 @@ public final class PreparedChange {
     private final CommandResult result;
     private final String saveErrorMessage;
 
-    /** Creates a change whose application requires no further validation or file access. */
+    /** Creates a change whose application requires no further validation or fallible persistence. */
     public PreparedChange(ReadOnlyAddressBook candidate, Runnable applyChange,
             CommandResult result, String saveErrorMessage) {
         this.candidate = requireNonNull(candidate);

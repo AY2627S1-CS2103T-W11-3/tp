@@ -148,23 +148,23 @@ public class StagedModel implements Model {
 
     @Override
     public void addGroup(Group group) {
+        recordContactChange(candidate.getActiveSection());
         candidate.addGroup(group);
         changes.add(model -> model.addGroup(group));
-        hasContactChanges = true;
     }
 
     @Override
     public void deleteGroup(String name) {
+        recordContactChange(candidate.getActiveSection());
         candidate.deleteGroup(name);
         changes.add(model -> model.deleteGroup(name));
-        hasContactChanges = true;
     }
 
     @Override
     public void setGroup(Group group) {
+        recordContactChange(candidate.getActiveSection());
         candidate.setGroup(group);
         changes.add(model -> model.setGroup(group));
-        hasContactChanges = true;
     }
 
     @Override
