@@ -12,6 +12,8 @@ import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.BOB;
 
+import java.lang.reflect.Field;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.address.testutil.PersonBuilder;
@@ -55,6 +57,26 @@ public class PersonTest {
 
         // different phone and email -> returns false
         assertFalse(ALICE.isSamePerson(BOB));
+    }
+
+    @Test
+    public void isSamePerson_eitherPhoneIsEmpty_returnsFalse() throws ReflectiveOperationException {
+        Person personWithEmptyPhone = new PersonBuilder().withEmail(VALID_EMAIL_BOB).build();
+        setValueToEmpty(personWithEmptyPhone.getPhone());
+        Person personWithDifferentEmail = new PersonBuilder().build();
+
+        assertFalse(personWithEmptyPhone.isSamePerson(personWithDifferentEmail));
+        assertFalse(personWithDifferentEmail.isSamePerson(personWithEmptyPhone));
+    }
+
+    @Test
+    public void isSamePerson_eitherEmailIsEmpty_returnsFalse() throws ReflectiveOperationException {
+        Person personWithEmptyEmail = new PersonBuilder().withPhone(VALID_PHONE_BOB).build();
+        setValueToEmpty(personWithEmptyEmail.getEmail());
+        Person personWithDifferentPhone = new PersonBuilder().build();
+
+        assertFalse(personWithEmptyEmail.isSamePerson(personWithDifferentPhone));
+        assertFalse(personWithDifferentPhone.isSamePerson(personWithEmptyEmail));
     }
 
     @Test
@@ -106,5 +128,15 @@ public class PersonTest {
                 + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress() + ", note=" + ALICE.getNote()
                 + ", tags=" + ALICE.getTags() + "}";
         assertEquals(expected, ALICE.toString());
+    }
+
+    /**
+     * Sets an identity field to an otherwise invalid empty value to exercise {@link Person#isSamePerson(Person)}'s
+     * defensive empty-value checks without changing the validation rules used by production code.
+     */
+    private void setValueToEmpty(Object identityField) throws ReflectiveOperationException {
+        Field valueField = identityField.getClass().getField("value");
+        valueField.setAccessible(true);
+        valueField.set(identityField, "");
     }
 }

@@ -73,6 +73,29 @@ public class UniquePersonListTest {
     }
 
     @Test
+    public void containsOtherThan_personToExcludeNotInList_throwsPersonNotFoundException() {
+        uniquePersonList.add(ALICE);
+
+        assertThrows(PersonNotFoundException.class, () -> uniquePersonList.containsOtherThan(ALICE, BOB));
+    }
+
+    @Test
+    public void containsOtherThan_onlyTargetMatches_returnsFalse() {
+        uniquePersonList.add(ALICE);
+        uniquePersonList.add(BOB);
+
+        assertFalse(uniquePersonList.containsOtherThan(ALICE, ALICE));
+    }
+
+    @Test
+    public void containsOtherThan_anotherPersonMatches_returnsTrue() {
+        uniquePersonList.add(ALICE);
+        uniquePersonList.add(BOB);
+
+        assertTrue(uniquePersonList.containsOtherThan(BOB, ALICE));
+    }
+
+    @Test
     public void add_nullPerson_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> uniquePersonList.add(null));
     }
