@@ -39,6 +39,10 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
    * `exit` : Exits the app.
 
+   Press the Up arrow key to fill the command box with an earlier command. Press it repeatedly to move backward through
+   commands entered during the current launch, and press the Down arrow key to move forward toward newer commands.
+   Command history is cleared whenever AB4 is launched.
+
 1. Refer to the [Features](#features) section below for details of each command.
 
 --------------------------------------------------------------------------------------------------------------------
