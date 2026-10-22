@@ -33,6 +33,7 @@ import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.FavouriteCommand;
 import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.RecentCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
@@ -164,6 +165,35 @@ public class LogicManagerTest {
         assertEquals(ContactSection.CONTACTS, logic.getActiveSection());
         assertEquals(List.of(ALICE), logic.getFilteredPersonList());
         assertTrue(model.getAddressBook(ContactSection.FAVOURITES).getPersonList().isEmpty());
+    }
+
+    @Test
+    public void execute_recentCommand_updatesDisplayedList() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+
+        CommandResult result = logic.execute(RecentCommand.COMMAND_WORD);
+
+        assertEquals(RecentCommand.MESSAGE_SUCCESS, result.getFeedbackToUser());
+        assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
+        assertEquals(List.of(ALICE, BOB), model.getAddressBook().getPersonList());
+    }
+
+    @Test
+    public void execute_favouriteAfterRecent_copiesDisplayedContact() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+        logic.execute("recent");
+
+        logic.execute("favourite 1");
+
+        assertEquals(List.of(BOB), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
+        logic.execute("tab favourites");
+        logic.execute("recent");
+        assertEquals(List.of(BOB), logic.getFilteredPersonList());
+        logic.execute("tab contacts");
+        assertEquals(List.of(ALICE, BOB), logic.getFilteredPersonList());
     }
 
     @Test

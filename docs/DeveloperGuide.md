@@ -201,8 +201,8 @@ Integration with the other MVP features:
 * `edit` supports the final `note/` argument with the same parsing and validation as `add`. Other edits
   retain the existing note. A failed save leaves the original note and tags untouched.
 * Any new Model mutation must also be implemented and recorded by `StagedModel`. Keep `Person` immutable
-  so copying the collection safely isolates candidate changes. Future sorting or multi-step commands
-  may need to copy additional view state beyond the current filtered-contact snapshot.
+  so copying the collection safely isolates candidate changes. Staging copies both visible membership
+  and display order, so indexed commands also resolve correctly after `recent`.
 
 ### Favourites and section switching
 
@@ -212,7 +212,7 @@ Integration with the other MVP features:
 
 `FavouriteCommand` selects from the displayed Contacts list and calls `Model.addFavourite`. This appends to Favourites without changing the active section or filter. `StagedModel.getChangedSection()` identifies Favourites as the destination even though Contacts stays active. `LogicManager` saves the full candidate Favourites collection before replaying the append on the live model. Failed saves leave both collections, files, and observable lists unchanged.
 
-Duplicate detection uses `Person.isSamePerson`: exact, case-sensitive name equality, regardless of other fields. Both files store full contact records, without a favorite flag or cross-file identifier. `Person` is immutable, so sharing its value when copying is safe; later edits replace a record in only one collection. Removing a favorite uses the existing `delete` command while Favourites is active.
+Duplicate detection uses `Person.isSamePerson`: matching phone numbers or email addresses. Both files store full contact records, without a favorite flag or cross-file identifier. `Person` is immutable, so sharing its value when copying is safe; later edits replace a record in only one collection. Removing a favorite uses the existing `delete` command while Favourites is active.
 
 The favourites cases in `LogicManagerTest` cover copying a displayed contact, duplicate and selection errors, wrong-section errors, save failure, and context switching with contact commands scoped to the selected collection. `AddressBookParserTest` checks the `favourite` and `tab` command formats. Broader regression testing is deferred to the next milestone. Use the manual scenarios below to verify visible feedback and command-input behavior.
 
@@ -544,7 +544,7 @@ Use case ends.
 
   AddressBook reports the error and retains the entered command. No data changes.
 
-* 3b. A contact with the same exact, case-sensitive name already exists in Favourites.
+* 3b. A contact with the same phone number or email address already exists in Favourites.
 
   AddressBook reports that the contact is already in Favourites. The existing copy is preserved.
 
@@ -678,7 +678,7 @@ Use a disposable launch folder. Prepare contacts with distinct names, tags, and 
 1. Run `tab favourites` and `tab contacts`. Expect the section label, contact list, and footer file path to change together. Try `tab`, `tab other`, and `tab contacts favourites`; expect usage feedback, retained input, and no section change.
 1. In Contacts, search for a contact that is not first in the full list, then run `favourite 1`. Expect the first displayed result to be copied, a success message with its name and displayed index, cleared input, and the same Contacts search still visible.
 1. Run `tab favourites` and `view 1`. Expect the copied fields, tags, and note. Switching back to Contacts shows all contacts. Searching and then selecting the section that is already active preserves that search.
-1. Repeat favouriting the same exact name from Contacts, including after changing its phone number. Expect the duplicate error and no overwrite of the saved favorite. Run `favourite 1` in Favourites and expect the distinct wrong-section error. Both errors retain input.
+1. Repeat favouriting the same contact from Contacts, including after changing only its phone number while keeping its email address unchanged. Expect the duplicate error and no overwrite of the saved favorite. Run `favourite 1` in Favourites and expect the distinct wrong-section error. Both errors retain input.
 1. In Contacts, try `favourite`, `favourite 1 2`, `favourite 01`, `favourite 0`, and a 100-digit positive index. Compare feedback with the User Guide. Search for a nonexistent name and try `favourite 1`; expect the empty-list error.
 1. Edit or delete the original in Contacts. Expect its favorite copy to remain unchanged. Delete the copy in Favourites; expect the original, if still present, to remain. Favourite it again to confirm removal permits a new copy.
 1. Exercise `add`, `edit`, `delete`, `clear`, `find`, `list`, and `view` in Favourites. Expect them to operate only on Favourites. Restart and verify that both files restore their respective collections and the active section starts on Contacts.

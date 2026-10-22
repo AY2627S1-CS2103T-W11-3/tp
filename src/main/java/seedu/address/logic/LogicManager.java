@@ -2,6 +2,7 @@ package seedu.address.logic;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
@@ -98,6 +99,11 @@ public class LogicManager implements Logic {
     public Path getActiveDataFilePath() {
         return getActiveSection() == ContactSection.FAVOURITES
                 ? storage.getFavouritesFilePath() : storage.getAddressBookFilePath();
+    }
+
+    @Override
+    public List<String> getCommandWords() {
+        return CommandWords.get();
     }
 
     @Override

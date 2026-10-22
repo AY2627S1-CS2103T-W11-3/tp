@@ -3,14 +3,18 @@ package seedu.address.model;
 import static java.util.Objects.requireNonNull;
 import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.model.person.Person;
@@ -25,6 +29,7 @@ public class ModelManager implements Model {
     private final UserPrefs userPrefs;
     private ContactSection activeSection = ContactSection.CONTACTS;
     private FilteredList<Person> filteredPersons;
+    private SortedList<Person> displayedPersons;
     private ObservableList<Person> visiblePersons;
 
     /**
@@ -106,6 +111,12 @@ public class ModelManager implements Model {
     }
 
     @Override
+    public boolean hasPersonOtherThan(Person person, Person personToExclude) {
+        requireAllNonNull(person, personToExclude);
+        return addressBooks.get(activeSection).hasPersonOtherThan(person, personToExclude);
+    }
+
+    @Override
     public void deletePerson(Person target) {
         addressBooks.get(activeSection).removePerson(target);
     }
@@ -132,7 +143,8 @@ public class ModelManager implements Model {
     /** Rebinds the filtered view to the active collection without retaining the previous search. */
     private void initializeFilteredPersons() {
         filteredPersons = new FilteredList<>(getAddressBook().getPersonList());
-        visiblePersons = FXCollections.unmodifiableObservableList(filteredPersons);
+        displayedPersons = new SortedList<>(filteredPersons);
+        visiblePersons = FXCollections.unmodifiableObservableList(displayedPersons);
     }
 
     /**
@@ -147,7 +159,23 @@ public class ModelManager implements Model {
     @Override
     public void updateFilteredPersonList(Predicate<Person> predicate) {
         requireNonNull(predicate);
+        displayedPersons.setComparator(null);
         filteredPersons.setPredicate(predicate);
+    }
+
+    /** Copies the visible membership and order used to resolve indices in a staged command. */
+    void copyPersonListView(Model source) {
+        List<Person> displayed = List.copyOf(source.getFilteredPersonList());
+        Set<Person> visible = Set.copyOf(displayed);
+        updateFilteredPersonList(visible::contains);
+        displayedPersons.setComparator(Comparator.comparingInt(displayed::indexOf));
+    }
+
+    @Override
+    public void updateFilteredPersonListToShowRecent() {
+        filteredPersons.setPredicate(PREDICATE_SHOW_ALL_PERSONS);
+        displayedPersons.setComparator((first, second) -> Integer.compare(
+                getAddressBook().getPersonList().indexOf(second), getAddressBook().getPersonList().indexOf(first)));
     }
 
     @Override
@@ -164,7 +192,7 @@ public class ModelManager implements Model {
         return addressBooks.equals(otherModelManager.addressBooks)
                 && activeSection == otherModelManager.activeSection
                 && userPrefs.equals(otherModelManager.userPrefs)
-                && filteredPersons.equals(otherModelManager.filteredPersons);
+                && displayedPersons.equals(otherModelManager.displayedPersons);
     }
 
 }

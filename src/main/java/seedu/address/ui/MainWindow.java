@@ -128,7 +128,7 @@ public class MainWindow extends UiPart<Stage> {
         statusBarFooter = new StatusBarFooter(dataFilePath);
         statusbarPlaceholder.getChildren().add(statusBarFooter.getRoot());
 
-        CommandBox commandBox = new CommandBox(this::executeCommand);
+        CommandBox commandBox = new CommandBox(this::executeCommand, logic.getCommandWords());
         commandBoxPlaceholder.getChildren().add(commandBox.getRoot());
         refreshActiveSection();
     }

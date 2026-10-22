@@ -2,6 +2,7 @@ package seedu.address.logic.commands;
 
 import static seedu.address.logic.commands.CommandTestUtil.assertCommandFailure;
 import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
+import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,33 @@ public class AddCommandIntegrationTest {
     public void execute_duplicatePerson_throwsCommandException() {
         Person personInList = model.getAddressBook().getPersonList().get(0);
         assertCommandFailure(new AddCommand(personInList), model,
+                AddCommand.MESSAGE_DUPLICATE_PERSON);
+    }
+
+    @Test
+    public void execute_sameNameButDifferentPhoneAndEmail_success() {
+        Person personWithSameName = new PersonBuilder().withName(ALICE.getName().fullName).build();
+        Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
+        expectedModel.addPerson(personWithSameName);
+
+        assertCommandSuccess(new AddCommand(personWithSameName), model,
+                String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(personWithSameName)),
+                expectedModel);
+    }
+
+    @Test
+    public void execute_duplicatePhone_throwsCommandException() {
+        Person personWithDuplicatePhone = new PersonBuilder().withPhone(ALICE.getPhone().value).build();
+
+        assertCommandFailure(new AddCommand(personWithDuplicatePhone), model,
+                AddCommand.MESSAGE_DUPLICATE_PERSON);
+    }
+
+    @Test
+    public void execute_duplicateEmail_throwsCommandException() {
+        Person personWithDuplicateEmail = new PersonBuilder().withEmail(ALICE.getEmail().value).build();
+
+        assertCommandFailure(new AddCommand(personWithDuplicateEmail), model,
                 AddCommand.MESSAGE_DUPLICATE_PERSON);
     }
 

@@ -4,7 +4,6 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -17,7 +16,7 @@ import seedu.address.model.person.Person;
  * Commands must use the Model API for all changes. Persons are immutable and can be shared safely.
  */
 public class StagedModel implements Model {
-    private final Model candidate;
+    private final ModelManager candidate;
     private final List<Consumer<Model>> changes = new ArrayList<>();
     private ContactSection changedSection;
 
@@ -29,8 +28,7 @@ public class StagedModel implements Model {
         candidate = new ModelManager(source.getAddressBook(ContactSection.CONTACTS),
                 source.getAddressBook(ContactSection.FAVOURITES), source.getUserPrefs());
         candidate.setActiveSection(source.getActiveSection());
-        Set<Person> visiblePersons = Set.copyOf(source.getFilteredPersonList());
-        candidate.updateFilteredPersonList(visiblePersons::contains);
+        candidate.copyPersonListView(source);
     }
 
     public boolean hasContactChanges() {
@@ -110,6 +108,11 @@ public class StagedModel implements Model {
     }
 
     @Override
+    public boolean hasPersonOtherThan(Person person, Person personToExclude) {
+        return candidate.hasPersonOtherThan(person, personToExclude);
+    }
+
+    @Override
     public void deletePerson(Person target) {
         recordContactChange(candidate.getActiveSection());
         candidate.deletePerson(target);
@@ -146,5 +149,11 @@ public class StagedModel implements Model {
     public void updateFilteredPersonList(Predicate<Person> predicate) {
         candidate.updateFilteredPersonList(predicate);
         changes.add(model -> model.updateFilteredPersonList(predicate));
+    }
+
+    @Override
+    public void updateFilteredPersonListToShowRecent() {
+        candidate.updateFilteredPersonListToShowRecent();
+        changes.add(Model::updateFilteredPersonListToShowRecent);
     }
 }

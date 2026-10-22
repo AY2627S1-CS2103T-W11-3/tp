@@ -21,9 +21,13 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar addressbook.jar`.<br> A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
    ![Ui](images/Ui.jpg)
 
-1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br> Some example commands you can try:
+1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br>
+   While typing the command word, you can press **Tab** to autocomplete it. If several commands share the same prefix, press Tab again to cycle through them. Tab does not autocomplete arguments.<br>
+   Some example commands you can try:
 
    * `list` : Lists all contacts in the active section.
+
+   * `recent` : Lists all contacts with the most recently added contact first.
 
    * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01` : Adds a contact named `John Doe` to the Address Book.
 
@@ -55,10 +59,21 @@ AB4 is a **desktop contact manager for NUS students, optimized for use through a
 
 * Prefixed fields in `add` and `edit` can be in any order, except that `note/NOTE` must be last. For indexed commands such as `edit`, put `INDEX` before the fields.<br> For example, `add p/91234567 n/John Doe e/john@example.com a/NUS note/Met in class` is valid.
 
-* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`.
+* Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br> For example, `help 123` is interpreted as `help`. The `recent` command is an exception: it rejects extraneous parameters.
+
+* Press **Tab** in the command box to autocomplete the command word (the first word only). Matching is case-sensitive. If more than one command matches the typed prefix, Tab cycles through the matches in alphabetical order. After you type a space and start arguments, Tab no longer changes the text.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </div>
+
+### Autocompleting a command word
+
+While the caret is in the command word, press **Tab** to complete it to a known command.
+
+* Matching uses a case-sensitive prefix. For example, `li` + Tab becomes `list`.
+* If several commands match, Tab cycles through them. For example, `fi` + Tab cycles between `filter` and `find`.
+* Tab does not autocomplete arguments, tags, or prefixes such as `n/` or `t/`.
+* Enter still runs whatever text is currently in the command box.
 
 ### Switching contact sections: `tab`
 
@@ -67,7 +82,7 @@ AB4 has two independent collections: **Contacts** and **Favourites**. The applic
 Format: `tab contacts` or `tab favourites`
 
 * Switch sections by typing a command; the section label is not a clickable tab.
-* `add`, `edit`, `delete`, `clear`, `find`, `list`, and `view` operate only on the active section. You can also use `add` to create a contact directly in Favourites.
+* `add`, `edit`, `delete`, `clear`, `find`, `filter`, `list`, `recent`, and `view` operate only on the active section. You can also use `add` to create a contact directly in Favourites.
 * Switching to a different section shows all contacts there. Returning to a section resets its previous search. Selecting the section that is already active keeps its current search.
 * Switching sections does not save or modify contact data. Success shows `Showing Contacts.` or `Showing Favourites.`
 * Use the exact lowercase names `contacts` and `favourites`. A missing, unknown, or extra section produces `Invalid command format!` followed by the `tab` usage, without switching sections.
@@ -82,7 +97,7 @@ Format: `favourite INDEX`
 * Supply exactly one positive ASCII integer without leading zeros, such as `1` or `12`. Signs, decimals, names, and extra arguments are rejected. Surrounding spaces and tabs are allowed.
 * Success appends the copy to Favourites and shows `Added to Favourites: NAME (index INDEX).` Contacts remains selected, its search stays active, and the input clears.
 * The copy is independent. Later edits, deletions, and clearing affect only the selected collection. A favourite can remain after its original contact is deleted.
-* A contact with the same exact, case-sensitive name cannot appear twice in Favourites, even if its other details differ. Repeating the command does not update or overwrite the existing favourite.
+* A contact with the same phone number or email address cannot appear twice in Favourites. Contacts may share the same name. Repeating the command does not update or overwrite the existing favourite.
 * To remove a favourite, run `tab favourites` and then `delete INDEX`. You can favourite the original again after removing its copy.
 
 For example, run `tab contacts`, then `find Betsy`, then `favourite 1` to copy the first matching contact. Run `tab favourites` to see the saved copy.
@@ -95,7 +110,7 @@ Validation follows the table order. `N` is the number of displayed contacts. Fai
 | Active section is Favourites | `You are already in Favourites. Switch to Contacts to favourite a contact.` |
 | No displayed contacts | `No contacts are displayed. Nothing to favourite.` |
 | Index exceeds the displayed count, including an extremely large valid integer | `Contact index out of range. Choose an index from 1 to N.` |
-| The name already exists in Favourites | `This contact is already in Favourites.` |
+| The phone number or email address already exists in Favourites | `This contact is already in Favourites.` |
 | Saving fails | `Could not save changes. No changes were applied. Please try again.` |
 
 ### Viewing help: `help`
@@ -129,6 +144,20 @@ Examples:
 Shows a list of all persons in the active section.
 
 Format: `list`
+
+### Viewing recently added contacts: `recent`
+
+Shows all contacts with the most recently added contact first.
+
+Format: `recent`
+
+* Addition order is based on the order in which contacts were added. Editing a contact does not make it recent again.
+* Deleted contacts are omitted. Commands such as `find`, `list`, and `view` do not change addition order.
+* The ordering is preserved after restarting the application.
+* If there are no contacts, the command shows `No contacts available.`
+* The command does not accept parameters.
+
+Example: After adding `John Doe` and then `Betsy Crowe`, `recent` displays Betsy before John.
 
 ### Viewing a person: `view`
 
@@ -195,6 +224,22 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
+### Filtering persons by tag: `filter`
+
+Shows persons who have all of the given tags.
+
+Format: `filter t/TAG [t/TAG]…​`
+
+* Tag matching is case-insensitive; for example, `t/friends` matches `Friends`.
+* Only whole tags match; for example, `t/friend` does not match `friends`.
+* If more than one tag is given, a person must have every listed tag.
+* The index numbers in the result list can be used by commands such as `view`, `edit`, and `delete`.
+* Use `list` to show all persons again.
+
+Examples:
+* `filter t/friends` returns persons tagged `friends`.
+* `filter t/friends t/owesMoney` returns persons who have both tags.
+
 ### Deleting a contact: `delete`
 
 Permanently removes one contact and its contact details, tags, and notes from the active section. Deleting a favourite does not delete its original in Contacts, and deleting an original does not delete its favourite copy.
@@ -254,7 +299,8 @@ For a failed deletion, the message is: `Could not save changes. Contact was not 
 
 For other changes, the message is: `Could not save changes. No changes were applied. Please try again.`
 
-Commands such as `tab`, `find`, `list`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+Commands such as `tab`, `find`, `filter`, `list`, `recent`, `view`, `help`, and `exit` do not save contact data and remain available when saving fails. Saving requires a writable data location and a filesystem that supports atomic file replacement.
+
 
 ### Editing the data files
 
@@ -265,7 +311,7 @@ AB4 saves two human-readable JSON files, relative to the directory from which th
 | Contacts | `data/addressbook.json` |
 | Favourites | `data/favourites.json` |
 
-These paths are fixed; they cannot be changed through `preferences.json`. Both files use the same UTF-8 format and can be edited while the application is closed. The `persons` array contains contacts with `name`, `phone`, `email`, `address`, `tags` (objects with a `tagName`), and an optional `note` string. An omitted or `null` note means no note; older files without notes remain supported. Keep the JSON structure and use the same contact values accepted by the application. Duplicate contacts follow the existing exact, case-sensitive name duplicate rule within each file. The files contain independent contacts, with no links between copies.
+These paths are fixed; they cannot be changed through `preferences.json`. Both files use the same UTF-8 format and can be edited while the application is closed. The `persons` array contains contacts with `name`, `phone`, `email`, `address`, `tags` (objects with a `tagName`), and an optional `note` string. An omitted or `null` note means no note; older files without notes remain supported. Keep the JSON structure and use the same contact values accepted by the application. Within each file, contacts are duplicates if they share a phone number or email address; contacts may share the same name. The files contain independent contacts, with no links between copies.
 
 <div markdown="span" class="alert alert-warning">:exclamation: **Caution:**
 If a file cannot be loaded, AB4 displays a startup error naming the affected collection and file, and starts that collection empty. The other collection loads independently. The error distinguishes a file that cannot be read, corrupted or incorrectly formatted JSON, and invalid contact information (including duplicate contacts). No contacts from an invalid file are loaded. The original file remains on disk until a command successfully saves new data to that collection. Back up or repair the original file before changing that collection; favouriting a contact also writes to the favourites file.
@@ -302,7 +348,9 @@ Action | Format, Examples
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
 **Favourite** | `favourite INDEX`<br> e.g., `favourite 1` (from Contacts)
 **Switch section** | `tab contacts` or `tab favourites`
+**Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`
 **List** | `list`
+**Recent** | `recent`
 **View** | `view INDEX`<br> e.g., `view 1`
 **Help** | `help`
 **Exit** | `exit`
