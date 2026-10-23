@@ -1,0 +1,43 @@
+@startuml
+!include style.puml
+show members
+
+skinparam arrowThickness 1.1
+skinparam arrowColor UI_COLOR_T4
+skinparam classBackgroundColor UI_COLOR
+
+package UI <<Rectangle>> {
+abstract class UiPart
+
+class CommandBox {
+    + CommandBox(commandExecutor)
+    + CommandBox(commandExecutor, commandWords)
+    - handleCommandEntered()
+    - handleTabPressed(event)
+    - handleKeyPressed(event)
+}
+
+class CommandHistory {
+    + add(command)
+    + getPreviousCommand()
+    + getNextCommand()
+}
+
+interface "CommandBox.CommandExecutor" as CommandExecutor {
+    + execute(commandText)
+}
+}
+
+package Logic <<Rectangle>> {
+class CommandAutocompleter LOGIC_COLOR {
+    + complete(...)
+    + reset()
+}
+}
+
+CommandBox --|> UiPart
+CommandBox --> "1" CommandExecutor : executes through
+CommandBox --> "1" CommandHistory : navigates
+CommandBox *--> "1" CommandAutocompleter : autocompletes
+
+@enduml
