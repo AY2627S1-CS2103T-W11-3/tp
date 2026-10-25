@@ -1,5 +1,6 @@
 package seedu.address.model;
 
+import java.io.IOException;
 import java.util.Optional;
 
 import seedu.address.commons.exceptions.DataLoadingException;
@@ -15,6 +16,12 @@ public interface UndoHistory {
      * Missing or unreadable snapshot data leaves history unchanged and throws DataLoadingException.
      */
     Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException;
+
+    /**
+     * Saves the previously read snapshot with recovery metadata before applying it to the live model.
+     * A failed save preserves the saved collection and history. Consumption follows only after success.
+     */
+    void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) throws IOException;
 
     /**
      * Consumes the section's latest snapshot after its data has been saved successfully.

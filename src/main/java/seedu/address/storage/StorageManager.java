@@ -98,6 +98,11 @@ public class StorageManager implements Storage {
     }
 
     @Override
+    public void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) throws IOException {
+        undoHistories.get(requireNonNull(section)).saveRestoredSnapshot(snapshot);
+    }
+
+    @Override
     public void discardLatestSnapshot(ContactSection section) {
         undoHistories.get(requireNonNull(section)).discardLatestSnapshot();
     }

@@ -60,6 +60,7 @@ public class UndoCommand extends Command implements StagedCommand {
             model.setAddressBook(snapshot);
             model.updateFilteredPersonList(Model.PREDICATE_SHOW_ALL_PERSONS);
             undoHistory.discardLatestSnapshot(section);
-        }, new CommandResult(MESSAGE_SUCCESS), MESSAGE_SAVE_ERROR);
+        }, new CommandResult(MESSAGE_SUCCESS), MESSAGE_SAVE_ERROR, () ->
+                undoHistory.saveRestoredSnapshot(section, snapshot));
     }
 }

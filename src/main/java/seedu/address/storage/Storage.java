@@ -65,7 +65,7 @@ public interface Storage extends UndoHistory {
             throws IOException;
 
     /**
-     * Ends the undo session and persists its history for normal restarts, logging persistence failures.
+     * Ends the undo session and finalizes its recovery metadata, logging persistence failures.
      */
     void closeUndoHistory();
 

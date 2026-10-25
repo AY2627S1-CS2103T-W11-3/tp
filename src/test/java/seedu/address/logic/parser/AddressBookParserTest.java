@@ -53,6 +53,11 @@ public class AddressBookParserTest {
         }
 
         @Override
+        public void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) {
+            throw new AssertionError("Parsing must not save undo history");
+        }
+
+        @Override
         public void discardLatestSnapshot(ContactSection section) {
             throw new AssertionError("Parsing must not consume undo history");
         }

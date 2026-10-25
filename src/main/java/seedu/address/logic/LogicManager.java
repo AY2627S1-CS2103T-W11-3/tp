@@ -79,7 +79,7 @@ public class LogicManager implements Logic {
     private CommandResult executeStaged(StagedCommand command, ReadOnlyAddressBook snapshot) throws CommandException {
         PreparedChange change = command.prepare(model);
         try {
-            saveChange(model.getActiveSection(), snapshot, change.getCandidate());
+            change.save(() -> saveChange(model.getActiveSection(), snapshot, change.getCandidate()));
         } catch (IOException e) {
             logger.warning("Could not save prepared contact changes: " + e.getMessage());
             throw new CommandException(change.getSaveErrorMessage(), e);

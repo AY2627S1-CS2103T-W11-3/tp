@@ -39,6 +39,11 @@ public class UndoCommandTest {
         assertEquals(0, model.getFilteredPersonList().size());
         assertEquals(0, history.discardCount);
 
+        change.save(() -> {
+            throw new AssertionError("Undo must use its recovery-aware save");
+        });
+        assertEquals(1, history.saveCount);
+        assertEquals(before, model.getAddressBook());
         assertEquals(new CommandResult(UndoCommand.MESSAGE_SUCCESS), change.apply());
         assertEquals(snapshot, model.getAddressBook());
         assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
@@ -91,6 +96,7 @@ public class UndoCommandTest {
         private Optional<ReadOnlyAddressBook> snapshot = Optional.empty();
         private DataLoadingException failure;
         private int discardCount;
+        private int saveCount;
         private ContactSection readSection;
         private ContactSection discardedSection;
 
@@ -101,6 +107,13 @@ public class UndoCommandTest {
                 throw failure;
             }
             return snapshot;
+        }
+
+        @Override
+        public void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) {
+            assertEquals(readSection, section);
+            assertEquals(this.snapshot.orElseThrow(), snapshot);
+            saveCount++;
         }
 
         @Override
