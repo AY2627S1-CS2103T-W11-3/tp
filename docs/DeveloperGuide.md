@@ -179,6 +179,20 @@ The existing duplicate rules remain owned by contact creation. Deletion removes 
 
 The persistent contact-details panel is owned by the view feature and is not yet implemented: `view` currently writes details into the feedback box. Clearing details for the deleted contact, preserving another contact's details, and retaining details on failure remain integration acceptance criteria for that owner. F4 does not add a competing panel.
 
+### Viewing a contact
+
+`ViewCommandParser` requires exactly one argument and parses it as a positive index via `ParserUtil.parseIndex`. Invalid formats surface as `ParseException` with the `view` usage message.
+
+`ViewCommand` does not mutate contacts or trigger a save. It reads `Model#getFilteredPersonList()`, so the index refers to the currently displayed list (including results after `find` or `filter`). An empty displayed list or an out-of-range index raises `CommandException`. On success, it formats the selected contact's fields, tags, and optional note into a `CommandResult` shown in the result box.
+
+The sequence diagram below shows the interactions within the `Logic` component for `execute("view 1")`.
+
+![Interactions Inside the Logic Component for the `view 1` Command](images/ViewSequenceDiagram.png)
+
+<div markdown="span" class="alert alert-info">:information_source: **Note:** The lifeline for `ViewCommandParser` should end at the destroy marker (X), but due to a limitation of PlantUML, it continues to the end of the diagram.
+
+</div>
+
 ### Command history
 
 `CommandHistory` records every non-empty command submitted from `CommandBox`, including commands that later fail
