@@ -17,7 +17,7 @@ public interface Model {
     /** Returns the collection used by contact operations. */
     ContactSection getActiveSection();
 
-    /** Switches collections, showing all contacts when the section changes. */
+    /** Switches collections, retaining each section's filter and display order for the current session. */
     void setActiveSection(ContactSection section);
 
     /**

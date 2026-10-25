@@ -27,6 +27,8 @@ public class ModelManager implements Model {
     private static final Logger logger = LogsCenter.getLogger(ModelManager.class);
 
     private final Map<ContactSection, AddressBook> addressBooks = new EnumMap<>(ContactSection.class);
+    private final Map<ContactSection, FilteredList<Person>> filteredPersonLists = new EnumMap<>(ContactSection.class);
+    private final Map<ContactSection, SortedList<Person>> displayedPersonLists = new EnumMap<>(ContactSection.class);
     private final UserPrefs userPrefs;
     private ContactSection activeSection = ContactSection.CONTACTS;
     private FilteredList<Person> filteredPersons;
@@ -161,10 +163,12 @@ public class ModelManager implements Model {
 
     //=========== Filtered Person List Accessors =============================================================
 
-    /** Rebinds the filtered view to the active collection without retaining the previous search. */
+    /** Selects the active collection's view, retaining its previous filter and display order. */
     private void initializeFilteredPersons() {
-        filteredPersons = new FilteredList<>(getAddressBook().getPersonList());
-        displayedPersons = new SortedList<>(filteredPersons);
+        filteredPersons = filteredPersonLists.computeIfAbsent(activeSection,
+                section -> new FilteredList<>(addressBooks.get(section).getPersonList()));
+        displayedPersons = displayedPersonLists.computeIfAbsent(activeSection,
+                section -> new SortedList<>(filteredPersons));
         visiblePersons = FXCollections.unmodifiableObservableList(displayedPersons);
     }
 
@@ -194,9 +198,10 @@ public class ModelManager implements Model {
 
     @Override
     public void updateFilteredPersonListToShowRecent() {
+        ObservableList<Person> persons = getAddressBook().getPersonList();
         filteredPersons.setPredicate(PREDICATE_SHOW_ALL_PERSONS);
         displayedPersons.setComparator((first, second) -> Integer.compare(
-                getAddressBook().getPersonList().indexOf(second), getAddressBook().getPersonList().indexOf(first)));
+                persons.indexOf(second), persons.indexOf(first)));
     }
 
     @Override
