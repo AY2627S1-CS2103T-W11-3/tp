@@ -81,6 +81,7 @@ public class StorageManager implements Storage {
     @Override
     public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
         logger.fine("Attempting to write to data file: " + addressBookStorage.getAddressBookFilePath());
+        undoHistories.get(ContactSection.CONTACTS).invalidatePersistedHistory();
         addressBookStorage.saveAddressBook(addressBook);
     }
 
@@ -118,6 +119,7 @@ public class StorageManager implements Storage {
 
     @Override
     public void saveFavourites(ReadOnlyAddressBook favourites) throws IOException {
+        undoHistories.get(ContactSection.FAVOURITES).invalidatePersistedHistory();
         favouritesStorage.saveAddressBook(favourites);
     }
 

@@ -58,14 +58,14 @@ public interface Storage extends UndoHistory {
     void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException;
 
     /**
-     * Saves a section's change with its previous data in that section's session undo history.
+     * Saves a section's change with its previous data in that section's undo history.
      * Identical data is saved without adding history. A failed backup or save preserves saved data and history.
      */
     void saveUndoableChange(ContactSection section, ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate)
             throws IOException;
 
     /**
-     * Ends the undo session and attempts to remove its backup files without throwing cleanup errors.
+     * Ends the undo session and persists its history for normal restarts, logging persistence failures.
      */
     void closeUndoHistory();
 

@@ -83,6 +83,8 @@ class UndoSnapshotStorageTest {
             history.saveChange(states.get(i - 1), states.get(i));
         }
         assertEquals(5, snapshotFiles().size());
+        history.close();
+        history = new UndoSnapshotStorage(dataStorage);
         for (int i = 5; i >= 1; i--) {
             assertEquals(states.get(i), history.readLatestSnapshot().orElseThrow());
             history.discardLatestSnapshot();
@@ -180,24 +182,37 @@ class UndoSnapshotStorageTest {
     }
 
     @Test
-    public void newSession_doesNotReusePreviousSessionHistory() throws Exception {
-        UndoSnapshotStorage second = new UndoSnapshotStorage(dataStorage);
-        try {
-            history.saveChange(book(ALICE), book(BOB));
-            assertTrue(second.readLatestSnapshot().isEmpty());
-            assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
-            assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
-        } finally {
-            second.close();
-        }
+    public void newSession_reloadsHistoryAndDoesNotReuseConsumedSnapshots() throws Exception {
+        history.saveChange(book(ALICE), book(BOB));
+        history.close();
+        history = new UndoSnapshotStorage(dataStorage);
+        assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
+        assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
+
+        dataStorage.saveAddressBook(book(ALICE));
+        history.discardLatestSnapshot();
+        history.close();
+        history = new UndoSnapshotStorage(dataStorage);
+        assertTrue(history.readLatestSnapshot().isEmpty());
     }
 
     @Test
-    public void close_removesBackupsPreservesContactsAndRejectsFurtherChanges() throws Exception {
+    public void newSession_dataFileChanged_doesNotReuseStaleHistory() throws Exception {
+        history.saveChange(book(ALICE), book(BOB));
+        history.close();
+        dataStorage.saveAddressBook(new AddressBook());
+        history = new UndoSnapshotStorage(dataStorage);
+        assertTrue(history.readLatestSnapshot().isEmpty());
+        assertEquals(new AddressBook(), dataStorage.readAddressBook().orElseThrow());
+    }
+
+    @Test
+    public void close_preservesBackupsAndContactsAndRejectsFurtherChanges() throws Exception {
         history.saveChange(book(ALICE), book(BOB));
         Path session = snapshotFiles().getFirst().getParent();
         history.close();
-        assertFalse(Files.exists(session));
+        assertTrue(Files.exists(session.resolve("history.json")));
+        assertEquals(1, snapshotFiles().size());
         assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
         assertThrows(IllegalStateException.class, history::readLatestSnapshot);
         assertThrows(IllegalStateException.class, () -> history.saveChange(book(BOB), book(ALICE)));
