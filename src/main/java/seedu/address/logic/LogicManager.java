@@ -51,10 +51,9 @@ public class LogicManager implements Logic {
         logger.info("----------------[USER COMMAND][" + commandText + "]");
 
         Command command = addressBookParser.parseCommand(commandText);
-        ReadOnlyAddressBook snapshot = model.getActiveSection() == ContactSection.CONTACTS
-                && command instanceof UndoableCommand undoableCommand
-                ? undoableCommand.createSnapshot(model) : null;
         if (command instanceof StagedCommand stagedCommand) {
+            ReadOnlyAddressBook snapshot = command instanceof UndoableCommand undoableCommand
+                    ? undoableCommand.createSnapshot(model, model.getActiveSection()) : null;
             return executeStaged(stagedCommand, snapshot);
         }
         StagedModel stagedModel = new StagedModel(model);
@@ -63,6 +62,8 @@ public class LogicManager implements Logic {
         if (stagedModel.hasContactChanges()) {
             try {
                 ContactSection changedSection = stagedModel.getChangedSection();
+                ReadOnlyAddressBook snapshot = command instanceof UndoableCommand undoableCommand
+                        ? undoableCommand.createSnapshot(model, changedSection) : null;
                 saveChange(changedSection, snapshot, stagedModel.getAddressBook(changedSection));
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
@@ -91,12 +92,12 @@ public class LogicManager implements Logic {
      */
     private void saveChange(ContactSection section, ReadOnlyAddressBook snapshot, ReadOnlyAddressBook candidate)
             throws IOException {
-        if (section == ContactSection.FAVOURITES) {
+        if (snapshot != null) {
+            storage.saveUndoableChange(section, snapshot, candidate);
+        } else if (section == ContactSection.FAVOURITES) {
             storage.saveFavourites(candidate);
-        } else if (snapshot == null) {
-            storage.saveAddressBook(candidate);
         } else {
-            storage.saveUndoableChange(snapshot, candidate);
+            storage.saveAddressBook(candidate);
         }
     }
 

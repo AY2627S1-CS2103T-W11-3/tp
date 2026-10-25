@@ -11,7 +11,7 @@ import seedu.address.model.Model;
 import seedu.address.model.person.Person;
 
 /** Copies a displayed contact into the independent favorites collection. */
-public class FavouriteCommand extends Command {
+public class FavouriteCommand extends UndoableCommand {
     public static final String COMMAND_WORD = "favourite";
     public static final String MESSAGE_USAGE = "favourite: Copies a displayed contact into Favourites.\n"
             + "Parameters: INDEX (a positive integer without leading zeros)\nExample: favourite 1";

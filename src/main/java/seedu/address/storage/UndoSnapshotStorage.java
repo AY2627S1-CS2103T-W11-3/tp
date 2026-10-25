@@ -15,14 +15,13 @@ import java.util.stream.Stream;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.model.ReadOnlyAddressBook;
-import seedu.address.model.UndoHistory;
 
 /**
  * Saves contact changes with file-backed undo snapshots for one application session.
  * Callers must publish changes to the live model only after saving or restoring succeeds.
  * Instances are used synchronously and must be closed when their session ends.
  */
-class UndoSnapshotStorage implements UndoHistory {
+class UndoSnapshotStorage {
     public static final int MAX_HISTORY_SIZE = 5;
 
     private static final Logger logger = LogsCenter.getLogger(UndoSnapshotStorage.class);
@@ -73,7 +72,7 @@ class UndoSnapshotStorage implements UndoHistory {
         logger.fine("Saved contact change with " + snapshots.size() + " undo snapshot(s).");
     }
 
-    @Override
+    /** Reads this collection's latest snapshot without consuming it. */
     public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
         requireOpen();
         if (snapshots.isEmpty()) {
@@ -85,7 +84,7 @@ class UndoSnapshotStorage implements UndoHistory {
                 .orElseThrow(() -> new DataLoadingException(new NoSuchFileException(snapshot.toString()))));
     }
 
-    @Override
+    /** Consumes this collection's latest snapshot after a successful save. */
     public void discardLatestSnapshot() {
         requireOpen();
         if (snapshots.isEmpty()) {

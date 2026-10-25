@@ -11,14 +11,14 @@ import seedu.address.commons.exceptions.DataLoadingException;
 public interface UndoHistory {
 
     /**
-     * Reads the latest snapshot without consuming it, or returns empty when history is exhausted.
+     * Reads the section's latest snapshot without consuming it, or returns empty when history is exhausted.
      * Missing or unreadable snapshot data leaves history unchanged and throws DataLoadingException.
      */
-    Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException;
+    Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException;
 
     /**
-     * Consumes the latest snapshot after its data has been saved successfully.
+     * Consumes the section's latest snapshot after its data has been saved successfully.
      * History must be nonempty. Backup cleanup failures are logged without failing the completed change.
      */
-    void discardLatestSnapshot();
+    void discardLatestSnapshot(ContactSection section);
 }

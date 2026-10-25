@@ -48,12 +48,12 @@ public class AddressBookParserTest {
 
     private final AddressBookParser parser = new AddressBookParser(new UndoHistory() {
         @Override
-        public Optional<ReadOnlyAddressBook> readLatestSnapshot() {
+        public Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) {
             throw new AssertionError("Parsing must not read undo history");
         }
 
         @Override
-        public void discardLatestSnapshot() {
+        public void discardLatestSnapshot(ContactSection section) {
             throw new AssertionError("Parsing must not consume undo history");
         }
     });

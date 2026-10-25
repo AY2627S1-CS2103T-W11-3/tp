@@ -6,6 +6,7 @@ import static seedu.address.testutil.TypicalPersons.BOB;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,8 @@ public class UndoCommandTest {
         assertEquals(snapshot, model.getAddressBook());
         assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
         assertEquals(1, history.discardCount);
+        assertEquals(ContactSection.CONTACTS, history.readSection);
+        assertEquals(ContactSection.CONTACTS, history.discardedSection);
     }
 
     @Test
@@ -56,10 +59,22 @@ public class UndoCommandTest {
     }
 
     @Test
-    public void prepare_favourites_throwsBeforeReadingContactsHistory() {
+    public void prepare_favourites_restoresOnlyFavouritesAndConsumesTheirHistory() throws Exception {
+        model.addPerson(BOB);
         model.setActiveSection(ContactSection.FAVOURITES);
-        history.failure = new DataLoadingException(new IOException("History must not be read"));
-        assertPreparationFailure(UndoCommand.MESSAGE_WRONG_SECTION);
+        AddressBook snapshot = getTypicalAddressBook();
+        history.snapshot = Optional.of(snapshot);
+        PreparedChange change = new UndoCommand(history).prepare(model);
+        assertEquals(ContactSection.FAVOURITES, history.readSection);
+        assertEquals(new AddressBook(), model.getAddressBook());
+        assertEquals(0, history.discardCount);
+
+        change.apply();
+        assertEquals(snapshot, model.getAddressBook());
+        assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
+        assertEquals(List.of(BOB), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
+        assertEquals(ContactSection.FAVOURITES, history.discardedSection);
+        assertEquals(1, history.discardCount);
     }
 
     private void assertPreparationFailure(String message) {
@@ -76,9 +91,12 @@ public class UndoCommandTest {
         private Optional<ReadOnlyAddressBook> snapshot = Optional.empty();
         private DataLoadingException failure;
         private int discardCount;
+        private ContactSection readSection;
+        private ContactSection discardedSection;
 
         @Override
-        public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
+        public Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException {
+            readSection = section;
             if (failure != null) {
                 throw failure;
             }
@@ -86,7 +104,8 @@ public class UndoCommandTest {
         }
 
         @Override
-        public void discardLatestSnapshot() {
+        public void discardLatestSnapshot(ContactSection section) {
+            discardedSection = section;
             discardCount++;
             snapshot = Optional.empty();
         }

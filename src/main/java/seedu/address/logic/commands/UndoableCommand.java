@@ -3,6 +3,7 @@ package seedu.address.logic.commands;
 import static java.util.Objects.requireNonNull;
 
 import seedu.address.model.AddressBook;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
 import seedu.address.model.ReadOnlyAddressBook;
 
@@ -13,10 +14,10 @@ import seedu.address.model.ReadOnlyAddressBook;
 public abstract class UndoableCommand extends Command {
 
     /**
-     * Copies the contact data before execution so later model changes cannot alter the undo snapshot.
+     * Copies the changed section's original data before publishing a command's changes to the live model.
      */
-    public final ReadOnlyAddressBook createSnapshot(Model model) {
+    public final ReadOnlyAddressBook createSnapshot(Model model, ContactSection section) {
         requireNonNull(model);
-        return new AddressBook(model.getAddressBook());
+        return new AddressBook(model.getAddressBook(requireNonNull(section)));
     }
 }
