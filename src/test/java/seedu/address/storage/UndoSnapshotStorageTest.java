@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.model.AddressBook;
+import seedu.address.model.group.Group;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.PersonBuilder;
 
@@ -112,6 +114,21 @@ class UndoSnapshotStorageTest {
         assertThrows(IOException.class, () -> history.saveChange(book(ALICE), book(ALICE)));
         assertArrayEquals(saved, Files.readAllBytes(dataFile));
         assertEquals(new AddressBook(), history.readLatestSnapshot().orElseThrow());
+        assertEquals(1, snapshotFiles().size());
+    }
+
+    @Test
+    public void saveChange_onlyGroupsChange_recordsSnapshotAndSkipsIdenticalGroups() throws Exception {
+        AddressBook original = new AddressBook();
+        original.addGroup(new Group("Team", Set.of()));
+        history.saveChange(original, new AddressBook());
+        assertEquals(original, history.readLatestSnapshot().orElseThrow());
+        assertEquals(new AddressBook(), dataStorage.readAddressBook().orElseThrow());
+
+        dataStorage.shouldFailBackup = true;
+        history.saveChange(original, new AddressBook(original));
+        assertEquals(original, dataStorage.readAddressBook().orElseThrow());
+        assertEquals(original, history.readLatestSnapshot().orElseThrow());
         assertEquals(1, snapshotFiles().size());
     }
 

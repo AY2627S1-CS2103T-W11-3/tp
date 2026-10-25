@@ -49,7 +49,8 @@ class UndoSnapshotStorage implements UndoHistory {
         requireOpen();
         requireNonNull(previous);
         requireNonNull(candidate);
-        if (previous.getPersonList().equals(candidate.getPersonList())) {
+        if (previous.getPersonList().equals(candidate.getPersonList())
+                && previous.getGroupList().equals(candidate.getGroupList())) {
             addressBookStorage.saveAddressBook(candidate);
             return;
         }

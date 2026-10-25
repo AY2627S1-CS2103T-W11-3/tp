@@ -11,7 +11,7 @@ import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 
 /** Creates or deletes a group, or changes one of its memberships. */
-public class GroupCommand extends Command {
+public class GroupCommand extends UndoableCommand {
     public static final String COMMAND_WORD = "group";
     public static final String MESSAGE_USAGE = "Usage: group add n/<GROUP NAME> | "
             + "group delete g/<GROUP NAME> | "
