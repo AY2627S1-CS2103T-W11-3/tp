@@ -8,10 +8,16 @@ participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
 participant ":DeleteCommandParser" as DeleteCommandParser LOGIC_COLOR
 participant "d:DeleteCommand" as DeleteCommand LOGIC_COLOR
 participant "r:CommandResult" as CommandResult LOGIC_COLOR
+participant "change:PreparedChange" as PreparedChange LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
 participant "m:Model" as Model MODEL_COLOR
+participant "candidate:AddressBook" as Candidate MODEL_COLOR
+end box
+
+box Storage STORAGE_COLOR_T1
+participant ":Storage" as Storage STORAGE_COLOR
 end box
 
 [-> LogicManager : execute("delete 1")
@@ -46,14 +52,35 @@ destroy DeleteCommandParser
 AddressBookParser --> LogicManager : d
 deactivate AddressBookParser
 
-LogicManager -> DeleteCommand : execute(m)
+LogicManager -> Model : getActiveSection()
+Model --> LogicManager : section
+
+LogicManager -> DeleteCommand : createSnapshot(m, section)
+activate DeleteCommand
+DeleteCommand -> Model : getAddressBook(section)
+Model --> DeleteCommand : current collection
+DeleteCommand --> LogicManager : previous (full collection copy)
+deactivate DeleteCommand
+
+LogicManager -> DeleteCommand : prepare(m)
 activate DeleteCommand
 
-DeleteCommand -> Model : deletePerson(1)
+DeleteCommand -> Model : getFilteredPersonList()
 activate Model
-
-Model --> DeleteCommand
+Model --> DeleteCommand : displayed contacts
 deactivate Model
+
+note right of DeleteCommand
+Validate nonempty list and index range.
+Resolve target from the displayed list.
+Validation failures stop before saving.
+end note
+
+DeleteCommand -> Model : getAddressBook()
+Model --> DeleteCommand : current collection
+create Candidate
+DeleteCommand -> Candidate : copy current collection
+DeleteCommand -> Candidate : removePerson(target)
 
 create CommandResult
 DeleteCommand -> CommandResult
@@ -62,9 +89,44 @@ activate CommandResult
 CommandResult --> DeleteCommand
 deactivate CommandResult
 
-DeleteCommand --> LogicManager : r
+create PreparedChange
+DeleteCommand -> PreparedChange : candidate, delete operation, r, save error
+DeleteCommand --> LogicManager : change
 deactivate DeleteCommand
 
-[<--LogicManager
+LogicManager -> PreparedChange : save(defaultSave)
+activate PreparedChange
+PreparedChange -> LogicManager : defaultSave.save()
+activate LogicManager
+LogicManager -> Storage : saveUndoableChange(section, previous, candidate)
+activate Storage
+Storage --> LogicManager
+deactivate Storage
+LogicManager --> PreparedChange
+deactivate LogicManager
+PreparedChange --> LogicManager
+deactivate PreparedChange
+
+note over LogicManager, Storage
+If saving fails, throw CommandException;
+do not apply deletion or consume existing history.
+end note
+
+LogicManager -> PreparedChange : apply()
+activate PreparedChange
+PreparedChange -> Model : deletePerson(target)
+activate Model
+Model --> PreparedChange
+deactivate Model
+PreparedChange --> LogicManager : r
+deactivate PreparedChange
+
+note over Model, Storage
+Delete affects the active section (Contacts or Favourites).
+Save its full collection and undo snapshot before updating the live list.
+The live filter is preserved.
+end note
+
+[<--LogicManager : r
 deactivate LogicManager
 @enduml

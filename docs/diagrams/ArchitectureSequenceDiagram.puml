@@ -14,16 +14,32 @@ activate ui UI_COLOR
 ui -[UI_COLOR]> logic : execute("delete 1")
 activate logic LOGIC_COLOR
 
-logic -[LOGIC_COLOR]> model : deletePerson(p)
+logic -[LOGIC_COLOR]> model : getActiveSection()
 activate model MODEL_COLOR
-
-model -[MODEL_COLOR]-> logic
+model --[MODEL_COLOR]> logic : section
 deactivate model
 
-logic -[LOGIC_COLOR]> storage : saveAddressBook(addressBook)
+logic -[LOGIC_COLOR]> model : getAddressBook(section)
+activate model MODEL_COLOR
+model --[MODEL_COLOR]> logic : current collection
+deactivate model
+
+logic -[LOGIC_COLOR]> model : getFilteredPersonList()
+activate model MODEL_COLOR
+model --[MODEL_COLOR]> logic : displayed contacts
+deactivate model
+
+note right of logic
+Copy the previous full collection.
+Validate the displayed index and resolve p.
+Prepare a candidate with p removed.
+Validation failures stop before saving.
+end note
+
+logic -[LOGIC_COLOR]> storage : saveUndoableChange(section, previous, candidate)
 activate storage STORAGE_COLOR
 
-storage -[STORAGE_COLOR]> storage : Save to file
+storage -[STORAGE_COLOR]> storage : Save backup, recovery metadata, and candidate
 activate storage STORAGE_COLOR_T1
 storage --[STORAGE_COLOR]> storage
 deactivate storage
@@ -31,9 +47,19 @@ deactivate storage
 storage --[STORAGE_COLOR]> logic
 deactivate storage
 
-logic --[LOGIC_COLOR]> ui
+note over logic, storage
+A failed save reports an error without applying the deletion.
+The active section's collection and existing history remain unchanged.
+end note
+
+logic -[LOGIC_COLOR]> model : deletePerson(p)
+activate model MODEL_COLOR
+model --[MODEL_COLOR]> logic
+deactivate model
+
+logic --[LOGIC_COLOR]> ui : CommandResult
 deactivate logic
 
-ui--[UI_COLOR]> user
+ui--[UI_COLOR]> user : Display success and updated list
 deactivate ui
 @enduml
