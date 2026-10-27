@@ -2,64 +2,35 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
-Actor User as user USER_COLOR
-Participant ":UI" as ui UI_COLOR
-Participant ":Logic" as logic LOGIC_COLOR
-Participant ":Model" as model MODEL_COLOR
-Participant ":Storage" as storage STORAGE_COLOR
+title Component interactions for a successful "delete 1"
 
-user -[USER_COLOR]> ui : "delete 1"
-activate ui UI_COLOR
+actor User as user USER_COLOR
+participant ":UI" as ui UI_COLOR
+participant ":Logic" as logic LOGIC_COLOR
+participant ":Model" as model MODEL_COLOR
+participant ":Storage" as storage STORAGE_COLOR
 
-ui -[UI_COLOR]> logic : execute("delete 1")
-activate logic LOGIC_COLOR
+user -> ui : "delete 1"
+activate ui
+ui -> logic : execute("delete 1")
+activate logic
 
-logic -[LOGIC_COLOR]> model : getActiveSection()
-activate model MODEL_COLOR
-model --[MODEL_COLOR]> logic : section
-deactivate model
+ref over logic, model
+Prepare deletion and capture undo snapshot
+end ref
 
-logic -[LOGIC_COLOR]> model : getAddressBook(section)
-activate model MODEL_COLOR
-model --[MODEL_COLOR]> logic : current collection
-deactivate model
-
-logic -[LOGIC_COLOR]> model : getFilteredPersonList()
-activate model MODEL_COLOR
-model --[MODEL_COLOR]> logic : displayed contacts
-deactivate model
-
-note right of logic
-Copy the previous full collection.
-Validate the displayed index and resolve p.
-Prepare a candidate with p removed.
-Validation failures stop before saving.
-end note
-
-logic -[LOGIC_COLOR]> storage : saveUndoableChange(section, previous, candidate)
-activate storage STORAGE_COLOR
-
-storage -[STORAGE_COLOR]> storage : Save backup, recovery metadata, and candidate
-activate storage STORAGE_COLOR_T1
-storage --[STORAGE_COLOR]> storage
+logic -> storage : saveUndoableChange(...)
+activate storage
+storage --> logic
 deactivate storage
 
-storage --[STORAGE_COLOR]> logic
-deactivate storage
-
-note over logic, storage
-A failed save reports an error without applying the deletion.
-The active section's collection and existing history remain unchanged.
-end note
-
-logic -[LOGIC_COLOR]> model : deletePerson(p)
-activate model MODEL_COLOR
-model --[MODEL_COLOR]> logic
+logic -> model : deletePerson(target)
+activate model
+model --> logic
 deactivate model
 
-logic --[LOGIC_COLOR]> ui : CommandResult
+logic --> ui : result
 deactivate logic
-
-ui--[UI_COLOR]> user : Display success and updated list
+ui --> user : success feedback
 deactivate ui
 @enduml

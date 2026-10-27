@@ -4,14 +4,11 @@ skinparam arrowThickness 1.1
 skinparam arrowColor LOGIC_COLOR_T4
 skinparam classBackgroundColor LOGIC_COLOR
 
-package "Command classes" as CommandClasses {
 Class "{abstract}\nCommand" as Command
 Class XYZCommand
-Class "{abstract}\nUndoableCommand" as UndoableCommand
 Class DeleteCommand
 Class FavouriteCommand
 Class UndoCommand
-}
 
 package "Parser classes" as ParserClasses {
 Class "<<interface>>\nParser" as Parser
@@ -33,7 +30,6 @@ Class "<<interface>>\nUndoHistory" as UndoHistory MODEL_COLOR
 
 Class HiddenOutside #FFFFFF
 HiddenOutside ..> AddressBookParser
-ParserClasses -[hidden]down-> CommandClasses
 
 AddressBookParser .down.> XYZCommandParser: <<create>>
 
@@ -49,10 +45,7 @@ XYZCommandParser ..> ParserUtil
 ParserUtil .down.> Prefix
 ArgumentTokenizer .down.> Prefix
 XYZCommand -up-|> Command
-UndoableCommand -up-|> Command
-DeleteCommand -up-|> UndoableCommand
-FavouriteCommand -up-|> UndoableCommand
-UndoCommand -up-|> Command
+' Command-specific inheritance is shown in LogicClassDiagram.
 
 AddressBookParser .down.> DeleteCommandParser : <<create>>
 AddressBookParser .down.> FavouriteCommandParser : <<create>>
@@ -67,16 +60,4 @@ DeleteCommandParser ..> ParserUtil
 FavouriteCommandParser ..> ParserUtil
 AddressBookParser --> "1" UndoHistory
 UndoCommandParser --> "1" UndoHistory
-UndoCommand --> "1" UndoHistory
-
-note bottom of ParserUtil
-Delete and favourite use parsePositiveInteger.
-It validates ASCII indices without narrowing
-oversized values.
-end note
-note bottom of UndoCommandParser
-Accepts no arguments.
-Passes UndoHistory to UndoCommand.
-Parsing does not read or modify history.
-end note
 @enduml

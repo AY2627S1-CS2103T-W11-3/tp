@@ -3,61 +3,25 @@ skin rose
 skinparam ActivityFontSize 15
 skinparam ArrowFontSize 12
 
-title Recording an undoable change
+title Recording a validated undoable change
 
 start
-:Parse and prepare an UndoableCommand
-on an isolated candidate;
-if (Parsing and validation succeed?) then (yes)
-else (no)
-    :Report error without changing
-live data or history;
-    stop
-endif
-
-:Select the changed section
-(Contacts or Favourites);
-:Copy the full previous collection
-from the live model;
-
-if (Candidate differs from previous data?) then (yes)
-    :Save previous collection as a JSON backup;
-    if (Backup succeeds?) then (yes)
-    else (no)
-        :Clean up unused backup if possible;
-        :Report error without applying changes;
-        stop
-    endif
-    :Prepare next history with the backup appended;
-    :Omit the oldest entry if the size exceeds five;
-else (no)
-    :Keep existing history order and size;
-endif
-
-:Atomically publish before/after recovery metadata;
-note right
-At startup, select the history state whose checksum
-matches the section's current collection file.
-Validate metadata and skip unreadable backups.
-end note
-if (Metadata write succeeds?) then (yes)
-else (no)
-    :Clean up unused backup if possible;
-    :Report error without applying changes;
-    stop
-endif
-
-:Atomically save the candidate collection;
-if (Collection save succeeds?) then (yes)
-    :Register any new snapshot in memory;
-    :Attempt cleanup of an evicted backup;
-    :Apply prepared operations to the live model;
+:Prepare the candidate and previous data
+for the changed section;
+:Save backup if data changed,
+recovery metadata, and candidate;
+if (Persistence succeeds?) then (yes)
+    :Update the section's history
+with at most five snapshots;
+    note right
+    Unchanged data adds no history entry.
+    end note
+    :Apply the prepared change
+to the live model;
     :Return success;
 else (no)
-    :Attempt restoration of previous metadata
-and cleanup of the unused backup;
-    :Report error and retain live data
-and existing history for retry;
+    :Report error without changing
+live data or existing history;
 endif
 stop
 @enduml

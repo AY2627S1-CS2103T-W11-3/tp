@@ -25,8 +25,6 @@ Class LogicManager
 
 package Model {
 Class HiddenModel #FFFFFF
-Class StagedModel MODEL_COLOR
-Class "<<interface>>\nUndoHistory" as UndoHistory MODEL_COLOR
 }
 
 package Storage {
@@ -47,17 +45,8 @@ UndoCommand -up-|> Command
 DeleteCommand .down.|> StagedCommand
 UndoCommand .down.|> StagedCommand
 StagedCommand ..> PreparedChange : <<return>>
-DeleteCommand ..> PreparedChange : <<create>>
-UndoCommand ..> PreparedChange : <<create>>
-UndoCommand --> "1" UndoHistory
-ParserClasses ..> DeleteCommand : <<create>>
-ParserClasses ..> FavouriteCommand : <<create>>
-ParserClasses ..> UndoCommand : <<create>>
 LogicManager .left.> Command : <<call>>
 LogicManager ..> StagedCommand : <<prepare>>
-LogicManager ..> PreparedChange : save, then apply
-LogicManager ..> UndoableCommand : <<snapshot>>
-LogicManager ..> StagedModel : <<create>>
 
 LogicManager --> Model
 LogicManager --> Storage
@@ -70,8 +59,7 @@ Logic ..> CommandResult
 LogicManager .down.> CommandResult
 Command .up.> CommandResult : <<create>>
 note bottom of PreparedChange
-StagedCommand returns a prepared candidate and live-model operation.
-LogicManager saves successfully before applying the operation.
-Other commands execute against StagedModel, then commit after saving.
+Candidate data and the operation
+to publish after saving.
 end note
 @enduml

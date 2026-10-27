@@ -40,11 +40,9 @@ Storage -up-|> UndoHistory
 StorageManager -down-> "1" JsonUserPrefsStorage
 StorageManager -down-> "2" JsonAddressBookStorage : Contacts and Favourites
 StorageManager *-down-> "2" UndoSnapshotStorage : undoHistories\nkeyed by ContactSection
-StorageManager ..> ContactSection
-UndoHistory ..> ContactSection
+StorageManager ..> ContactSection : history keys
 UndoSnapshotStorage --> "1" JsonAddressBookStorage : section data and snapshots
 UndoSnapshotStorage ..> JsonUndoHistory : <<create/read>>
-UndoSnapshotStorage ..> JsonSerializableAddressBook
 JsonUndoHistory --> "0..1" JsonUndoHistory : previous
 
 JsonAddressBookStorage ..> JsonSerializableAddressBook
@@ -52,14 +50,8 @@ JsonSerializableAddressBook --> "*" JsonAdaptedPerson
 JsonAdaptedPerson --> "*" JsonAdaptedTag
 
 note bottom of UndoSnapshotStorage
-Keeps at most five full snapshots per section.
-Saves backup, recovery metadata, and candidate before live changes.
-Restoration saves before consuming the latest history entry.
-History survives restart when validated against the saved collection.
-end note
-note bottom of JsonUndoHistory
-Stores collection checksum and ordered snapshot filenames.
-The optional previous state supports interrupted-save recovery.
+Up to five snapshots per section.
+Validated history survives restarts.
 end note
 
 @enduml

@@ -2,10 +2,10 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
+title Successful execution of "favourite 1"
+
 box Logic LOGIC_COLOR_T1
 participant ":LogicManager" as LogicManager LOGIC_COLOR
-participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
-participant ":FavouriteCommandParser" as FavouriteCommandParser LOGIC_COLOR
 participant "f:FavouriteCommand" as FavouriteCommand LOGIC_COLOR
 end box
 
@@ -14,86 +14,35 @@ participant "staged:StagedModel" as StagedModel MODEL_COLOR
 participant "m:Model" as Model MODEL_COLOR
 end box
 
-box Storage STORAGE_COLOR_T1
-participant ":Storage" as Storage STORAGE_COLOR
-end box
-
 [-> LogicManager : execute("favourite 1")
 activate LogicManager
-LogicManager -> AddressBookParser : parseCommand("favourite 1")
-activate AddressBookParser
-create FavouriteCommandParser
-AddressBookParser -> FavouriteCommandParser
-AddressBookParser -> FavouriteCommandParser : parse("1")
-activate FavouriteCommandParser
 
-note right of FavouriteCommandParser
-Require exactly one positive ASCII integer
-without leading zeros; retain it as BigInteger.
-Parsing failures stop before execution.
-end note
-
-create FavouriteCommand
-FavouriteCommandParser -> FavouriteCommand : targetIndex
-FavouriteCommandParser --> AddressBookParser : f
-deactivate FavouriteCommandParser
-FavouriteCommandParser -[hidden]-> AddressBookParser
-destroy FavouriteCommandParser
-AddressBookParser --> LogicManager : f
-deactivate AddressBookParser
-
-create StagedModel
-LogicManager -> StagedModel : m
-note over StagedModel, Model
-Copy both collections and the active displayed view.
-Recorded operations do not change the live model yet.
-end note
+ref over LogicManager, StagedModel
+Parse command and create isolated model
+end ref
 
 LogicManager -> FavouriteCommand : execute(staged)
 activate FavouriteCommand
-FavouriteCommand -> StagedModel : getActiveSection()
-StagedModel --> FavouriteCommand : CONTACTS
 FavouriteCommand -> StagedModel : getFilteredPersonList()
+activate StagedModel
 StagedModel --> FavouriteCommand : displayed contacts
-FavouriteCommand -> StagedModel : getAddressBook(FAVOURITES)
-StagedModel --> FavouriteCommand : full Favourites collection
+deactivate StagedModel
 
 note right of FavouriteCommand
-Validate section, nonempty list, index range,
-then duplicate identity (same phone or email).
-Resolve person from the displayed Contacts list.
-Validation failures stop before saving.
+Check Contacts is active, the index is valid,
+and the contact is not already in Favourites.
 end note
 
 FavouriteCommand -> StagedModel : addFavourite(person)
-note right of StagedModel
-Append to the candidate Favourites collection;
-record the operation and changed section.
-end note
-FavouriteCommand --> LogicManager : r:CommandResult
+activate StagedModel
+StagedModel --> FavouriteCommand
+deactivate StagedModel
+FavouriteCommand --> LogicManager : result
 deactivate FavouriteCommand
 
-LogicManager -> StagedModel : hasContactChanges()
-StagedModel --> LogicManager : true
-LogicManager -> StagedModel : getChangedSection()
-StagedModel --> LogicManager : FAVOURITES
-LogicManager -> FavouriteCommand : createSnapshot(m, FAVOURITES)
-activate FavouriteCommand
-FavouriteCommand -> Model : getAddressBook(FAVOURITES)
-Model --> FavouriteCommand : original Favourites collection
-FavouriteCommand --> LogicManager : previous (full collection copy)
-deactivate FavouriteCommand
-LogicManager -> StagedModel : getAddressBook(FAVOURITES)
-StagedModel --> LogicManager : candidate
-LogicManager -> Storage : saveUndoableChange(FAVOURITES, previous, candidate)
-activate Storage
-Storage --> LogicManager
-deactivate Storage
-
-note over LogicManager, Storage
-If saving fails, throw CommandException without committing.
-Both live collections, views, and existing histories remain unchanged.
-end note
+ref over LogicManager, StagedModel
+Save Favourites candidate and undo snapshot
+end ref
 
 LogicManager -> StagedModel : commitTo(m)
 activate StagedModel
@@ -105,12 +54,9 @@ StagedModel --> LogicManager
 deactivate StagedModel
 
 note over StagedModel, Model
-Contacts stays active with its filter and display order unchanged.
-Favourites stores an independent contact value, not a favourite flag.
-Later edits or deletions affect only their selected collection.
-Undoing this copy uses Favourites history.
+Contacts remains active with its view unchanged.
 end note
 
-[<--LogicManager : r
+[<--LogicManager : result
 deactivate LogicManager
 @enduml

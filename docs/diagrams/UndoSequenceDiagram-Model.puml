@@ -2,16 +2,10 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
-title Snapshot restoration for the active section
+title Save restored snapshot
 
 box Logic LOGIC_COLOR_T1
-participant ":LogicManager" as LogicManager LOGIC_COLOR
-participant "u:UndoCommand" as UndoCommand LOGIC_COLOR
 participant "change:PreparedChange" as PreparedChange LOGIC_COLOR
-end box
-
-box Model MODEL_COLOR_T1
-participant "m:Model" as Model MODEL_COLOR
 end box
 
 box Storage STORAGE_COLOR_T1
@@ -20,45 +14,17 @@ participant "sectionHistory:UndoSnapshotStorage" as Snapshots STORAGE_COLOR
 participant "sectionFile:JsonAddressBookStorage" as File STORAGE_COLOR
 end box
 
-note over History, File
-StorageManager implements the model's UndoHistory interface.
-It selects an independent history and data file for each ContactSection.
-end note
-
-LogicManager -> UndoCommand : prepare(m)
-activate UndoCommand
-UndoCommand -> Model : getActiveSection()
-Model --> UndoCommand : section
-UndoCommand -> History : readLatestSnapshot(section)
-activate History
-History -> Snapshots : readLatestSnapshot()
-activate Snapshots
-Snapshots -> File : readAddressBook(latestBackupPath)
-File --> Snapshots : snapshot
-Snapshots --> History : Optional.of(snapshot)
-deactivate Snapshots
-History --> UndoCommand : Optional.of(snapshot)
-deactivate History
-note over UndoCommand, Snapshots
-An empty history or unreadable snapshot stops preparation.
-Reading never consumes the latest history entry.
-end note
-create PreparedChange
-UndoCommand -> PreparedChange : snapshot, apply operation, result, save error, save override
-UndoCommand --> LogicManager : change
-deactivate UndoCommand
-
-LogicManager -> PreparedChange : save(defaultSave)
+[-> PreparedChange : save(...)
 activate PreparedChange
 PreparedChange -> History : saveRestoredSnapshot(section, snapshot)
 activate History
 History -> Snapshots : saveRestoredSnapshot(snapshot)
 activate Snapshots
-Snapshots -> Snapshots : saveTransition(snapshot, remainingSnapshots)
-note right of Snapshots
-Atomically publish before/after recovery metadata
-with the consumed entry omitted from the after state.
-end note
+
+ref over Snapshots, File
+Publish before/after recovery metadata
+end ref
+
 Snapshots -> File : saveAddressBook(snapshot)
 activate File
 File --> Snapshots
@@ -67,36 +33,11 @@ Snapshots --> History
 deactivate Snapshots
 History --> PreparedChange
 deactivate History
-PreparedChange --> LogicManager
-deactivate PreparedChange
-note over LogicManager, File
-If saving fails, stop before apply().
-The saved collection, live model, filter, and history stay unchanged.
-end note
-
-LogicManager -> PreparedChange : apply()
-activate PreparedChange
-PreparedChange -> Model : setAddressBook(snapshot)
-Model --> PreparedChange
-PreparedChange -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-Model --> PreparedChange
-PreparedChange -> History : discardLatestSnapshot(section)
-activate History
-History -> Snapshots : discardLatestSnapshot()
-activate Snapshots
-Snapshots -> Snapshots : remove latest path and attempt backup deletion
-Snapshots --> History
-deactivate Snapshots
-History --> PreparedChange
-deactivate History
-PreparedChange --> LogicManager : result:CommandResult
+[<--PreparedChange
 deactivate PreparedChange
 
-note over History, File
-At startup, recover validated snapshot history using metadata matching
-this collection's checksum (before or after an interrupted save).
-Skip missing or unreadable backups; ignore incompatible metadata.
-Normal shutdown retains recoverable snapshots.
-Cleanup failures are logged without failing a completed undo.
+note over PreparedChange, History
+The undo logic applies the restoration and consumes history
+only after this save succeeds.
 end note
 @enduml
