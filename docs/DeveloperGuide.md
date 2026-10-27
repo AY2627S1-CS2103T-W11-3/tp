@@ -265,6 +265,8 @@ Integration with the other MVP features:
 
 ### Favourites and section switching
 
+[Favourite command sequence diagram](diagrams/FavouriteSequenceDiagram.puml)
+
 `TabCommandParser` accepts exactly `contacts` or `favourites` after trimming surrounding whitespace. `TabCommand` calls `Model.setActiveSection` through staging. This changes the visible collection without marking contact data as changed, so navigation remains available when saving fails. Existing commands keep using the active collection through the `Model` interface. The prepared deletion path also saves the active section's file.
 
 `FavouriteCommandParser` delegates index validation to `ParserUtil.parsePositiveInteger`, retaining a `BigInteger` until the displayed-list range check passes. Missing, extra, or malformed arguments produce the favourite usage message. Execution then validates the active section, empty-list condition, index range, and duplicate identity, in that order.
@@ -280,6 +282,8 @@ The favourites cases in `LogicManagerTest` cover copying a displayed contact, du
 The `undo` command restores Contacts before its most recent successful data-changing command. It keeps at most five full Contacts snapshots for the current application session. Favourites changes do not participate in history, and undo is rejected while Favourites is active. Favourites undo is deferred to the next milestone. Redo and history recovery across restarts are not implemented.
 
 #### Recording changes
+
+[Recording changes activity diagram](diagrams/CommitActivityDiagram.puml)
 
 `AddCommand`, `DeleteCommand`, `EditCommand`, and `ClearCommand` extend the abstract `UndoableCommand`. Its `createSnapshot(Model)` helper copies the full pre-command address book, preserving contact order and all fields, including tags and notes. This is a JSON snapshot of model data rather than a diff or a byte-for-byte copy of the existing data file, so it also works before the first data file has been created.
 
@@ -297,6 +301,8 @@ A rejected command or failed backup/save leaves live contacts and existing histo
 New commands that change Contacts data must extend `UndoableCommand` to participate in undo history. Keep snapshot registration in the shared logic/storage path rather than adding command-specific inverse operations.
 
 #### Restoring a snapshot
+
+[Undo logic sequence diagram](diagrams/UndoSequenceDiagram-Logic.puml) · [Undo model and storage sequence diagram](diagrams/UndoSequenceDiagram-Model.puml)
 
 The model-level `UndoHistory` interface exposes `readLatestSnapshot()` and `discardLatestSnapshot()` without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` owns a single `UndoSnapshotStorage` for Contacts. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
 

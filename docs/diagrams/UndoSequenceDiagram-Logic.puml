@@ -5,42 +5,88 @@ skinparam ArrowFontStyle plain
 box Logic LOGIC_COLOR_T1
 participant ":LogicManager" as LogicManager LOGIC_COLOR
 participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
+participant ":UndoCommandParser" as UndoCommandParser LOGIC_COLOR
 participant "u:UndoCommand" as UndoCommand LOGIC_COLOR
+participant "change:PreparedChange" as PreparedChange LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant ":Model" as Model MODEL_COLOR
+participant "m:Model" as Model MODEL_COLOR
+participant "history:UndoHistory" as UndoHistory MODEL_COLOR
 end box
-[-> LogicManager : execute(undo)
+
+note over AddressBookParser, UndoHistory
+LogicManager supplies Storage through the UndoHistory interface.
+The parser passes this dependency to UndoCommand without accessing history.
+end note
+
+[-> LogicManager : execute("undo")
 activate LogicManager
-
-LogicManager -> AddressBookParser : parseCommand(undo)
+LogicManager -> AddressBookParser : parseCommand("undo")
 activate AddressBookParser
-
+create UndoCommandParser
+AddressBookParser -> UndoCommandParser : history
+AddressBookParser -> UndoCommandParser : parse("")
+activate UndoCommandParser
+note right of UndoCommandParser
+Reject any nonblank arguments
+before executing the command.
+end note
 create UndoCommand
-AddressBookParser -> UndoCommand
-activate UndoCommand
-
-UndoCommand --> AddressBookParser
-deactivate UndoCommand
-
+UndoCommandParser -> UndoCommand : history
+UndoCommandParser --> AddressBookParser : u
+deactivate UndoCommandParser
+UndoCommandParser -[hidden]-> AddressBookParser
+destroy UndoCommandParser
 AddressBookParser --> LogicManager : u
 deactivate AddressBookParser
 
-LogicManager -> UndoCommand : execute()
+LogicManager -> UndoCommand : prepare(m)
 activate UndoCommand
-
-UndoCommand -> Model : undoAddressBook()
-activate Model
-
-Model --> UndoCommand
-deactivate Model
-
-UndoCommand --> LogicManager : result
+UndoCommand -> Model : getActiveSection()
+Model --> UndoCommand : section
+UndoCommand -> UndoHistory : readLatestSnapshot(section)
+activate UndoHistory
+UndoHistory --> UndoCommand : snapshot (without consuming it)
+deactivate UndoHistory
+note over UndoCommand, UndoHistory
+Empty history or a read failure throws CommandException.
+No save, live-model change, or history consumption follows.
+end note
+create PreparedChange
+UndoCommand -> PreparedChange : snapshot, apply operation, result, save error, save override
+UndoCommand --> LogicManager : change
 deactivate UndoCommand
-UndoCommand -[hidden]-> LogicManager : result
-destroy UndoCommand
 
-[<--LogicManager
+LogicManager -> PreparedChange : save(defaultSave)
+activate PreparedChange
+PreparedChange -> UndoHistory : saveRestoredSnapshot(section, snapshot)
+activate UndoHistory
+UndoHistory --> PreparedChange
+deactivate UndoHistory
+PreparedChange --> LogicManager
+deactivate PreparedChange
+note over LogicManager, UndoHistory
+The save override persists the restoration and recovery metadata.
+A failed save throws CommandException; the live model,
+filter, saved collection, and history remain unchanged.
+end note
+
+LogicManager -> PreparedChange : apply()
+activate PreparedChange
+PreparedChange -> Model : setAddressBook(snapshot)
+Model --> PreparedChange
+PreparedChange -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
+Model --> PreparedChange
+PreparedChange -> UndoHistory : discardLatestSnapshot(section)
+UndoHistory --> PreparedChange
+PreparedChange --> LogicManager : result:CommandResult
+deactivate PreparedChange
+
+note over Model, UndoHistory
+Only the active section is restored and its latest snapshot consumed.
+Undo creates no new history entry; there is no redo operation.
+end note
+[<--LogicManager : result
 deactivate LogicManager
 @enduml
