@@ -89,7 +89,8 @@ Format: `tab contacts` or `tab favourites`
 
 * Switch sections by typing a command; the section label is not a clickable tab.
 * `add`, `edit`, `delete`, `clear`, `find`, `filter`, `list`, `recent`, and `view` operate only on the active section. You can also use `add` to create a contact directly in Favourites.
-* Switching to a different section shows all contacts there. Returning to a section resets its previous search. Selecting the section that is already active keeps its current search.
+* Each section keeps its own search results and display order during the current session. Switching back restores the view left by `find`, `filter`, or `recent`, including an empty result. Selecting the section that is already active keeps its view.
+* Use `list` to show all contacts in the active section in addition order, or `recent` to show them newest first. Restarting resets both section views and starts on Contacts; searches and display order are not saved.
 * Switching sections does not save or modify contact data. Success shows `Showing Contacts.` or `Showing Favourites.`
 * Use the exact lowercase names `contacts` and `favourites`. A missing, unknown, or extra section produces `Invalid command format!` followed by the `tab` usage, without switching sections.
 
@@ -106,7 +107,7 @@ Format: `favourite INDEX`
 * A contact with the same phone number or email address cannot appear twice in Favourites. Contacts may share the same name. Repeating the command does not update or overwrite the existing favourite.
 * To remove a favourite, run `tab favourites` and then `delete INDEX`. You can favourite the original again after removing its copy.
 
-For example, run `tab contacts`, then `find Betsy`, then `favourite 1` to copy the first matching contact. Run `tab favourites` to see the saved copy.
+For example, run `tab contacts`, then `find Betsy`, then `favourite 1` to copy the first matching contact. Run `tab favourites` to see the saved copy. If a retained Favourites search hides it, run `list`.
 
 Validation follows the table order. `N` is the number of displayed contacts. Failures retain the entered command and leave both collections unchanged.
 
@@ -170,7 +171,7 @@ Format: `recent`
 
 * Addition order is based on the order in which contacts were added. Editing a contact does not make it recent again.
 * Deleted contacts are omitted. Commands such as `find`, `list`, and `view` do not change addition order.
-* The ordering is preserved after restarting the application.
+* Addition order is preserved after restarting the application. Run `recent` again to display contacts newest first; the selected display order is not restored on startup.
 * If there are no contacts, the command shows `No contacts available.`
 * The command does not accept parameters.
 
