@@ -10,6 +10,12 @@ Class "<<interface>>\nReadOnlyUserPrefs" as ReadOnlyUserPrefs
 Class "<<interface>>\nModel" as Model
 Class AddressBook
 Class ModelManager
+Class StagedModel
+enum ContactSection {
+    CONTACTS
+    FAVOURITES
+}
+show ContactSection members
 Class UserPrefs
 
 Class UniquePersonList
@@ -29,9 +35,13 @@ HiddenOutside ..> Model
 AddressBook .up.|> ReadOnlyAddressBook
 
 ModelManager .up.|> Model
+StagedModel .up.|> Model
+StagedModel *--> "1" ModelManager : candidate
+StagedModel --> "0..1" ContactSection : changedSection
+ModelManager --> "1" ContactSection : activeSection
 Model .right.> ReadOnlyUserPrefs
 Model .left.> ReadOnlyAddressBook
-ModelManager -left-> "1" AddressBook
+ModelManager -left-> "2" AddressBook : addressBooks\nkeyed by ContactSection
 ModelManager -right-> "1" UserPrefs
 UserPrefs .up.|> ReadOnlyUserPrefs
 
@@ -51,4 +61,15 @@ Phone -[hidden]right-> Address
 Address -[hidden]right-> Email
 
 ModelManager --> "~* filtered" Person
+note bottom of StagedModel
+Copies both collections and the active view.
+Records operations for one changed section.
+Replays them only after saving succeeds.
+end note
+note bottom of ModelManager
+Contacts and Favourites are independent.
+Each retains its filter and display order.
+The observable active view is unmodifiable.
+User preferences are shared.
+end note
 @enduml

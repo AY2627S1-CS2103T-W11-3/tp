@@ -20,17 +20,46 @@ Class JsonAdaptedPerson
 Class JsonAdaptedTag
 }
 
+package "Undo Storage" #F4F6F6{
+Class UndoSnapshotStorage
+Class JsonUndoHistory
+}
+
+}
+
+package Model {
+Class "<<interface>>\nUndoHistory" as UndoHistory MODEL_COLOR
+Class "<<enum>>\nContactSection" as ContactSection MODEL_COLOR
 }
 
 Class HiddenOutside #FFFFFF
 HiddenOutside ..> Storage
 
 StorageManager .up.|> Storage
+Storage -up-|> UndoHistory
 StorageManager -down-> "1" JsonUserPrefsStorage
-StorageManager -down-> "1" JsonAddressBookStorage
+StorageManager -down-> "2" JsonAddressBookStorage : Contacts and Favourites
+StorageManager *-down-> "2" UndoSnapshotStorage : undoHistories\nkeyed by ContactSection
+StorageManager ..> ContactSection
+UndoHistory ..> ContactSection
+UndoSnapshotStorage --> "1" JsonAddressBookStorage : section data and snapshots
+UndoSnapshotStorage ..> JsonUndoHistory : <<create/read>>
+UndoSnapshotStorage ..> JsonSerializableAddressBook
+JsonUndoHistory --> "0..1" JsonUndoHistory : previous
 
 JsonAddressBookStorage ..> JsonSerializableAddressBook
 JsonSerializableAddressBook --> "*" JsonAdaptedPerson
 JsonAdaptedPerson --> "*" JsonAdaptedTag
+
+note bottom of UndoSnapshotStorage
+Keeps at most five full snapshots per section.
+Saves backup, recovery metadata, and candidate before live changes.
+Restoration saves before consuming the latest history entry.
+History survives restart when validated against the saved collection.
+end note
+note bottom of JsonUndoHistory
+Stores collection checksum and ordered snapshot filenames.
+The optional previous state supports interrupted-save recovery.
+end note
 
 @enduml
