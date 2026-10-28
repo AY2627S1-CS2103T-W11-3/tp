@@ -21,6 +21,8 @@ public class FilterCommand extends Command {
             + "Parameters: t/TAG [t/TAG]...\n"
             + "Example: " + COMMAND_WORD + " t/friends t/owesMoney";
 
+    public static final String MESSAGE_NO_MATCH = "No contacts match the specified tag(s).";
+
     private final PersonHasTagsPredicate predicate;
 
     public FilterCommand(PersonHasTagsPredicate predicate) {
@@ -31,8 +33,11 @@ public class FilterCommand extends Command {
     public CommandResult execute(Model model) {
         requireNonNull(model);
         model.updateFilteredPersonList(predicate);
-        return new CommandResult(
-                String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW, model.getFilteredPersonList().size()));
+        int matchCount = model.getFilteredPersonList().size();
+        String message = matchCount == 0
+                ? MESSAGE_NO_MATCH
+                : String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW, matchCount);
+        return new CommandResult(message);
     }
 
     @Override
