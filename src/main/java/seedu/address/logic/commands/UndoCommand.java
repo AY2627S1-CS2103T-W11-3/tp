@@ -21,7 +21,8 @@ public class UndoCommand extends Command implements StagedCommand {
     public static final String MESSAGE_USAGE = COMMAND_WORD
             + ": Undoes the most recent change in the active section.\n"
             + "Example: " + COMMAND_WORD;
-    public static final String MESSAGE_SUCCESS = "Undo successful.";
+    /** Feedback for entries saved before operation descriptions were supported. */
+    public static final String MESSAGE_SUCCESS = UndoHistory.MESSAGE_LEGACY_SUCCESS;
     public static final String MESSAGE_NO_HISTORY = "No changes to undo.";
     public static final String MESSAGE_SAVE_ERROR =
             "Could not save changes. Nothing was undone. Please try again.";
@@ -60,7 +61,7 @@ public class UndoCommand extends Command implements StagedCommand {
             model.setAddressBook(snapshot);
             model.updateFilteredPersonList(Model.PREDICATE_SHOW_ALL_PERSONS);
             undoHistory.discardLatestSnapshot(section);
-        }, new CommandResult(MESSAGE_SUCCESS), MESSAGE_SAVE_ERROR, () ->
+        }, new CommandResult(undoHistory.getLatestUndoDescription(section)), MESSAGE_SAVE_ERROR, () ->
                 undoHistory.saveRestoredSnapshot(section, snapshot));
     }
 }

@@ -31,6 +31,7 @@ public class UndoCommandTest {
         AddressBook before = new AddressBook(model.getAddressBook());
         AddressBook snapshot = getTypicalAddressBook();
         history.snapshot = Optional.of(snapshot);
+        history.description = "Undid clear of Contacts.";
 
         PreparedChange change = new UndoCommand(history).prepare(model);
         assertEquals(snapshot, change.getCandidate());
@@ -44,7 +45,7 @@ public class UndoCommandTest {
         });
         assertEquals(1, history.saveCount);
         assertEquals(before, model.getAddressBook());
-        assertEquals(new CommandResult(UndoCommand.MESSAGE_SUCCESS), change.apply());
+        assertEquals(new CommandResult(history.description), change.apply());
         assertEquals(snapshot, model.getAddressBook());
         assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
         assertEquals(1, history.discardCount);
@@ -97,6 +98,7 @@ public class UndoCommandTest {
         private DataLoadingException failure;
         private int discardCount;
         private int saveCount;
+        private String description = UndoCommand.MESSAGE_SUCCESS;
         private ContactSection readSection;
         private ContactSection discardedSection;
 
@@ -107,6 +109,12 @@ public class UndoCommandTest {
                 throw failure;
             }
             return snapshot;
+        }
+
+        @Override
+        public String getLatestUndoDescription(ContactSection section) {
+            assertEquals(readSection, section);
+            return description;
         }
 
         @Override

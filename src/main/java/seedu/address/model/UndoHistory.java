@@ -21,6 +21,11 @@ public interface UndoHistory {
     Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException;
 
     /**
+     * Returns feedback for the latest entry in a nonempty history, with generic feedback for legacy entries.
+     */
+    String getLatestUndoDescription(ContactSection section);
+
+    /**
      * Saves the previously read snapshot with recovery metadata before applying it to the live model.
      * A failed save preserves the saved collection and history. Consumption follows only after success.
      */

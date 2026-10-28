@@ -9,7 +9,9 @@ import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Person;
 
 /** Deletes a person identified using its displayed index from the address book. */
@@ -85,6 +87,11 @@ public class DeleteCommand extends UndoableCommand implements StagedCommand {
         }
 
         return lastShownList.get(targetIndex.intValueExact() - 1);
+    }
+
+    @Override
+    public String describeUndo(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, ContactSection section) {
+        return describePersonChange(COMMAND_WORD, previous, candidate, section);
     }
 
     @Override

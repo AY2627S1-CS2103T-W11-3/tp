@@ -207,6 +207,27 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_undo_identifiesOperationAndContact() throws Exception {
+        model.addPerson(ALICE);
+        String[][] cases = {
+            {"delete 1", "Undid delete of Alice Pauline."},
+            {"edit 1 n/Renamed Contact", "Undid edit of Alice Pauline."},
+            {"clear", "Undid clear of Contacts."},
+            {PersonUtil.getAddCommand(BOB), "Undid add of Bob Choo."}
+        };
+        for (String[] input : cases) {
+            logic.execute(input[0]);
+            assertEquals(input[1], logic.execute("undo").getFeedbackToUser());
+            assertEquals(List.of(ALICE), model.getAddressBook().getPersonList());
+        }
+        logic.execute("favourite 1");
+        logic.execute("tab favourites");
+        logic.execute("clear");
+        assertEquals("Undid clear of Favourites.", logic.execute("undo").getFeedbackToUser());
+        assertEquals("Undid favourite of Alice Pauline.", logic.execute("undo").getFeedbackToUser());
+    }
+
+    @Test
     public void execute_favouritesChanges_preserveContactsUndoHistory() throws Exception {
         model.addPerson(ALICE);
         logic.execute(PersonUtil.getAddCommand(BOB));

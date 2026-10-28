@@ -5,7 +5,9 @@ import static java.util.Objects.requireNonNull;
 import java.util.Set;
 
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
@@ -68,5 +70,15 @@ public class GroupCommand extends UndoableCommand {
         }
         model.setGroup(group.withoutMember(personName));
         return new CommandResult("Removed " + personName + " from " + groupName);
+    }
+
+    @Override
+    public String describeUndo(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, ContactSection section) {
+        return switch (action) {
+            case CREATE -> "Undid creation of group " + groupName + ".";
+            case DELETE -> "Undid deletion of group " + groupName + ".";
+            case ADD_MEMBER -> "Undid addition of " + personName + " to group " + groupName + ".";
+            case REMOVE_MEMBER -> "Undid removal of " + personName + " from group " + groupName + ".";
+        };
     }
 }

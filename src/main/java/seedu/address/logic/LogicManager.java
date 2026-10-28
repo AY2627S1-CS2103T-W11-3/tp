@@ -64,7 +64,10 @@ public class LogicManager implements Logic {
                 ContactSection changedSection = stagedModel.getChangedSection();
                 ReadOnlyAddressBook snapshot = command instanceof UndoableCommand undoableCommand
                         ? undoableCommand.createSnapshot(model, changedSection) : null;
-                saveChange(changedSection, snapshot, stagedModel.getAddressBook(changedSection));
+                ReadOnlyAddressBook candidate = stagedModel.getAddressBook(changedSection);
+                String description = command instanceof UndoableCommand undoableCommand
+                        ? undoableCommand.describeUndo(snapshot, candidate, changedSection) : null;
+                saveChange(changedSection, snapshot, candidate, description);
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
@@ -78,8 +81,11 @@ public class LogicManager implements Logic {
     /** Saves a prepared change before applying it to the observable model. */
     private CommandResult executeStaged(StagedCommand command, ReadOnlyAddressBook snapshot) throws CommandException {
         PreparedChange change = command.prepare(model);
+        ContactSection section = model.getActiveSection();
+        String description = command instanceof UndoableCommand undoableCommand
+                ? undoableCommand.describeUndo(snapshot, change.getCandidate(), section) : null;
         try {
-            change.save(() -> saveChange(model.getActiveSection(), snapshot, change.getCandidate()));
+            change.save(() -> saveChange(section, snapshot, change.getCandidate(), description));
         } catch (IOException e) {
             logger.warning("Could not save prepared contact changes: " + e.getMessage());
             throw new CommandException(change.getSaveErrorMessage(), e);
@@ -90,10 +96,10 @@ public class LogicManager implements Logic {
     /**
      * Saves the changed collection and registers its previous data only after a successful save.
      */
-    private void saveChange(ContactSection section, ReadOnlyAddressBook snapshot, ReadOnlyAddressBook candidate)
-            throws IOException {
+    private void saveChange(ContactSection section, ReadOnlyAddressBook snapshot, ReadOnlyAddressBook candidate,
+            String description) throws IOException {
         if (snapshot != null) {
-            storage.saveUndoableChange(section, snapshot, candidate);
+            storage.saveUndoableChange(section, snapshot, candidate, description);
         } else if (section == ContactSection.FAVOURITES) {
             storage.saveFavourites(candidate);
         } else {

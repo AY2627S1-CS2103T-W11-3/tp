@@ -86,15 +86,20 @@ public class StorageManager implements Storage {
     }
 
     @Override
-    public void saveUndoableChange(ContactSection section, ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate)
-            throws IOException {
+    public void saveUndoableChange(ContactSection section, ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate,
+            String undoDescription) throws IOException {
         logger.fine("Saving undoable change in " + section);
-        undoHistories.get(requireNonNull(section)).saveChange(previous, candidate);
+        undoHistories.get(requireNonNull(section)).saveChange(previous, candidate, undoDescription);
     }
 
     @Override
     public Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException {
         return undoHistories.get(requireNonNull(section)).readLatestSnapshot();
+    }
+
+    @Override
+    public String getLatestUndoDescription(ContactSection section) {
+        return undoHistories.get(requireNonNull(section)).getLatestUndoDescription();
     }
 
     @Override

@@ -8,6 +8,7 @@ import java.util.List;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Person;
 
 /** Copies a displayed contact into the independent favorites collection. */
@@ -52,6 +53,11 @@ public class FavouriteCommand extends UndoableCommand {
         }
         model.addFavourite(person);
         return new CommandResult(String.format(MESSAGE_SUCCESS, person.getName().fullName, targetIndex));
+    }
+
+    @Override
+    public String describeUndo(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, ContactSection section) {
+        return describePersonChange(COMMAND_WORD, candidate, previous, section);
     }
 
     @Override
