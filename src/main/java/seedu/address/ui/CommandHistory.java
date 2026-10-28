@@ -1,5 +1,7 @@
 package seedu.address.ui;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,6 +25,7 @@ public class CommandHistory {
 
     private final Optional<Path> historyFile;
     private final List<String> commands = new ArrayList<>();
+    private String commandDraft = "";
     private int nextCommandIndex;
 
     private CommandHistory() {
@@ -60,7 +63,9 @@ public class CommandHistory {
      * @throws IOException if the command cannot be appended to the temporary file
      */
     public void add(String command) throws IOException {
+        requireNonNull(command);
         commands.add(command);
+        commandDraft = "";
         nextCommandIndex = commands.size();
         if (historyFile.isPresent()) {
             Files.writeString(historyFile.get(), command + System.lineSeparator(), StandardCharsets.UTF_8,
@@ -69,9 +74,17 @@ public class CommandHistory {
     }
 
     /**
-     * Returns the preceding command, or an empty value if the history has reached its beginning.
+     * Saves the current draft when history navigation begins, then returns the preceding command.
+     * Returns an empty value if the history has reached its beginning.
      */
-    public Optional<String> getPreviousCommand() {
+    public Optional<String> getPreviousCommand(String currentCommandText) {
+        requireNonNull(currentCommandText);
+        assert nextCommandIndex >= 0 && nextCommandIndex <= commands.size();
+
+        if (nextCommandIndex == commands.size()) {
+            commandDraft = currentCommandText;
+        }
+
         if (nextCommandIndex == 0) {
             return Optional.empty();
         }
@@ -81,14 +94,21 @@ public class CommandHistory {
     }
 
     /**
-     * Returns the following command, or an empty value if the history has reached its end.
+     * Returns the following command, or the saved draft after the newest command.
+     * Returns an empty value if the history has already reached its end.
      */
     public Optional<String> getNextCommand() {
-        if (nextCommandIndex >= commands.size() - 1) {
+        assert nextCommandIndex >= 0 && nextCommandIndex <= commands.size();
+
+        if (nextCommandIndex >= commands.size()) {
             return Optional.empty();
         }
 
         nextCommandIndex++;
+        if (nextCommandIndex == commands.size()) {
+            return Optional.of(commandDraft);
+        }
+
         return Optional.of(commands.get(nextCommandIndex));
     }
 

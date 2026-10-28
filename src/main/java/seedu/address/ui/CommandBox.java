@@ -119,20 +119,29 @@ public class CommandBox extends UiPart<Region> {
     }
 
     private void handleKeyPressed(KeyEvent event) {
-        Optional<String> historyCommand;
         if (event.getCode() == KeyCode.UP) {
-            historyCommand = commandHistory.getPreviousCommand();
+            navigateToPreviousCommand();
         } else if (event.getCode() == KeyCode.DOWN) {
-            historyCommand = commandHistory.getNextCommand();
+            navigateToNextCommand();
         } else {
             return;
         }
 
-        historyCommand.ifPresent(command -> {
-            commandTextField.setText(command);
-            commandTextField.positionCaret(command.length());
-        });
         event.consume();
+    }
+
+    private void navigateToPreviousCommand() {
+        Optional<String> previousCommand = commandHistory.getPreviousCommand(commandTextField.getText());
+        previousCommand.ifPresent(this::displayCommand);
+    }
+
+    private void navigateToNextCommand() {
+        commandHistory.getNextCommand().ifPresent(this::displayCommand);
+    }
+
+    private void displayCommand(String command) {
+        commandTextField.setText(command);
+        commandTextField.positionCaret(command.length());
     }
 
     /**

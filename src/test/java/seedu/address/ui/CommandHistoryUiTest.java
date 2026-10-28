@@ -63,7 +63,28 @@ public class CommandHistoryUiTest {
             assertEquals("find Alex", input.getText());
             assertEquals(input.getText().length(), input.getCaretPosition());
             input.fireEvent(createKeyEvent(KeyCode.DOWN));
-            assertEquals("find Alex", input.getText());
+            assertEquals("", input.getText());
+        });
+    }
+
+    @Test
+    public void arrowKeysPressed_afterDraftEntered_restoresDraftAfterNewestCommand() throws Exception {
+        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        commandHistory.add("list");
+        runOnFxThread(() -> {
+            CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"), commandHistory);
+            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
+            input.setText("unfinished draft");
+
+            input.fireEvent(createKeyEvent(KeyCode.UP));
+            assertEquals("list", input.getText());
+            input.fireEvent(createKeyEvent(KeyCode.DOWN));
+
+            assertEquals("unfinished draft", input.getText());
+            assertEquals(input.getText().length(), input.getCaretPosition());
+
+            input.fireEvent(createKeyEvent(KeyCode.DOWN));
+            assertEquals("unfinished draft", input.getText());
         });
     }
 
