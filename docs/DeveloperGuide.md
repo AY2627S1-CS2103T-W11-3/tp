@@ -124,17 +124,17 @@ How the parsing works:
 ### Model component
 **API** : [`Model.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/model/Model.java)
 
-<img src="images/ModelClassDiagram.png" width="450" />
+<img src="images/ModelClassDiagram.png" width="650" />
 
 
 The `Model` component,
 
 * stores independent Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects.
-* stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
+* maintains `FilteredList<Person>` and `SortedList<Person>` views backed by the active address book's person list. It exposes the displayed view as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the source list, filter, or ordering changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
 
-`getAddressBook()` and ordinary contact operations use the active section; `getAddressBook(section)` reads a specific complete collection. Switching sections rebuilds the active filtered view and shows all contacts. Selecting the current section preserves its filter. GUI preferences remain shared across sections. The partial class diagram above omits this section-selection state.
+`getAddressBook()` and ordinary contact operations use the active section; `getAddressBook(section)` reads a specific complete collection. Switching sections rebuilds the active filtered view and shows all contacts. Selecting the current section preserves its filter. GUI preferences remain shared across sections.
 
 <div markdown="span" class="alert alert-info">:information_source: **Note:** The alternative, arguably more object-oriented, design below keeps a unique list of tags in `AddressBook`, and each `Person` references tags from that list. This lets `AddressBook` maintain one `Tag` object per unique tag instead of each `Person` holding its own `Tag` objects.<br>
 
@@ -164,6 +164,30 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 ## **Implementation**
 
 This section describes some noteworthy details on how certain features are implemented.
+
+### Finding contacts
+
+`FindCommandParser` trims the arguments, rejects an empty query, splits the query at whitespace, and creates a `PersonContainsKeywordsPredicate`. `FindCommand` passes that predicate to `Model.updateFilteredPersonList`, which applies it to the complete person list of the active section.
+
+The predicate combines all keywords and searchable fields with OR semantics. Name matching is a case-insensitive substring test, so partial names match. A tag must equal a keyword ignoring case. Notes use `StringUtil.containsWordIgnoreCase`, which splits the stored note only at whitespace and compares complete tokens ignoring case; punctuation therefore remains part of a note token.
+
+Each `find` replaces any existing filter rather than searching only the contacts currently displayed. `ModelManager.updateFilteredPersonList` also clears the `SortedList` comparator, so invoking `find` intentionally switches away from Recent ordering and displays matching contacts in their underlying insertion order. No additional sequence diagram is needed because this follows the standard parser → command/predicate → model flow.
+
+### Duplicate detection
+
+`Person.isSamePerson` defines contact identity: two contacts conflict when either their non-empty phone numbers match or their non-empty email addresses match. Names are not identity fields, so same-name contacts are allowed when both identity fields differ. The non-empty checks are defensive; normal `add` and `edit` input validation requires valid phone and email values.
+
+`AddressBook` delegates uniqueness enforcement to `UniquePersonList`. Its `add`, `setPerson`, and bulk replacement paths use `Person.isSamePerson`, so the invariant also applies when a collection is loaded from storage. `EditCommand` checks the proposed contact with `hasPersonOtherThan`, which excludes the target contact itself but compares against every other contact. Both Add and Edit inspect the complete active collection through the model, not only the displayed `FilteredList`.
+
+`AddCommand` scans all conflicts before mutation and classifies them for user feedback: phone only, email only, both fields matching the same contact, or phone and email matching two different contacts. `EditCommand` reports its single duplicate-contact message for any identity conflict. Through `LogicManager`, command execution first uses a staged candidate; a duplicate is rejected before any staged mutation, save, undo-history registration, or commit to the live model.
+
+### Recently added contacts
+
+The insertion order of each `AddressBook` person list is the source of truth for recency. There is no timestamp, last-modified field, or additional JSON schema field. `ModelManager` wraps the active collection's observable person list in a `FilteredList` and then a `SortedList`. `recent` shows all contacts and installs a comparator that orders their source-list indices from highest to lowest, producing newest-added-first display order without changing the stored list.
+
+Add appends to the source list, so a new contact appears first while Recent remains active. Edit replaces a contact at the same source index, and Delete removes one entry, so both preserve the relative recency of the remaining contacts. Intentional view-changing commands such as `list`, `find`, and `filter` clear the Recent comparator; switching contact sections rebuilds the displayed view as well.
+
+`JsonSerializableAddressBook` writes and reconstructs the `persons` array in list order, so insertion order survives persistence and restart. The active Recent view is UI/model state and is not persisted: startup initially displays the stored addition order, and the user invokes `recent` again to restore newest-added-first display.
 
 ### Contact deletion (F4)
 

@@ -17,10 +17,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
+import seedu.address.model.person.Person;
 import seedu.address.model.person.PersonContainsKeywordsPredicate;
+import seedu.address.testutil.PersonBuilder;
 
 /**
  * Contains integration tests (interaction with the Model) for {@code FindCommand}.
@@ -57,13 +60,27 @@ public class FindCommandTest {
     }
 
     @Test
-    public void execute_zeroKeywords_noPersonFound() {
+    public void execute_nonMatchingKeyword_noPersonFound() {
         String expectedMessage = String.format(MESSAGE_PERSONS_LISTED_OVERVIEW, 0);
-        PersonContainsKeywordsPredicate predicate = preparePredicate(" ");
+        PersonContainsKeywordsPredicate predicate = preparePredicate("NobodyMatchesThisKeyword");
         FindCommand command = new FindCommand(predicate);
         expectedModel.updateFilteredPersonList(predicate);
         assertCommandSuccess(command, model, expectedMessage, expectedModel);
         assertEquals(List.of(), model.getFilteredPersonList());
+    }
+
+    @Test
+    public void execute_noteKeyword_punctuationRemainsPartOfWhitespaceDelimitedToken() {
+        Person personWithPunctuatedNote = new PersonBuilder().withNote("Met at college, during orientation").build();
+        AddressBook addressBook = new AddressBook();
+        addressBook.addPerson(personWithPunctuatedNote);
+        Model modelWithNote = new ModelManager(addressBook, new UserPrefs());
+
+        new FindCommand(preparePredicate("college")).execute(modelWithNote);
+        assertEquals(List.of(), modelWithNote.getFilteredPersonList());
+
+        new FindCommand(preparePredicate("college,")).execute(modelWithNote);
+        assertEquals(List.of(personWithPunctuatedNote), modelWithNote.getFilteredPersonList());
     }
 
     @Test
