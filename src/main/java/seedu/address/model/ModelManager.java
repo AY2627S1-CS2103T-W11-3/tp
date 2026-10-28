@@ -32,6 +32,7 @@ public class ModelManager implements Model {
     private FilteredList<Person> filteredPersons;
     private SortedList<Person> displayedPersons;
     private ObservableList<Person> visiblePersons;
+    private boolean isRecentPersonListActive;
 
     /**
      * Initializes a ModelManager with the given addressBook and userPrefs.
@@ -125,7 +126,7 @@ public class ModelManager implements Model {
     @Override
     public void addPerson(Person person) {
         addressBooks.get(activeSection).addPerson(person);
-        updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+        updatePersonListAfterAddOrEdit();
     }
 
     @Override
@@ -137,6 +138,7 @@ public class ModelManager implements Model {
     public void setPerson(Person target, Person editedPerson) {
         requireAllNonNull(target, editedPerson);
         addressBooks.get(activeSection).setPerson(target, editedPerson);
+        updatePersonListAfterAddOrEdit();
     }
 
     @Override
@@ -166,6 +168,7 @@ public class ModelManager implements Model {
         filteredPersons = new FilteredList<>(getAddressBook().getPersonList());
         displayedPersons = new SortedList<>(filteredPersons);
         visiblePersons = FXCollections.unmodifiableObservableList(displayedPersons);
+        isRecentPersonListActive = false;
     }
 
     /**
@@ -182,6 +185,7 @@ public class ModelManager implements Model {
         requireNonNull(predicate);
         displayedPersons.setComparator(null);
         filteredPersons.setPredicate(predicate);
+        isRecentPersonListActive = false;
     }
 
     /** Copies the visible membership and order used to resolve indices in a staged command. */
@@ -197,6 +201,14 @@ public class ModelManager implements Model {
         filteredPersons.setPredicate(PREDICATE_SHOW_ALL_PERSONS);
         displayedPersons.setComparator((first, second) -> Integer.compare(
                 getAddressBook().getPersonList().indexOf(second), getAddressBook().getPersonList().indexOf(first)));
+        isRecentPersonListActive = true;
+    }
+
+    /** Shows all persons after an add or edit unless the recent view is active. */
+    private void updatePersonListAfterAddOrEdit() {
+        if (!isRecentPersonListActive) {
+            updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+        }
     }
 
     @Override
@@ -213,6 +225,7 @@ public class ModelManager implements Model {
         return addressBooks.equals(otherModelManager.addressBooks)
                 && activeSection == otherModelManager.activeSection
                 && userPrefs.equals(otherModelManager.userPrefs)
+                && isRecentPersonListActive == otherModelManager.isRecentPersonListActive
                 && displayedPersons.equals(otherModelManager.displayedPersons);
     }
 

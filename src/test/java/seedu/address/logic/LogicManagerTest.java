@@ -11,6 +11,7 @@ import static seedu.address.logic.commands.CommandTestUtil.NAME_DESC_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.PHONE_DESC_AMY;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
+import static seedu.address.testutil.TypicalPersons.AMY;
 import static seedu.address.testutil.TypicalPersons.BOB;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
@@ -180,6 +181,31 @@ public class LogicManagerTest {
         assertEquals(RecentCommand.MESSAGE_SUCCESS, result.getFeedbackToUser());
         assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
         assertEquals(List.of(ALICE, BOB), model.getAddressBook().getPersonList());
+    }
+
+    @Test
+    public void execute_addAfterRecent_keepsRecentViewWithAddedContactFirst() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+        logic.execute("recent");
+
+        logic.execute(PersonUtil.getAddCommand(AMY));
+
+        assertEquals(List.of(AMY, BOB, ALICE), logic.getFilteredPersonList());
+        assertEquals(List.of(ALICE, BOB, AMY), model.getAddressBook().getPersonList());
+    }
+
+    @Test
+    public void execute_editAfterRecent_keepsRecentViewAndOriginalInsertionPosition() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+        logic.execute("recent");
+        Person editedAlice = new PersonBuilder(ALICE).withPhone("91234567").build();
+
+        logic.execute("edit 2 p/91234567");
+
+        assertEquals(List.of(BOB, editedAlice), logic.getFilteredPersonList());
+        assertEquals(List.of(editedAlice, BOB), model.getAddressBook().getPersonList());
     }
 
     @Test
