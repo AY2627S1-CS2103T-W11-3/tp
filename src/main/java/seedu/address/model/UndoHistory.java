@@ -11,6 +11,9 @@ import seedu.address.commons.exceptions.DataLoadingException;
  */
 public interface UndoHistory {
 
+    /** Fallback feedback for snapshots predating operation descriptions. */
+    String MESSAGE_LEGACY_SUCCESS = "Undo successful.";
+
     /**
      * Reads the section's latest snapshot without consuming it, or returns empty when history is exhausted.
      * Missing or unreadable snapshot data leaves history unchanged and throws DataLoadingException.

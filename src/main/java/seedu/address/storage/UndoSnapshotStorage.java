@@ -14,11 +14,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import seedu.address.commons.core.LogsCenter;
@@ -26,6 +29,7 @@ import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.UndoHistory;
 
 /**
  * Saves contact changes with file-backed undo snapshots and a recoverable before/after journal.
@@ -39,6 +43,7 @@ class UndoSnapshotStorage {
 
     private final JsonAddressBookStorage addressBookStorage;
     private final Deque<Path> snapshots = new ArrayDeque<>();
+    private final Map<Path, String> undoDescriptions = new HashMap<>();
     private final Path historyDirectory;
     private final Path indexFile;
     private ReadOnlyAddressBook expectedData;
@@ -63,12 +68,24 @@ class UndoSnapshotStorage {
      * The previous data comes from the model, including when the main data file does not yet exist.
      */
     public void saveChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException {
+        saveChange(previous, candidate, UndoHistory.MESSAGE_LEGACY_SUCCESS);
+    }
+
+    /**
+     * Saves feedback with the snapshot so its operation remains identifiable across recovery and restarts.
+     */
+    public void saveChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, String undoDescription)
+            throws IOException {
         requireOpen();
         requireNonNull(previous);
         requireNonNull(candidate);
+        requireNonNull(undoDescription);
+        if (undoDescription.isBlank()) {
+            throw new IllegalArgumentException("Undo description must not be blank");
+        }
         if (previous.getPersonList().equals(candidate.getPersonList())
                 && previous.getGroupList().equals(candidate.getGroupList())) {
-            saveTransition(candidate, List.copyOf(snapshots));
+            saveTransition(candidate, List.copyOf(snapshots), undoDescriptions);
             return;
         }
 
@@ -80,7 +97,9 @@ class UndoSnapshotStorage {
             if (nextSnapshots.size() > MAX_HISTORY_SIZE) {
                 nextSnapshots.removeFirst();
             }
-            saveTransition(candidate, nextSnapshots);
+            Map<Path, String> nextDescriptions = new HashMap<>(undoDescriptions);
+            nextDescriptions.put(snapshot, undoDescription);
+            saveTransition(candidate, nextSnapshots, nextDescriptions);
         } catch (IOException | RuntimeException e) {
             deleteSafely(snapshot);
             deleteEmptyHistoryDirectory();
@@ -88,11 +107,26 @@ class UndoSnapshotStorage {
         }
 
         snapshots.addLast(snapshot);
+        undoDescriptions.put(snapshot, undoDescription);
         if (snapshots.size() > MAX_HISTORY_SIZE) {
-            deleteSafely(snapshots.removeFirst());
+            Path evicted = snapshots.removeFirst();
+            undoDescriptions.remove(evicted);
+            deleteSafely(evicted);
         }
         assert snapshots.size() <= MAX_HISTORY_SIZE : "Undo history exceeds its capacity";
+        assert undoDescriptions.size() == snapshots.size() : "Each undo snapshot must have a description";
         logger.fine("Saved contact change with " + snapshots.size() + " undo snapshot(s).");
+    }
+
+    /**
+     * Returns the description belonging to the latest snapshot without consuming it.
+     */
+    public String getLatestUndoDescription() {
+        requireOpen();
+        if (snapshots.isEmpty()) {
+            throw new IllegalStateException("No undo snapshot is available to describe");
+        }
+        return undoDescriptions.getOrDefault(snapshots.getLast(), UndoHistory.MESSAGE_LEGACY_SUCCESS);
     }
 
     /**
@@ -106,7 +140,7 @@ class UndoSnapshotStorage {
         }
         List<Path> remainingSnapshots = new ArrayList<>(snapshots);
         remainingSnapshots.removeLast();
-        saveTransition(snapshot, remainingSnapshots);
+        saveTransition(snapshot, remainingSnapshots, undoDescriptions);
     }
 
     /**
@@ -137,7 +171,9 @@ class UndoSnapshotStorage {
             expectedData = latestReadSnapshot;
             latestReadSnapshot = null;
         }
-        deleteSafely(snapshots.removeLast());
+        Path consumed = snapshots.removeLast();
+        undoDescriptions.remove(consumed);
+        deleteSafely(consumed);
         logger.fine("Restored contact snapshot; " + snapshots.size() + " undo snapshot(s) remain.");
     }
 
@@ -185,6 +221,7 @@ class UndoSnapshotStorage {
         }
         isClosed = true;
         snapshots.clear();
+        undoDescriptions.clear();
     }
 
     /**
@@ -214,6 +251,8 @@ class UndoSnapshotStorage {
                 try {
                     if (addressBookStorage.readAddressBook(snapshot).isPresent()) {
                         snapshots.addLast(snapshot);
+                        undoDescriptions.put(snapshot, matching.orElseThrow()
+                                .getUndoDescription(snapshot.getFileName().toString()));
                     } else {
                         logger.warning("Skipping missing undo snapshot: " + snapshot);
                     }
@@ -232,11 +271,12 @@ class UndoSnapshotStorage {
     /**
      * Publishes both possible outcomes before replacing the collection; no fallible commit follows the save.
      */
-    private void saveTransition(ReadOnlyAddressBook candidate, List<Path> nextSnapshots) throws IOException {
+    private void saveTransition(ReadOnlyAddressBook candidate, List<Path> nextSnapshots,
+            Map<Path, String> nextDescriptions) throws IOException {
         JsonUndoHistory previous = createMetadata(calculateDataChecksum(), List.copyOf(snapshots));
         String nextChecksum = calculateChecksum(JsonUtil.toJsonString(new JsonSerializableAddressBook(candidate))
                 .getBytes(StandardCharsets.UTF_8));
-        JsonUndoHistory next = new JsonUndoHistory(nextChecksum, fileNames(nextSnapshots), previous);
+        JsonUndoHistory next = createMetadata(nextChecksum, nextSnapshots, nextDescriptions, previous);
         writeHistory(next);
         try {
             addressBookStorage.saveAddressBook(candidate);
@@ -261,11 +301,19 @@ class UndoSnapshotStorage {
      * Builds a standalone checkpoint without carrying forward older pending operations.
      */
     private JsonUndoHistory createMetadata(String checksum, List<Path> paths) {
-        return new JsonUndoHistory(checksum, fileNames(paths));
+        return createMetadata(checksum, paths, undoDescriptions, null);
     }
 
-    private List<String> fileNames(List<Path> paths) {
-        return paths.stream().map(path -> path.getFileName().toString()).toList();
+    /**
+     * Keeps descriptions bounded to the exact snapshots referenced by each journal state.
+     */
+    private JsonUndoHistory createMetadata(String checksum, List<Path> paths, Map<Path, String> descriptions,
+            JsonUndoHistory previous) {
+        Map<String, String> descriptionsByFileName = paths.stream().collect(Collectors.toMap(
+                path -> path.getFileName().toString(),
+                path -> descriptions.getOrDefault(path, UndoHistory.MESSAGE_LEGACY_SUCCESS)));
+        return new JsonUndoHistory(checksum, paths.stream().map(path -> path.getFileName().toString()).toList(),
+                descriptionsByFileName, previous);
     }
 
     /**

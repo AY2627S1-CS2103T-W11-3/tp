@@ -21,8 +21,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.AddressBook;
+import seedu.address.model.UndoHistory;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.PersonBuilder;
@@ -80,13 +84,14 @@ class UndoSnapshotStorageTest {
             states.add(book(new PersonBuilder(ALICE).withNote("State " + i).build()));
         }
         for (int i = 1; i < states.size(); i++) {
-            history.saveChange(states.get(i - 1), states.get(i));
+            history.saveChange(states.get(i - 1), states.get(i), "Undid edit number " + i + ".");
         }
         assertEquals(5, snapshotFiles().size());
         history.close();
         history = new UndoSnapshotStorage(dataStorage);
         for (int i = 5; i >= 1; i--) {
             assertEquals(states.get(i), history.readLatestSnapshot().orElseThrow());
+            assertEquals("Undid edit number " + (i + 1) + ".", history.getLatestUndoDescription());
             history.discardLatestSnapshot();
         }
         assertTrue(history.readLatestSnapshot().isEmpty());
@@ -137,13 +142,15 @@ class UndoSnapshotStorageTest {
     @Test
     public void saveChange_backupOrSaveFailure_preservesSavedDataAndHistory() throws Exception {
         for (boolean shouldFailBackup : new boolean[] {true, false}) {
-            history.saveChange(book(ALICE), book(BOB));
+            history.saveChange(book(ALICE), book(BOB), "Undid edit of Alice Pauline.");
             byte[] saved = Files.readAllBytes(dataFile);
             dataStorage.shouldFailBackup = shouldFailBackup;
             dataStorage.shouldFailSave = !shouldFailBackup;
-            assertThrows(IOException.class, () -> history.saveChange(book(BOB), new AddressBook()));
+            assertThrows(IOException.class, () -> history.saveChange(book(BOB), new AddressBook(),
+                    "Undid clear of Contacts."));
             assertArrayEquals(saved, Files.readAllBytes(dataFile));
             assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
+            assertEquals("Undid edit of Alice Pauline.", history.getLatestUndoDescription());
             assertEquals(1, snapshotFiles().size());
             dataStorage.shouldFailBackup = false;
             dataStorage.shouldFailSave = false;
@@ -183,17 +190,32 @@ class UndoSnapshotStorageTest {
 
     @Test
     public void newSession_reloadsHistoryAndDoesNotReuseConsumedSnapshots() throws Exception {
-        history.saveChange(book(ALICE), book(BOB));
+        history.saveChange(book(ALICE), book(BOB), "Undid edit of Alice Pauline.");
         history.close();
         history = new UndoSnapshotStorage(dataStorage);
         assertEquals(book(BOB), dataStorage.readAddressBook().orElseThrow());
         assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
+        assertEquals("Undid edit of Alice Pauline.", history.getLatestUndoDescription());
 
         history.saveRestoredSnapshot(book(ALICE));
         history.discardLatestSnapshot();
         history.close();
         history = new UndoSnapshotStorage(dataStorage);
         assertTrue(history.readLatestSnapshot().isEmpty());
+    }
+
+    @Test
+    public void newSession_legacyIndexWithoutDescriptions_restoresWithGenericFeedback() throws Exception {
+        history.saveChange(book(ALICE), book(BOB), "Undid edit of Alice Pauline.");
+        history.close();
+        Path index = snapshotFiles().getFirst().getParent().resolve("history.json");
+        ObjectNode metadata = JsonUtil.fromJsonString(Files.readString(index), ObjectNode.class);
+        metadata.remove("undoDescriptions");
+        JsonUtil.saveJsonFile(metadata, index);
+
+        history = new UndoSnapshotStorage(dataStorage);
+        assertEquals(book(ALICE), history.readLatestSnapshot().orElseThrow());
+        assertEquals(UndoHistory.MESSAGE_LEGACY_SUCCESS, history.getLatestUndoDescription());
     }
 
     @Test
@@ -212,15 +234,18 @@ class UndoSnapshotStorageTest {
             FailingAddressBookStorage interruptedStorage = new FailingAddressBookStorage(
                     testFolder.resolve(shouldInterruptAfterSave ? "committed.json" : "uncommitted.json"));
             UndoSnapshotStorage interrupted = new UndoSnapshotStorage(interruptedStorage);
-            interrupted.saveChange(book(ALICE), book(BOB));
+            interrupted.saveChange(book(ALICE), book(BOB), "Undid edit of Alice Pauline.");
             interruptedStorage.shouldInterruptBeforeSave = !shouldInterruptAfterSave;
             interruptedStorage.shouldInterruptAfterSave = shouldInterruptAfterSave;
-            assertThrows(AssertionError.class, () -> interrupted.saveChange(book(BOB), new AddressBook()));
+            assertThrows(AssertionError.class, () -> interrupted.saveChange(book(BOB), new AddressBook(),
+                    "Undid clear of Contacts."));
             byte[] saved = Files.readAllBytes(interruptedStorage.getAddressBookFilePath());
 
             history = new UndoSnapshotStorage(interruptedStorage);
             assertEquals(shouldInterruptAfterSave ? book(BOB) : book(ALICE),
                     history.readLatestSnapshot().orElseThrow());
+            assertEquals(shouldInterruptAfterSave ? "Undid clear of Contacts." : "Undid edit of Alice Pauline.",
+                    history.getLatestUndoDescription());
             assertArrayEquals(saved, Files.readAllBytes(interruptedStorage.getAddressBookFilePath()));
             history.close();
         }
@@ -228,8 +253,8 @@ class UndoSnapshotStorageTest {
 
     @Test
     public void newSession_interruptedUndo_doesNotReuseConsumedSnapshot() throws Exception {
-        history.saveChange(new AddressBook(), book(ALICE));
-        history.saveChange(book(ALICE), book(BOB));
+        history.saveChange(new AddressBook(), book(ALICE), "Undid add of Alice Pauline.");
+        history.saveChange(book(ALICE), book(BOB), "Undid edit of Alice Pauline.");
         AddressBook snapshot = new AddressBook(history.readLatestSnapshot().orElseThrow());
         dataStorage.shouldInterruptAfterSave = true;
         assertThrows(AssertionError.class, () -> history.saveRestoredSnapshot(snapshot));
@@ -238,6 +263,7 @@ class UndoSnapshotStorageTest {
         history = new UndoSnapshotStorage(dataStorage);
         assertEquals(book(ALICE), dataStorage.readAddressBook().orElseThrow());
         assertEquals(new AddressBook(), history.readLatestSnapshot().orElseThrow());
+        assertEquals("Undid add of Alice Pauline.", history.getLatestUndoDescription());
         assertEquals(1, snapshotFiles().size());
     }
 
