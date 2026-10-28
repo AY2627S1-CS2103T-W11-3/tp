@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.model.tag.Tag;
@@ -16,6 +17,7 @@ import seedu.address.model.tag.Tag;
  */
 public class Person {
 
+    private final UUID id;
     private final Name name;
 
     // Identity fields
@@ -35,16 +37,32 @@ public class Person {
     }
 
     /**
+     * Creates a contact with a new persistent ID and the given details.
      * Every field must be present and not null. The note may be {@link Note#empty()}.
      */
     public Person(Name name, Phone phone, Email email, Address address, Note note, Set<Tag> tags) {
-        requireAllNonNull(name, phone, email, address, note, tags);
+        this(UUID.randomUUID(), name, phone, email, address, note, tags);
+    }
+
+    /**
+     * Creates a contact with an existing persistent ID, such as when loading or editing a contact.
+     * Every field must be present and not null. The note may be {@link Note#empty()}.
+     *
+     * @throws NullPointerException If any argument is null.
+     */
+    public Person(UUID id, Name name, Phone phone, Email email, Address address, Note note, Set<Tag> tags) {
+        requireAllNonNull(id, name, phone, email, address, note, tags);
+        this.id = id;
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.address = address;
         this.note = note;
         this.tags.addAll(tags);
+    }
+
+    public UUID getId() {
+        return id;
     }
 
     public Name getName() {
@@ -94,8 +112,8 @@ public class Person {
     }
 
     /**
-     * Returns true if both persons have the same identity and data fields.
-     * This defines a stronger notion of equality between two persons.
+     * Returns true if both persons have the same contact details, regardless of their persistent IDs.
+     * Value equality remains separate from persistent identity so unchanged edits remain detectable.
      */
     @Override
     public boolean equals(Object other) {

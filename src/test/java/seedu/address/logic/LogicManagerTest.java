@@ -93,6 +93,23 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_editAndUndo_preserveContactId() throws Exception {
+        model.addPerson(ALICE);
+        logic.execute("edit 1 p/80000000");
+
+        assertEquals(ALICE.getId(), model.getAddressBook().getPersonList().getFirst().getId());
+        JsonAddressBookStorage saved = new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"));
+        assertEquals(ALICE.getId(), saved.readAddressBook().orElseThrow().getPersonList().getFirst().getId());
+
+        logic.execute("undo");
+
+        Person restored = model.getAddressBook().getPersonList().getFirst();
+        assertEquals(ALICE, restored);
+        assertEquals(ALICE.getId(), restored.getId());
+        assertEquals(ALICE.getId(), saved.readAddressBook().orElseThrow().getPersonList().getFirst().getId());
+    }
+
+    @Test
     public void execute_favouriteFilteredContact_copiesIndependentlyAndKeepsContext() throws Exception {
         Person target = new PersonBuilder(BOB).withNote("Met in class").build();
         model.addPerson(ALICE);
