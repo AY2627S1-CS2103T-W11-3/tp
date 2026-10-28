@@ -75,8 +75,9 @@ The **API** of this component is specified in [`Ui.java`](https://github.com/se-
 The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDisplay`, `PersonListPanel`, and `StatusBarFooter`. All of these, including `MainWindow`, inherit from the abstract `UiPart` class, which captures common behavior among classes that represent visible GUI parts.
 
 `CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and
-to navigate them with the Up and Down arrow keys. This history belongs to the UI component because it records command
-input rather than address-book data; it does not pass through `Logic`, `Model`, or `Storage`.
+to navigate them with the Up and Down arrow keys. Submitted commands and the unfinished draft are kept in memory only.
+This history belongs to the UI component because it records command input rather than address-book data; it does not
+pass through `Logic`, `Model`, or `Storage`.
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
@@ -700,6 +701,7 @@ Use a disposable app folder with its own `data/addressbook.json`, since these ch
 1. Type an unfinished command without pressing Enter. Press Up to recall the newest command, then press Down. Expect the unfinished command to be restored.
 1. Enter an invalid command such as `notACommand`, press `Enter`, then replace it with `list`, and press Enter. Press Up to recall `list`, then press Up again. Expect `notACommand`, confirming that failed commands are also recorded.
 1. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty, confirming that history from the previous launch was cleared.
+1. Enter a command containing disposable contact details, then force-stop the application. Confirm that the operating system's temporary directory contains no `addressbook-command-history-*.txt` file and that relaunching the application provides no command from the terminated session.
 
 ### Saving data
 
