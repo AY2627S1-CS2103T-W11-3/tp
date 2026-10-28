@@ -2,6 +2,7 @@ package seedu.address.logic.commands;
 
 import static java.util.Objects.requireNonNull;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,9 +29,23 @@ public class ViewCommand extends Command {
             "Invalid index. Please select an index shown in the contact list.";
     public static final String MESSAGE_NO_CONTACTS = "No contacts available to view.";
 
-    private final Index targetIndex;
+    private final BigInteger targetIndex;
 
+    /**
+     * Creates a command using an existing application index.
+     */
     public ViewCommand(Index targetIndex) {
+        this(BigInteger.valueOf(requireNonNull(targetIndex).getOneBased()));
+    }
+
+    /**
+     * Creates a command with a positive one-based index, including indices too large for an int.
+     */
+    public ViewCommand(BigInteger targetIndex) {
+        requireNonNull(targetIndex);
+        if (targetIndex.signum() <= 0) {
+            throw new IllegalArgumentException("Contact index must be positive");
+        }
         this.targetIndex = targetIndex;
     }
 
@@ -43,11 +58,11 @@ public class ViewCommand extends Command {
             throw new CommandException(MESSAGE_NO_CONTACTS);
         }
 
-        if (targetIndex.getZeroBased() >= lastShownList.size()) {
+        if (targetIndex.compareTo(BigInteger.valueOf(lastShownList.size())) > 0) {
             throw new CommandException(MESSAGE_INDEX_OUT_OF_RANGE);
         }
 
-        Person personToView = lastShownList.get(targetIndex.getZeroBased());
+        Person personToView = lastShownList.get(targetIndex.intValueExact() - 1);
         return new CommandResult(formatDetails(personToView));
     }
 

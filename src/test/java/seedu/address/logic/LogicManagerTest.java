@@ -11,7 +11,9 @@ import static seedu.address.logic.commands.CommandTestUtil.NAME_DESC_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.PHONE_DESC_AMY;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
+import static seedu.address.testutil.TypicalPersons.BENSON;
 import static seedu.address.testutil.TypicalPersons.BOB;
+import static seedu.address.testutil.TypicalPersons.DANIEL;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
@@ -218,6 +220,46 @@ public class LogicManagerTest {
         assertEquals(List.of(BOB), logic.getFilteredPersonList());
         logic.execute("tab contacts");
         assertEquals(List.of(ALICE, BOB), logic.getFilteredPersonList());
+    }
+
+    @Test
+    public void execute_editFromTagFilter_preservesMatchingContacts() throws Exception {
+        model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+        JsonAddressBookStorage addressBookStorage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("filter-edit.json"));
+        JsonUserPrefsStorage userPrefsStorage =
+                new JsonUserPrefsStorage(temporaryFolder.resolve("filter-edit-prefs.json"));
+        logic = new LogicManager(model, new StorageManager(addressBookStorage, userPrefsStorage));
+
+        logic.execute("filter t/friends");
+        assertEquals(List.of(ALICE, BENSON, DANIEL), logic.getFilteredPersonList());
+
+        logic.execute("edit 1 p/80001111");
+        Person editedAlice = new PersonBuilder(ALICE).withPhone("80001111").build();
+        assertEquals(List.of(editedAlice, BENSON, DANIEL), logic.getFilteredPersonList());
+
+        logic.execute("edit 1 t/family");
+        assertEquals(List.of(BENSON, DANIEL), logic.getFilteredPersonList());
+    }
+
+    @Test
+    public void execute_viewAfterFilter_keepsActiveFilter() throws Exception {
+        model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+        JsonAddressBookStorage addressBookStorage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("filter-view.json"));
+        JsonUserPrefsStorage userPrefsStorage =
+                new JsonUserPrefsStorage(temporaryFolder.resolve("filter-view-prefs.json"));
+        logic = new LogicManager(model, new StorageManager(addressBookStorage, userPrefsStorage));
+
+        logic.execute("filter t/owesMoney t/friends");
+        assertEquals("friends, owesMoney", logic.getActiveFilter());
+
+        logic.execute("view 1");
+        assertEquals("friends, owesMoney", logic.getActiveFilter());
+        assertEquals(List.of(BENSON), logic.getFilteredPersonList());
+
+        logic.execute("list");
+        assertEquals("", logic.getActiveFilter());
     }
 
     @Test
