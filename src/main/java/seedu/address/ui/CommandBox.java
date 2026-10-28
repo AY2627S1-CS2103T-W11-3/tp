@@ -1,9 +1,7 @@
 package seedu.address.ui;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -11,7 +9,6 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Region;
-import seedu.address.commons.core.LogsCenter;
 import seedu.address.logic.CommandAutocompleter;
 import seedu.address.logic.CommandWords;
 import seedu.address.logic.commands.CommandResult;
@@ -28,7 +25,6 @@ public class CommandBox extends UiPart<Region> {
 
     private final CommandExecutor commandExecutor;
     private final CommandHistory commandHistory;
-    private final Logger logger = LogsCenter.getLogger(getClass());
     private final CommandAutocompleter autocompleter;
     private boolean isUpdatingFromAutocomplete;
 
@@ -40,7 +36,7 @@ public class CommandBox extends UiPart<Region> {
      * and the default command-word list.
      */
     public CommandBox(CommandExecutor commandExecutor) {
-        this(commandExecutor, CommandWords.get(), CommandHistory.create());
+        this(commandExecutor, CommandWords.get(), new CommandHistory());
     }
 
     /**
@@ -48,7 +44,7 @@ public class CommandBox extends UiPart<Region> {
      * and command words used for Tab autocomplete.
      */
     public CommandBox(CommandExecutor commandExecutor, List<String> commandWords) {
-        this(commandExecutor, commandWords, CommandHistory.create());
+        this(commandExecutor, commandWords, new CommandHistory());
     }
 
     CommandBox(CommandExecutor commandExecutor, CommandHistory commandHistory) {
@@ -104,11 +100,7 @@ public class CommandBox extends UiPart<Region> {
             return;
         }
 
-        try {
-            commandHistory.add(commandText);
-        } catch (IOException e) {
-            logger.warning("Could not save command history: " + e.getMessage());
-        }
+        commandHistory.add(commandText);
 
         try {
             commandExecutor.execute(commandText);

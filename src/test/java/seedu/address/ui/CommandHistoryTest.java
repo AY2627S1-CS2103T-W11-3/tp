@@ -1,41 +1,37 @@
 package seedu.address.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public class CommandHistoryTest {
 
+    private static final int ABNORMAL_EXIT_CODE = 1;
+    private static final int PROCESS_TIMEOUT_SECONDS = 10;
+    private static final String HISTORY_FILE_PREFIX = "addressbook-command-history-";
+    private static final String SENSITIVE_COMMAND = "add n/Alice p/91234567 e/alice@example.com a/NUS";
+
     @TempDir
     private Path temporaryFolder;
 
     @Test
-    public void constructor_existingFile_clearsHistory() throws Exception {
-        Path historyFile = temporaryFolder.resolve("command-history.txt");
-        Files.writeString(historyFile, "command from an earlier launch");
-
-        new CommandHistory(historyFile);
-
-        assertEquals("", Files.readString(historyFile));
-    }
-
-    @Test
-    public void add_multipleCommands_storesCommandsAndNavigatesInBothDirections() throws Exception {
-        Path historyFile = temporaryFolder.resolve("command-history.txt");
-        CommandHistory commandHistory = new CommandHistory(historyFile);
+    public void add_multipleCommands_storesCommandsAndNavigatesInBothDirections() {
+        CommandHistory commandHistory = new CommandHistory();
 
         commandHistory.add("list");
         commandHistory.add("find Alex");
 
-        assertEquals(String.join(System.lineSeparator(), "list", "find Alex", ""),
-                Files.readString(historyFile));
         assertEquals("find Alex", commandHistory.getPreviousCommand("draft").orElseThrow());
         assertEquals("list", commandHistory.getPreviousCommand("find Alex").orElseThrow());
         assertTrue(commandHistory.getPreviousCommand("list").isEmpty());
@@ -45,22 +41,22 @@ public class CommandHistoryTest {
     }
 
     @Test
-    public void add_nullCommand_throwsNullPointerException() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+    public void add_nullCommand_throwsNullPointerException() {
+        CommandHistory commandHistory = new CommandHistory();
 
         assertThrows(NullPointerException.class, () -> commandHistory.add(null));
     }
 
     @Test
-    public void getPreviousCommand_nullCurrentCommandText_throwsNullPointerException() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+    public void getPreviousCommand_nullCurrentCommandText_throwsNullPointerException() {
+        CommandHistory commandHistory = new CommandHistory();
 
         assertThrows(NullPointerException.class, () -> commandHistory.getPreviousCommand(null));
     }
 
     @Test
-    public void getPreviousCommand_afterDraftRestored_savesLatestDraft() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+    public void getPreviousCommand_afterDraftRestored_savesLatestDraft() {
+        CommandHistory commandHistory = new CommandHistory();
         commandHistory.add("list");
         commandHistory.getPreviousCommand("initial draft");
         assertEquals("initial draft", commandHistory.getNextCommand().orElseThrow());
@@ -72,7 +68,7 @@ public class CommandHistoryTest {
 
     @Test
     public void getPreviousCommand_invalidCommandIndex_throwsAssertionError() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
 
         setNextCommandIndex(commandHistory, -1);
         assertThrows(AssertionError.class, () -> commandHistory.getPreviousCommand("draft"));
@@ -83,7 +79,7 @@ public class CommandHistoryTest {
 
     @Test
     public void getNextCommand_invalidCommandIndex_throwsAssertionError() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
 
         setNextCommandIndex(commandHistory, -1);
         assertThrows(AssertionError.class, commandHistory::getNextCommand);
@@ -93,8 +89,8 @@ public class CommandHistoryTest {
     }
 
     @Test
-    public void add_afterNavigating_resetsPositionToNewestCommand() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+    public void add_afterNavigating_resetsPositionToNewestCommand() {
+        CommandHistory commandHistory = new CommandHistory();
         commandHistory.add("list");
         commandHistory.add("find Alex");
         commandHistory.getPreviousCommand("");
@@ -106,27 +102,64 @@ public class CommandHistoryTest {
     }
 
     @Test
-    public void create_fileInitializationFails_usesInMemoryHistory() throws Exception {
-        CommandHistory commandHistory = CommandHistory.create(() -> {
-            throw new IOException("Unable to create temporary file");
-        });
+    public void add_abnormalExit_leavesNoReadableHistoryFile() throws Exception {
+        Path isolatedTemporaryFolder = Files.createDirectory(temporaryFolder.resolve("process-temp"));
+        Process process = startAbnormallyExitingHistoryProcess(isolatedTemporaryFolder);
 
-        commandHistory.add("list");
-
-        assertEquals("list", commandHistory.getPreviousCommand("").orElseThrow());
+        assertProcessExitedAbnormally(process);
+        assertNoReadableCommandHistory(isolatedTemporaryFolder);
     }
 
-    @Test
-    public void add_fileAppendFails_retainsCommandInMemory() throws Exception {
-        Path historyFile = temporaryFolder.resolve("command-history.txt");
-        CommandHistory commandHistory = new CommandHistory(historyFile);
-        commandHistory.add("list");
-        commandHistory.getPreviousCommand("");
-        Files.delete(historyFile);
+    private static void assertProcessExitedAbnormally(Process process) throws Exception {
+        boolean didTerminate = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        if (!didTerminate) {
+            process.destroyForcibly();
+        }
+        assertTrue(didTerminate, "Command history test process did not terminate");
 
-        assertThrows(IOException.class, () -> commandHistory.add("find Alex"));
+        String processOutput = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals(ABNORMAL_EXIT_CODE, process.exitValue(), processOutput);
+    }
 
-        assertEquals("find Alex", commandHistory.getPreviousCommand("").orElseThrow());
+    private static void assertNoReadableCommandHistory(Path temporaryFolder) throws Exception {
+        try (Stream<Path> paths = Files.walk(temporaryFolder)) {
+            List<Path> files = paths.filter(Files::isRegularFile).toList();
+            assertTrue(files.stream().noneMatch(CommandHistoryTest::isCommandHistoryFile));
+            for (Path file : files) {
+                String fileContents = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+                assertFalse(fileContents.contains(SENSITIVE_COMMAND));
+            }
+        }
+    }
+
+    private static Process startAbnormallyExitingHistoryProcess(Path temporaryFolder) throws Exception {
+        return new ProcessBuilder(
+                getJavaExecutable().toString(),
+                "-Djava.io.tmpdir=" + temporaryFolder.toAbsolutePath(),
+                "-cp",
+                getSubprocessClasspath(),
+                CommandHistoryAbnormalExitTestApp.class.getName(),
+                SENSITIVE_COMMAND)
+                .redirectErrorStream(true)
+                .start();
+    }
+
+    private static Path getJavaExecutable() {
+        String executableName = System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java";
+        return Path.of(System.getProperty("java.home"), "bin", executableName);
+    }
+
+    private static String getSubprocessClasspath() throws Exception {
+        String pathSeparator = System.getProperty("path.separator");
+        String mainClasses = Path.of(CommandHistory.class.getProtectionDomain().getCodeSource().getLocation().toURI())
+                .toString();
+        String testClasses = Path.of(CommandHistoryAbnormalExitTestApp.class.getProtectionDomain().getCodeSource()
+                .getLocation().toURI()).toString();
+        return String.join(pathSeparator, mainClasses, testClasses);
+    }
+
+    private static boolean isCommandHistoryFile(Path path) {
+        return path.getFileName().toString().startsWith(HISTORY_FILE_PREFIX);
     }
 
     private static void setNextCommandIndex(CommandHistory commandHistory, int nextCommandIndex) throws Exception {

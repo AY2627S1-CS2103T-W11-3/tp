@@ -202,34 +202,33 @@ correct an invalid command instead of typing it again. Empty input is ignored an
 Each `CommandHistory` maintains:
 
 * a `List<String>` containing the commands available for navigation during the current session;
-* a `nextCommandIndex` identifying the current navigation position; and
-* a UTF-8 temporary text file containing the same submitted commands, one command per line.
+* a `commandDraft` containing unfinished input saved when history navigation starts; and
+* a `nextCommandIndex` identifying the current navigation position.
 
-When a command is added, `CommandHistory` first appends it to the temporary file, then adds it to the in-memory list
-and moves `nextCommandIndex` to the position immediately after the newest command. This reset ensures that pressing Up
-after submitting a new command recalls that new command, even if the user had previously navigated to an older entry.
+When a command is added, `CommandHistory` adds it to the in-memory list and moves `nextCommandIndex` to the position
+immediately after the newest command. This reset ensures that pressing Up after submitting a new command recalls that
+new command, even if the user had previously navigated to an older entry.
 
 `CommandBox` handles navigation on JavaFX `KEY_PRESSED` events:
 
-- When the user presses Up, `getPreviousCommand` moves the index toward the beginning of the list and returns the
-   older command.
-- When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns the newer
-   command.
+- When the user first presses Up, `getPreviousCommand` saves the text in the command box as the draft, moves the index
+  toward the beginning of the list, and returns the older command.
+- When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns either the newer
+  command or the saved draft after the newest command.
 - `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
-- If the index is already at the oldest or newest available command, the corresponding method returns an empty
-   `Optional`; the input remains unchanged. Down does not clear the newest command or restore an earlier draft.
+- If the index is already at the oldest command or past the newest entry, the corresponding method returns an empty
+  `Optional`; the input remains unchanged.
 
 The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key
 behavior. Other key events are left untouched.
 
-The default `CommandHistory` constructor creates a new file in the operating system's temporary directory using
-`Files.createTempFile`. The file starts empty and is registered for deletion when the JVM exits normally. Every launch
-creates a different empty file, so command history is never restored in a later session. It is deliberately separate
-from `data/addressbook.json` and the `Storage` component. If appending to the temporary file fails, `CommandBox` logs a
-warning and still executes the submitted command; the failed append is not added to the navigable in-memory history.
+Command history remains only in memory. It does not pass through the `Storage` component or create a temporary history
+file, so neither a normal shutdown nor an abnormal process exit leaves a command-history file containing submitted
+commands. Every launch starts with an empty history.
 
-`CommandHistoryTest` verifies file reset, line-based storage, navigation order and boundaries, and cursor reset
-after a new command. `CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, and retention of a
+`CommandHistoryTest` verifies navigation order and boundaries, draft restoration, cursor reset after a new command,
+defensive checks, and the absence of a readable history file after an abnormal subprocess exit.
+`CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, draft restoration, and retention of a
 failed command on the JavaFX application thread. Run them with
 `./gradlew test --tests '*CommandHistoryTest' --tests '*CommandHistoryUiTest'`. The UI test is skipped on Linux when
 `DISPLAY` is absent; the non-UI history tests remain independent of the display.
@@ -697,7 +696,8 @@ Use a disposable app folder with its own `data/addressbook.json`, since these ch
 ### Command history
 
 1. Enter `list`, then enter `find Alex`. Press Up once and expect `find Alex`. Press Up again and expect `list`. Pressing Up again should leave `list` unchanged.
-1. From `list`, press Down once and expect `find Alex`. Pressing Down again should leave `find Alex` unchanged. The caret should be at the end of each recalled command.
+1. From `list`, press Down once and expect `find Alex`. Press Down again and expect the empty draft that was present before the first Up press. The caret should be at the end of each recalled command.
+1. Type an unfinished command without pressing Enter. Press Up to recall the newest command, then press Down. Expect the unfinished command to be restored.
 1. Enter an invalid command such as `notACommand`, press `Enter`, then replace it with `list`, and press Enter. Press Up to recall `list`, then press Up again. Expect `notACommand`, confirming that failed commands are also recorded.
 1. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty, confirming that history from the previous launch was cleared.
 

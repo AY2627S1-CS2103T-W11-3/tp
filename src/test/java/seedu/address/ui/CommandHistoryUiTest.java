@@ -3,15 +3,13 @@ package seedu.address.ui;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -23,9 +21,6 @@ import seedu.address.logic.parser.exceptions.ParseException;
 
 /** Tests command history interactions on machines with a graphical display. */
 public class CommandHistoryUiTest {
-
-    @TempDir
-    private Path temporaryFolder;
 
     @BeforeAll
     public static void startToolkit() throws Exception {
@@ -45,7 +40,7 @@ public class CommandHistoryUiTest {
 
     @Test
     public void arrowKeysPressed_navigatesCommandHistory() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
         runOnFxThread(() -> {
             CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"), commandHistory);
             TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
@@ -69,7 +64,7 @@ public class CommandHistoryUiTest {
 
     @Test
     public void arrowKeysPressed_afterDraftEntered_restoresDraftAfterNewestCommand() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
         commandHistory.add("list");
         runOnFxThread(() -> {
             CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"), commandHistory);
@@ -89,8 +84,34 @@ public class CommandHistoryUiTest {
     }
 
     @Test
+    public void commandEntered_commandWordsConstructor_recallsCommandFromMemory() throws Exception {
+        runOnFxThread(() -> {
+            CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"), List.of("list"));
+            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
+
+            enterCommand(input, "list");
+            input.fireEvent(createKeyEvent(KeyCode.UP));
+
+            assertEquals("list", input.getText());
+        });
+    }
+
+    @Test
+    public void commandEntered_defaultConstructor_recallsCommandFromMemory() throws Exception {
+        runOnFxThread(() -> {
+            CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"));
+            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
+
+            enterCommand(input, "list");
+            input.fireEvent(createKeyEvent(KeyCode.UP));
+
+            assertEquals("list", input.getText());
+        });
+    }
+
+    @Test
     public void failedCommandEntered_addsCommandToHistory() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
         runOnFxThread(() -> {
             CommandBox commandBox = new CommandBox(text -> {
                 throw new ParseException("Invalid command");
@@ -106,30 +127,8 @@ public class CommandHistoryUiTest {
     }
 
     @Test
-    public void historyFileAppendFails_executesAndRetainsCommand() throws Exception {
-        Path historyFile = temporaryFolder.resolve("command-history.txt");
-        CommandHistory commandHistory = new CommandHistory(historyFile);
-        Files.delete(historyFile);
-        AtomicInteger executionCount = new AtomicInteger();
-        runOnFxThread(() -> {
-            CommandBox commandBox = new CommandBox(text -> {
-                executionCount.incrementAndGet();
-                return new CommandResult("Success");
-            }, commandHistory);
-            TextField input = (TextField) commandBox.getRoot().lookup("#commandTextField");
-
-            enterCommand(input, "list");
-
-            assertEquals(1, executionCount.get());
-            assertEquals("", input.getText());
-            input.fireEvent(createKeyEvent(KeyCode.UP));
-            assertEquals("list", input.getText());
-        });
-    }
-
-    @Test
     public void nonArrowKeyPressed_doesNotNavigateHistory() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
         commandHistory.add("list");
         runOnFxThread(() -> {
             CommandBox commandBox = new CommandBox(text -> new CommandResult("Success"), commandHistory);
@@ -144,7 +143,7 @@ public class CommandHistoryUiTest {
 
     @Test
     public void emptyCommandEntered_isNotExecutedOrStored() throws Exception {
-        CommandHistory commandHistory = new CommandHistory(temporaryFolder.resolve("command-history.txt"));
+        CommandHistory commandHistory = new CommandHistory();
         AtomicInteger executionCount = new AtomicInteger();
         runOnFxThread(() -> {
             CommandBox commandBox = new CommandBox(text -> {

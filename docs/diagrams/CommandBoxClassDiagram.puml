@@ -19,7 +19,7 @@ class CommandBox {
 
 class CommandHistory {
     + add(command)
-    + getPreviousCommand()
+    + getPreviousCommand(currentCommandText)
     + getNextCommand()
 }
 
