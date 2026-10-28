@@ -17,10 +17,14 @@ public final class PreparedChange {
     private final String saveErrorMessage;
     private final SaveAction saveAction;
 
-    /** A fallible save that completes before the prepared change becomes visible. */
+    /**
+     * A fallible save that completes before the prepared change becomes visible.
+     */
     @FunctionalInterface
     public interface SaveAction {
-        /** Persists the candidate or throws before it is applied to the live model. */
+        /**
+         * Persists the candidate or throws before it is applied to the live model.
+         */
         void save() throws IOException;
     }
 
@@ -30,7 +34,9 @@ public final class PreparedChange {
         this(candidate, applyChange, result, saveErrorMessage, null);
     }
 
-    /** Creates a change with an optional save operation for commands requiring additional persistence. */
+    /**
+     * Creates a change with an optional save operation for commands requiring additional persistence.
+     */
     public PreparedChange(ReadOnlyAddressBook candidate, Runnable applyChange,
             CommandResult result, String saveErrorMessage, SaveAction saveAction) {
         this.candidate = requireNonNull(candidate);
@@ -48,7 +54,9 @@ public final class PreparedChange {
         return saveErrorMessage;
     }
 
-    /** Saves using the supplied operation, or the normal collection save when no override is needed. */
+    /**
+     * Saves using the supplied operation, or the normal collection save when no override is needed.
+     */
     public void save(SaveAction defaultSave) throws IOException {
         requireNonNull(defaultSave);
         if (saveAction == null) {

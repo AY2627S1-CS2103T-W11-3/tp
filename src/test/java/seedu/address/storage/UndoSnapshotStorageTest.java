@@ -208,18 +208,19 @@ class UndoSnapshotStorageTest {
 
     @Test
     public void newSession_interruptedSave_recoversHistoryMatchingSavedData() throws Exception {
-        for (boolean afterSave : new boolean[] {false, true}) {
+        for (boolean shouldInterruptAfterSave : new boolean[] {false, true}) {
             FailingAddressBookStorage interruptedStorage = new FailingAddressBookStorage(
-                    testFolder.resolve(afterSave ? "committed.json" : "uncommitted.json"));
+                    testFolder.resolve(shouldInterruptAfterSave ? "committed.json" : "uncommitted.json"));
             UndoSnapshotStorage interrupted = new UndoSnapshotStorage(interruptedStorage);
             interrupted.saveChange(book(ALICE), book(BOB));
-            interruptedStorage.interruptBeforeSave = !afterSave;
-            interruptedStorage.interruptAfterSave = afterSave;
+            interruptedStorage.shouldInterruptBeforeSave = !shouldInterruptAfterSave;
+            interruptedStorage.shouldInterruptAfterSave = shouldInterruptAfterSave;
             assertThrows(AssertionError.class, () -> interrupted.saveChange(book(BOB), new AddressBook()));
             byte[] saved = Files.readAllBytes(interruptedStorage.getAddressBookFilePath());
 
             history = new UndoSnapshotStorage(interruptedStorage);
-            assertEquals(afterSave ? book(BOB) : book(ALICE), history.readLatestSnapshot().orElseThrow());
+            assertEquals(shouldInterruptAfterSave ? book(BOB) : book(ALICE),
+                    history.readLatestSnapshot().orElseThrow());
             assertArrayEquals(saved, Files.readAllBytes(interruptedStorage.getAddressBookFilePath()));
             history.close();
         }
@@ -230,9 +231,9 @@ class UndoSnapshotStorageTest {
         history.saveChange(new AddressBook(), book(ALICE));
         history.saveChange(book(ALICE), book(BOB));
         AddressBook snapshot = new AddressBook(history.readLatestSnapshot().orElseThrow());
-        dataStorage.interruptAfterSave = true;
+        dataStorage.shouldInterruptAfterSave = true;
         assertThrows(AssertionError.class, () -> history.saveRestoredSnapshot(snapshot));
-        dataStorage.interruptAfterSave = false;
+        dataStorage.shouldInterruptAfterSave = false;
 
         history = new UndoSnapshotStorage(dataStorage);
         assertEquals(book(ALICE), dataStorage.readAddressBook().orElseThrow());
@@ -270,8 +271,8 @@ class UndoSnapshotStorageTest {
     private static class FailingAddressBookStorage extends JsonAddressBookStorage {
         private boolean shouldFailBackup;
         private boolean shouldFailSave;
-        private boolean interruptBeforeSave;
-        private boolean interruptAfterSave;
+        private boolean shouldInterruptBeforeSave;
+        private boolean shouldInterruptAfterSave;
 
         FailingAddressBookStorage(Path path) {
             super(path);
@@ -280,14 +281,14 @@ class UndoSnapshotStorageTest {
         @Override
         protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
             boolean isMainFile = destination.equals(getAddressBookFilePath().toAbsolutePath());
-            if (isMainFile && interruptBeforeSave) {
+            if (isMainFile && shouldInterruptBeforeSave) {
                 throw new AssertionError("Interrupted before replacing the collection");
             }
             if ((isMainFile && shouldFailSave) || (!isMainFile && shouldFailBackup)) {
                 throw new IOException("Injected replacement failure");
             }
             super.replaceAddressBook(temporaryFile, destination);
-            if (isMainFile && interruptAfterSave) {
+            if (isMainFile && shouldInterruptAfterSave) {
                 throw new AssertionError("Interrupted after replacing the collection");
             }
         }
