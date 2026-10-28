@@ -131,6 +131,13 @@
     -fx-text-fill: #010504;
 }
 
+.list-cell .favourite-star {
+    -fx-text-fill: #ffd700;
+    -fx-font-size: 18px;
+    -fx-opacity: 1;
+    -fx-padding: 0 0 0 6;
+}
+
 .cell_small_label {
     -fx-font-family: "Segoe UI";
     -fx-font-size: 13px;

@@ -1,6 +1,8 @@
 package seedu.address.model;
 
-/** The independently managed contact collections. */
+/**
+ * Identifies the independent Contacts and Favourites collections and their names for display.
+ */
 public enum ContactSection {
     CONTACTS("Contacts"),
     FAVOURITES("Favourites");

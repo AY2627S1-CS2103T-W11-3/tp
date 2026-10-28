@@ -5,7 +5,10 @@ import static java.util.Objects.requireNonNull;
 import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
 
-/** Selects the collection used by subsequent contact commands. */
+/**
+ * Selects the collection used by subsequent contact commands.
+ * Retains each section's search and display order for the current session without changing contact data.
+ */
 public class TabCommand extends Command {
     public static final String COMMAND_WORD = "tab";
     public static final String MESSAGE_USAGE = "tab: Switches the active contact collection.\n"
@@ -14,7 +17,12 @@ public class TabCommand extends Command {
 
     private final ContactSection section;
 
-    /** Creates a command selecting the given collection. */
+    /**
+     * Creates a command that selects the given contact section.
+     *
+     * @param section The section to display and use for subsequent contact commands.
+     * @throws NullPointerException If the section is null.
+     */
     public TabCommand(ContactSection section) {
         this.section = requireNonNull(section);
     }

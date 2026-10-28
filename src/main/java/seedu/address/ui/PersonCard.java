@@ -31,6 +31,8 @@ public class PersonCard extends UiPart<Region> {
     @FXML
     private Label name;
     @FXML
+    private Label favouriteStar;
+    @FXML
     private Label id;
     @FXML
     private Label phone;
@@ -44,13 +46,20 @@ public class PersonCard extends UiPart<Region> {
     private FlowPane tags;
 
     /**
-     * Creates a {@code PersonCard} with the given {@code Person} and index to display.
+     * Creates a contact card showing its details, displayed index, and optional favorite star.
+     * Hides the star and its layout space when the contact is not marked as a favorite.
+     *
+     * @param person The contact whose details are displayed.
+     * @param displayedIndex The one-based index shown in the current contact list.
+     * @param isFavourite Whether to display a star beside the contact's name.
      */
-    public PersonCard(Person person, int displayedIndex) {
+    public PersonCard(Person person, int displayedIndex, boolean isFavourite) {
         super(FXML);
         this.person = person;
         id.setText(displayedIndex + ". ");
         name.setText(person.getName().fullName);
+        favouriteStar.setVisible(isFavourite);
+        favouriteStar.setManaged(isFavourite);
         phone.setText(person.getPhone().value);
         address.setText(person.getAddress().value);
         email.setText(person.getEmail().value);

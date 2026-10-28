@@ -115,6 +115,24 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void isFavourite_matchesContactIdentityAndUpdatesAfterRemoval() throws Exception {
+        model.addPerson(ALICE);
+        assertFalse(logic.isFavourite(ALICE));
+        logic.execute("favourite 1");
+        logic.execute("tab favourites");
+        logic.execute("find Nobody");
+
+        assertTrue(logic.isFavourite(ALICE));
+        assertTrue(logic.isFavourite(new PersonBuilder(ALICE).withPhone(BOB.getPhone().value).build()));
+        assertTrue(logic.isFavourite(new PersonBuilder(ALICE).withEmail(BOB.getEmail().value).build()));
+        assertFalse(logic.isFavourite(BOB));
+
+        logic.execute("list");
+        logic.execute("delete 1");
+        assertFalse(logic.isFavourite(ALICE));
+    }
+
+    @Test
     public void execute_favouriteInvalidSelectionDuplicateAndWrongSection_reportDistinctErrors() throws Exception {
         assertThrows(CommandException.class, FavouriteCommand.MESSAGE_EMPTY_LIST, () -> logic.execute("favourite 1"));
         model.addPerson(ALICE);

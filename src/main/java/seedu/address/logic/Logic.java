@@ -15,10 +15,14 @@ import seedu.address.model.person.Person;
  * API of the Logic component
  */
 public interface Logic {
-    /** Returns the section used by contact commands. */
+    /**
+     * Returns the section used by contact commands.
+     */
     ContactSection getActiveSection();
 
-    /** Returns the data file for the active section. */
+    /**
+     * Returns the data file for the active section.
+     */
     Path getActiveDataFilePath();
 
     /**
@@ -35,8 +39,18 @@ public interface Logic {
      */
     List<String> getCommandWords();
 
-    /** Returns an unmodifiable view of the filtered list of persons */
+    /**
+     * Returns an unmodifiable view of the active section's displayed contacts.
+     */
     ObservableList<Person> getFilteredPersonList();
+
+    /**
+     * Returns whether a contact in Favourites shares the given contact's phone number or email address.
+     * Searches the complete collection, regardless of the active section or its search filter.
+     *
+     * @param person The contact to check for a matching favorite.
+     */
+    boolean isFavourite(Person person);
 
     /**
      * Returns the user prefs' GUI settings.

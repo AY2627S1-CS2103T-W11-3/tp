@@ -1,5 +1,6 @@
 package seedu.address.ui;
 
+import java.util.function.Predicate;
 import java.util.logging.Logger;
 
 import javafx.collections.ObservableList;
@@ -17,6 +18,7 @@ import seedu.address.model.person.Person;
 public class PersonListPanel extends UiPart<Region> {
     private static final String FXML = "PersonListPanel.fxml";
     private final Logger logger = LogsCenter.getLogger(PersonListPanel.class);
+    private Predicate<Person> isFavourite = person -> false;
 
     @FXML
     private ListView<Person> personListView;
@@ -31,9 +33,17 @@ public class PersonListPanel extends UiPart<Region> {
         personListView.setCellFactory(listView -> new PersonListViewCell());
     }
 
-    /** Displays the active collection without rebuilding the panel. */
-    public void setPersonList(ObservableList<Person> persons) {
+    /**
+     * Displays the given contacts and refreshes their favorite indicators, including unchanged cards.
+     * The predicate determines which contacts display a star; this panel does not check collection membership.
+     *
+     * @param persons The observable contacts to display in their current order.
+     * @param isFavourite The predicate that returns true for contacts whose cards should display a star.
+     */
+    public void setPersonList(ObservableList<Person> persons, Predicate<Person> isFavourite) {
+        this.isFavourite = isFavourite;
         personListView.setItems(persons);
+        personListView.refresh();
     }
 
     /**
@@ -52,7 +62,7 @@ public class PersonListPanel extends UiPart<Region> {
                 setGraphic(null);
                 setText(null);
             } else {
-                setGraphic(new PersonCard(person, getIndex() + 1).getRoot());
+                setGraphic(new PersonCard(person, getIndex() + 1, isFavourite.test(person)).getRoot());
             }
         }
     }

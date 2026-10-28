@@ -10,7 +10,10 @@ import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
 import seedu.address.model.person.Person;
 
-/** Copies a displayed contact into the independent favorites collection. */
+/**
+ * Copies a contact from the displayed Contacts list into the independent Favourites collection.
+ * Keeps Contacts selected and preserves its current filter and display order.
+ */
 public class FavouriteCommand extends Command {
     public static final String COMMAND_WORD = "favourite";
     public static final String MESSAGE_USAGE = "favourite: Copies a displayed contact into Favourites.\n"
@@ -25,7 +28,14 @@ public class FavouriteCommand extends Command {
 
     private final BigInteger targetIndex;
 
-    /** Creates a command for a positive, one-based displayed index. */
+    /**
+     * Creates a command that copies the contact at the given one-based displayed index.
+     * Checks the displayed list's bounds when the command executes.
+     *
+     * @param targetIndex The positive index in the displayed Contacts list.
+     * @throws NullPointerException If the index is null.
+     * @throws IllegalArgumentException If the index is zero or negative.
+     */
     public FavouriteCommand(BigInteger targetIndex) {
         this.targetIndex = requireNonNull(targetIndex);
         if (targetIndex.signum() <= 0) {
