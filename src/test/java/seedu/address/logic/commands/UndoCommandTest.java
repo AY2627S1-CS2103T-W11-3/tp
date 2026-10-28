@@ -6,7 +6,6 @@ import static seedu.address.testutil.TypicalPersons.BOB;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -15,9 +14,9 @@ import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
-import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UndoHistory;
 
 public class UndoCommandTest {
@@ -30,7 +29,7 @@ public class UndoCommandTest {
         model.updateFilteredPersonList(unused -> false);
         AddressBook before = new AddressBook(model.getAddressBook());
         AddressBook snapshot = getTypicalAddressBook();
-        history.snapshot = Optional.of(snapshot);
+        history.snapshot = Optional.of(new ContactSnapshot(snapshot, new AddressBook()));
         history.description = "Undid clear of Contacts.";
 
         PreparedChange change = new UndoCommand(history).prepare(model);
@@ -49,8 +48,6 @@ public class UndoCommandTest {
         assertEquals(snapshot, model.getAddressBook());
         assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
         assertEquals(1, history.discardCount);
-        assertEquals(ContactSection.CONTACTS, history.readSection);
-        assertEquals(ContactSection.CONTACTS, history.discardedSection);
     }
 
     @Test
@@ -65,21 +62,21 @@ public class UndoCommandTest {
     }
 
     @Test
-    public void prepare_favourites_restoresOnlyFavouritesAndConsumesTheirHistory() throws Exception {
+    public void prepare_favourites_restoresBothCollectionsAndKeepsActiveSection() throws Exception {
         model.addPerson(BOB);
         model.setActiveSection(ContactSection.FAVOURITES);
-        AddressBook snapshot = getTypicalAddressBook();
-        history.snapshot = Optional.of(snapshot);
+        AddressBook favourites = getTypicalAddressBook();
+        history.snapshot = Optional.of(new ContactSnapshot(new AddressBook(), favourites));
         PreparedChange change = new UndoCommand(history).prepare(model);
-        assertEquals(ContactSection.FAVOURITES, history.readSection);
         assertEquals(new AddressBook(), model.getAddressBook());
         assertEquals(0, history.discardCount);
 
         change.apply();
-        assertEquals(snapshot, model.getAddressBook());
-        assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
-        assertEquals(List.of(BOB), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
-        assertEquals(ContactSection.FAVOURITES, history.discardedSection);
+
+        assertEquals(favourites, model.getAddressBook());
+        assertEquals(favourites.getPersonList(), model.getFilteredPersonList());
+        assertEquals(new AddressBook(), model.getAddressBook(ContactSection.CONTACTS));
+        assertEquals(ContactSection.FAVOURITES, model.getActiveSection());
         assertEquals(1, history.discardCount);
     }
 
@@ -94,17 +91,14 @@ public class UndoCommandTest {
     }
 
     private static class UndoHistoryStub implements UndoHistory {
-        private Optional<ReadOnlyAddressBook> snapshot = Optional.empty();
+        private Optional<ContactSnapshot> snapshot = Optional.empty();
         private DataLoadingException failure;
         private int discardCount;
         private int saveCount;
         private String description = UndoCommand.MESSAGE_SUCCESS;
-        private ContactSection readSection;
-        private ContactSection discardedSection;
 
         @Override
-        public Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException {
-            readSection = section;
+        public Optional<ContactSnapshot> readLatestSnapshot() throws DataLoadingException {
             if (failure != null) {
                 throw failure;
             }
@@ -112,21 +106,18 @@ public class UndoCommandTest {
         }
 
         @Override
-        public String getLatestUndoDescription(ContactSection section) {
-            assertEquals(readSection, section);
+        public String getLatestUndoDescription() {
             return description;
         }
 
         @Override
-        public void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) {
-            assertEquals(readSection, section);
+        public void saveRestoredSnapshot(ContactSnapshot snapshot) {
             assertEquals(this.snapshot.orElseThrow(), snapshot);
             saveCount++;
         }
 
         @Override
-        public void discardLatestSnapshot(ContactSection section) {
-            discardedSection = section;
+        public void discardLatestSnapshot() {
             discardCount++;
             snapshot = Optional.empty();
         }

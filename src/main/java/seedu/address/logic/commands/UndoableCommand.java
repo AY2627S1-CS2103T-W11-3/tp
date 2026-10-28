@@ -4,9 +4,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.Set;
 
-import seedu.address.model.AddressBook;
 import seedu.address.model.ContactSection;
-import seedu.address.model.Model;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Person;
 
@@ -37,11 +35,4 @@ public abstract class UndoableCommand extends Command {
                 .orElse("Undid " + operation + " in " + section.getDisplayName() + ".");
     }
 
-    /**
-     * Copies the changed section's original data before publishing a command's changes to the live model.
-     */
-    public final ReadOnlyAddressBook createSnapshot(Model model, ContactSection section) {
-        requireNonNull(model);
-        return new AddressBook(model.getAddressBook(requireNonNull(section)));
-    }
 }

@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import seedu.address.commons.exceptions.DataLoadingException;
-import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.ReadOnlyUserPrefs;
 import seedu.address.model.UndoHistory;
@@ -58,14 +58,14 @@ public interface Storage extends UndoHistory {
     void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException;
 
     /**
-     * Saves a section's change with its previous data and operation description in that section's undo history.
+     * Saves one operation with the before-state of both collections in shared undo history.
      * Identical data is saved without adding history. A failed backup or save preserves saved data and history.
      */
-    void saveUndoableChange(ContactSection section, ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate,
+    void saveUndoableChange(ContactSnapshot previous, ContactSnapshot candidate,
             String undoDescription) throws IOException;
 
     /**
-     * Ends the undo session and finalizes its recovery metadata, logging persistence failures.
+     * Closes undo storage while preserving history already saved with each successful operation.
      */
     void closeUndoHistory();
 

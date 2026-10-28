@@ -17,9 +17,10 @@ import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.Model;
-import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.StagedModel;
+import seedu.address.model.UndoHistory;
 import seedu.address.model.person.Person;
 import seedu.address.storage.Storage;
 
@@ -52,9 +53,7 @@ public class LogicManager implements Logic {
 
         Command command = addressBookParser.parseCommand(commandText);
         if (command instanceof StagedCommand stagedCommand) {
-            ReadOnlyAddressBook snapshot = command instanceof UndoableCommand undoableCommand
-                    ? undoableCommand.createSnapshot(model, model.getActiveSection()) : null;
-            return executeStaged(stagedCommand, snapshot);
+            return executeStaged(stagedCommand);
         }
         StagedModel stagedModel = new StagedModel(model);
         CommandResult commandResult = command.execute(stagedModel);
@@ -62,12 +61,13 @@ public class LogicManager implements Logic {
         if (stagedModel.hasContactChanges()) {
             try {
                 ContactSection changedSection = stagedModel.getChangedSection();
-                ReadOnlyAddressBook snapshot = command instanceof UndoableCommand undoableCommand
-                        ? undoableCommand.createSnapshot(model, changedSection) : null;
-                ReadOnlyAddressBook candidate = stagedModel.getAddressBook(changedSection);
+                ContactSnapshot previous = capture(model);
+                ContactSnapshot candidate = capture(stagedModel);
                 String description = command instanceof UndoableCommand undoableCommand
-                        ? undoableCommand.describeUndo(snapshot, candidate, changedSection) : null;
-                saveChange(changedSection, snapshot, candidate, description);
+                        ? undoableCommand.describeUndo(previous.getAddressBook(changedSection),
+                                candidate.getAddressBook(changedSection), changedSection)
+                        : UndoHistory.MESSAGE_SUCCESS;
+                storage.saveUndoableChange(previous, candidate, description);
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
@@ -78,14 +78,23 @@ public class LogicManager implements Logic {
         return commandResult;
     }
 
-    /** Saves a prepared change before applying it to the observable model. */
-    private CommandResult executeStaged(StagedCommand command, ReadOnlyAddressBook snapshot) throws CommandException {
+    /**
+     * Saves a prepared operation and both collections' history before changing the observable model.
+     */
+    private CommandResult executeStaged(StagedCommand command) throws CommandException {
         PreparedChange change = command.prepare(model);
         ContactSection section = model.getActiveSection();
+        ContactSnapshot previous = capture(model);
+        ContactSnapshot candidate = new ContactSnapshot(
+                section == ContactSection.CONTACTS ? change.getCandidate()
+                        : model.getAddressBook(ContactSection.CONTACTS),
+                section == ContactSection.FAVOURITES ? change.getCandidate()
+                        : model.getAddressBook(ContactSection.FAVOURITES));
         String description = command instanceof UndoableCommand undoableCommand
-                ? undoableCommand.describeUndo(snapshot, change.getCandidate(), section) : null;
+                ? undoableCommand.describeUndo(previous.getAddressBook(section), change.getCandidate(), section)
+                : UndoHistory.MESSAGE_SUCCESS;
         try {
-            change.save(() -> saveChange(section, snapshot, change.getCandidate(), description));
+            change.save(() -> storage.saveUndoableChange(previous, candidate, description));
         } catch (IOException e) {
             logger.warning("Could not save prepared contact changes: " + e.getMessage());
             throw new CommandException(change.getSaveErrorMessage(), e);
@@ -94,17 +103,11 @@ public class LogicManager implements Logic {
     }
 
     /**
-     * Saves the changed collection and registers its previous data only after a successful save.
+     * Copies the complete data of both sections without including their current search or sorting.
      */
-    private void saveChange(ContactSection section, ReadOnlyAddressBook snapshot, ReadOnlyAddressBook candidate,
-            String description) throws IOException {
-        if (snapshot != null) {
-            storage.saveUndoableChange(section, snapshot, candidate, description);
-        } else if (section == ContactSection.FAVOURITES) {
-            storage.saveFavourites(candidate);
-        } else {
-            storage.saveAddressBook(candidate);
-        }
+    private ContactSnapshot capture(Model source) {
+        return new ContactSnapshot(source.getAddressBook(ContactSection.CONTACTS),
+                source.getAddressBook(ContactSection.FAVOURITES));
     }
 
     @Override

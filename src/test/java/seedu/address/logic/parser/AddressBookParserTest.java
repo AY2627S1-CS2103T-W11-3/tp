@@ -33,7 +33,7 @@ import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.ViewCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.ContactSection;
-import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.UndoHistory;
 import seedu.address.model.person.Note;
 import seedu.address.model.person.Person;
@@ -48,22 +48,22 @@ public class AddressBookParserTest {
 
     private final AddressBookParser parser = new AddressBookParser(new UndoHistory() {
         @Override
-        public Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) {
+        public Optional<ContactSnapshot> readLatestSnapshot() {
             throw new AssertionError("Parsing must not read undo history");
         }
 
         @Override
-        public String getLatestUndoDescription(ContactSection section) {
+        public String getLatestUndoDescription() {
             throw new AssertionError("Parsing must not read undo descriptions");
         }
 
         @Override
-        public void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) {
+        public void saveRestoredSnapshot(ContactSnapshot snapshot) {
             throw new AssertionError("Parsing must not save undo history");
         }
 
         @Override
-        public void discardLatestSnapshot(ContactSection section) {
+        public void discardLatestSnapshot() {
             throw new AssertionError("Parsing must not consume undo history");
         }
     });

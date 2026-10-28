@@ -4,423 +4,287 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.commons.util.JsonUtil;
-import seedu.address.model.AddressBook;
-import seedu.address.model.ReadOnlyAddressBook;
-import seedu.address.model.UndoHistory;
+import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 
 /**
- * Saves contact changes with file-backed undo snapshots and a recoverable before/after journal.
- * Callers must publish changes to the live model only after saving or restoring succeeds.
- * Instances are used synchronously and must be closed when their session ends.
+ * Persists one bounded undo history for Contacts and Favourites in chronological order.
+ * Data and history are published together; callers update the live model only after saving succeeds.
  */
 class UndoSnapshotStorage {
     public static final int MAX_HISTORY_SIZE = 5;
-
     private static final Logger logger = LogsCenter.getLogger(UndoSnapshotStorage.class);
 
-    private final JsonAddressBookStorage addressBookStorage;
-    private final Deque<Path> snapshots = new ArrayDeque<>();
-    private final Map<Path, String> undoDescriptions = new HashMap<>();
-    private final Path historyDirectory;
-    private final Path indexFile;
-    private ReadOnlyAddressBook expectedData;
-    private ReadOnlyAddressBook latestReadSnapshot;
+    private final JsonAddressBookStorage contactsStorage;
+    private final JsonAddressBookStorage favouritesStorage;
+    private final CollectionSaveTransaction transaction;
+    private List<Entry> entries = new ArrayList<>();
+    private ContactSnapshot latestReadSnapshot;
+    private IOException recoveryFailure;
     private boolean isClosed;
 
     /**
-     * Loads matching history or recovers an interrupted save without changing the collection file.
+     * Recovers an interrupted operation before loading history matching both saved collection files.
+     * Unrecoverable saves block subsequent data access rather than exposing partially restored collections.
      */
-    public UndoSnapshotStorage(JsonAddressBookStorage addressBookStorage) {
-        this.addressBookStorage = requireNonNull(addressBookStorage);
-        Path dataFile = addressBookStorage.getAddressBookFilePath().toAbsolutePath();
-        historyDirectory = dataFile.resolveSibling("." + dataFile.getFileName() + "-undo");
-        indexFile = historyDirectory.resolve("history.json");
-        loadHistory();
+    UndoSnapshotStorage(JsonAddressBookStorage contactsStorage, JsonAddressBookStorage favouritesStorage) {
+        this.contactsStorage = requireNonNull(contactsStorage);
+        this.favouritesStorage = requireNonNull(favouritesStorage);
+        transaction = new CollectionSaveTransaction(contactsStorage, favouritesStorage);
+        try {
+            transaction.recover();
+        } catch (IOException e) {
+            recoveryFailure = e;
+            return;
+        }
+        try {
+            if (Files.exists(transaction.getHistoryFile())) {
+                Journal journal = readJournal();
+                if (checksum(contactsStorage.getAddressBookFilePath()).equals(journal.contactsChecksum)
+                        && checksum(favouritesStorage.getAddressBookFilePath()).equals(journal.favouritesChecksum)) {
+                    entries = new ArrayList<>(journal.entries);
+                } else {
+                    logger.warning("Ignoring shared undo history because saved contacts changed externally");
+                }
+            }
+        } catch (IOException e) {
+            logger.warning("Could not load shared undo history: " + e.getMessage());
+        }
     }
 
     /**
-     * Backs up the previous contacts, then saves the candidate before registering its undo entry.
-     * Identical contact data is saved without adding history, allowing recovery from an invalid data file.
-     * A failed backup or save leaves existing history untouched.
-     * The previous data comes from the model, including when the main data file does not yet exist.
+     * Blocks access after failed startup recovery or after this storage instance has closed.
+     *
+     * @throws IOException If an interrupted operation could not be recovered.
      */
-    public void saveChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate) throws IOException {
-        saveChange(previous, candidate, UndoHistory.MESSAGE_LEGACY_SUCCESS);
+    void requireAvailable() throws IOException {
+        if (isClosed) {
+            throw new IllegalStateException("Undo storage session is closed");
+        }
+        if (recoveryFailure != null) {
+            throw new IOException("Could not recover the pending collection save", recoveryFailure);
+        }
     }
 
     /**
-     * Saves feedback with the snapshot so its operation remains identifiable across recovery and restarts.
+     * Saves both candidate collections and records one before-state when their data changes.
+     * Identical data is still saved without consuming undo capacity.
+     *
+     * @throws IOException If data or history cannot be saved consistently.
      */
-    public void saveChange(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, String undoDescription)
-            throws IOException {
-        requireOpen();
+    void saveChange(ContactSnapshot previous, ContactSnapshot candidate, String description) throws IOException {
+        requireAvailable();
         requireNonNull(previous);
         requireNonNull(candidate);
-        requireNonNull(undoDescription);
-        if (undoDescription.isBlank()) {
+        requireNonNull(description);
+        if (description.isBlank()) {
             throw new IllegalArgumentException("Undo description must not be blank");
         }
-        if (previous.getPersonList().equals(candidate.getPersonList())
-                && previous.getGroupList().equals(candidate.getGroupList())) {
-            saveTransition(candidate, List.copyOf(snapshots), undoDescriptions);
-            return;
-        }
-
-        Path snapshot = createSnapshotFile();
-        try {
-            addressBookStorage.saveAddressBook(previous, snapshot);
-            List<Path> nextSnapshots = new ArrayList<>(snapshots);
-            nextSnapshots.add(snapshot);
-            if (nextSnapshots.size() > MAX_HISTORY_SIZE) {
-                nextSnapshots.removeFirst();
+        List<Entry> next = new ArrayList<>(entries);
+        if (!previous.equals(candidate)) {
+            next.add(new Entry(previous, description));
+            if (next.size() > MAX_HISTORY_SIZE) {
+                next.removeFirst();
             }
-            Map<Path, String> nextDescriptions = new HashMap<>(undoDescriptions);
-            nextDescriptions.put(snapshot, undoDescription);
-            saveTransition(candidate, nextSnapshots, nextDescriptions);
-        } catch (IOException | RuntimeException e) {
-            deleteSafely(snapshot);
-            deleteEmptyHistoryDirectory();
-            throw e;
         }
-
-        snapshots.addLast(snapshot);
-        undoDescriptions.put(snapshot, undoDescription);
-        if (snapshots.size() > MAX_HISTORY_SIZE) {
-            Path evicted = snapshots.removeFirst();
-            undoDescriptions.remove(evicted);
-            deleteSafely(evicted);
-        }
-        assert snapshots.size() <= MAX_HISTORY_SIZE : "Undo history exceeds its capacity";
-        assert undoDescriptions.size() == snapshots.size() : "Each undo snapshot must have a description";
-        logger.fine("Saved contact change with " + snapshots.size() + " undo snapshot(s).");
-    }
-
-    /**
-     * Returns the description belonging to the latest snapshot without consuming it.
-     */
-    public String getLatestUndoDescription() {
-        requireOpen();
-        if (snapshots.isEmpty()) {
-            throw new IllegalStateException("No undo snapshot is available to describe");
-        }
-        return undoDescriptions.getOrDefault(snapshots.getLast(), UndoHistory.MESSAGE_LEGACY_SUCCESS);
-    }
-
-    /**
-     * Saves a prepared restoration and journals consumption before the live model can be changed.
-     */
-    public void saveRestoredSnapshot(ReadOnlyAddressBook snapshot) throws IOException {
-        requireOpen();
-        requireNonNull(snapshot);
-        if (snapshots.isEmpty() || !new AddressBook(snapshot).equals(latestReadSnapshot)) {
-            throw new IllegalStateException("Read the latest undo snapshot before saving its restoration");
-        }
-        List<Path> remainingSnapshots = new ArrayList<>(snapshots);
-        remainingSnapshots.removeLast();
-        saveTransition(snapshot, remainingSnapshots, undoDescriptions);
-    }
-
-    /**
-     * Reads this collection's latest snapshot without consuming it.
-     */
-    public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
-        requireOpen();
-        if (snapshots.isEmpty()) {
-            return Optional.empty();
-        }
-
-        Path snapshot = snapshots.getLast();
-        ReadOnlyAddressBook restored = addressBookStorage.readAddressBook(snapshot)
-                .orElseThrow(() -> new DataLoadingException(new NoSuchFileException(snapshot.toString())));
-        latestReadSnapshot = restored;
-        return Optional.of(restored);
-    }
-
-    /**
-     * Consumes this collection's latest snapshot after a successful save.
-     */
-    public void discardLatestSnapshot() {
-        requireOpen();
-        if (snapshots.isEmpty()) {
-            throw new IllegalStateException("No undo snapshot is available to consume.");
-        }
-        if (latestReadSnapshot != null) {
-            expectedData = latestReadSnapshot;
-            latestReadSnapshot = null;
-        }
-        Path consumed = snapshots.removeLast();
-        undoDescriptions.remove(consumed);
-        deleteSafely(consumed);
-        logger.fine("Restored contact snapshot; " + snapshots.size() + " undo snapshot(s) remain.");
-    }
-
-    /**
-     * Creates a backup file in a lazily allocated directory specific to this collection's file.
-     */
-    private Path createSnapshotFile() throws IOException {
-        Files.createDirectories(historyDirectory);
-        try {
-            return Files.createTempFile(historyDirectory, "undo-", ".json");
-        } catch (IOException e) {
-            deleteEmptyHistoryDirectory();
-            throw e;
-        }
-    }
-
-    /**
-     * Removes an unused history directory after a failed first backup or save.
-     */
-    private void deleteEmptyHistoryDirectory() {
-        if (!snapshots.isEmpty()) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(historyDirectory);
-        } catch (DirectoryNotEmptyException e) {
-            logger.fine("Retaining undo directory containing recovery files: " + historyDirectory);
-        } catch (IOException e) {
-            logger.warning("Could not remove unused undo directory: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Finalizes the history index on normal shutdown and releases this instance without deleting snapshots.
-     * Persistence failures are logged; the collection data is never changed during shutdown.
-     */
-    public void close() {
-        if (isClosed) {
-            return;
-        }
-        try {
-            persistHistory();
-        } catch (IOException e) {
-            logger.warning("Could not persist undo history in " + historyDirectory + ": " + e.getMessage());
-        }
-        isClosed = true;
-        snapshots.clear();
-        undoDescriptions.clear();
-    }
-
-    /**
-     * Reloads only validated history whose checksum matches the current collection file.
-     */
-    private void loadHistory() {
-        try {
-            if (Files.notExists(indexFile)) {
-                if (Files.isDirectory(historyDirectory)) {
-                    cleanUnusedFiles();
-                }
-                return;
-            }
-            JsonUndoHistory metadata = JsonUtil.fromJsonString(Files.readString(indexFile), JsonUndoHistory.class);
-            if (metadata == null) {
-                throw new IOException("Expected undo history metadata, but found null");
-            }
-            Optional<JsonUndoHistory> matching = metadata.findMatchingData(calculateDataChecksum());
-            if (matching.isEmpty()) {
-                logger.warning("Ignoring undo history for changed data file: "
-                        + addressBookStorage.getAddressBookFilePath());
-                return;
-            }
-            List<Path> restoredSnapshots = matching.orElseThrow().resolveSnapshots(historyDirectory);
-            expectedData = addressBookStorage.readAddressBook().orElseGet(AddressBook::new);
-            for (Path snapshot : restoredSnapshots) {
-                try {
-                    if (addressBookStorage.readAddressBook(snapshot).isPresent()) {
-                        snapshots.addLast(snapshot);
-                        undoDescriptions.put(snapshot, matching.orElseThrow()
-                                .getUndoDescription(snapshot.getFileName().toString()));
-                    } else {
-                        logger.warning("Skipping missing undo snapshot: " + snapshot);
-                    }
-                } catch (DataLoadingException e) {
-                    logger.warning("Skipping unreadable undo snapshot " + snapshot + ": " + e.getMessage());
-                }
-            }
-            assert snapshots.size() <= MAX_HISTORY_SIZE : "Loaded undo history exceeds its capacity";
-            logger.fine("Loaded " + snapshots.size() + " undo snapshot(s) from " + historyDirectory);
-            cleanUnusedFiles();
-        } catch (DataLoadingException | IOException e) {
-            logger.warning("Could not load undo history from " + indexFile + ": " + e.getMessage());
-        }
-    }
-
-    /**
-     * Publishes both possible outcomes before replacing the collection; no fallible commit follows the save.
-     */
-    private void saveTransition(ReadOnlyAddressBook candidate, List<Path> nextSnapshots,
-            Map<Path, String> nextDescriptions) throws IOException {
-        JsonUndoHistory previous = createMetadata(calculateDataChecksum(), List.copyOf(snapshots));
-        String nextChecksum = calculateChecksum(JsonUtil.toJsonString(new JsonSerializableAddressBook(candidate))
-                .getBytes(StandardCharsets.UTF_8));
-        JsonUndoHistory next = createMetadata(nextChecksum, nextSnapshots, nextDescriptions, previous);
-        writeHistory(next);
-        try {
-            addressBookStorage.saveAddressBook(candidate);
-        } catch (IOException | RuntimeException e) {
-            try {
-                if (snapshots.isEmpty()) {
-                    invalidatePersistedHistory();
-                    deleteEmptyHistoryDirectory();
-                } else {
-                    writeHistory(previous);
-                }
-            } catch (IOException rollbackError) {
-                e.addSuppressed(rollbackError);
-                logger.warning("Could not finalize failed undo save: " + rollbackError.getMessage());
-            }
-            throw e;
-        }
-        recordSavedData(candidate);
-    }
-
-    /**
-     * Builds a standalone checkpoint without carrying forward older pending operations.
-     */
-    private JsonUndoHistory createMetadata(String checksum, List<Path> paths) {
-        return createMetadata(checksum, paths, undoDescriptions, null);
-    }
-
-    /**
-     * Keeps descriptions bounded to the exact snapshots referenced by each journal state.
-     */
-    private JsonUndoHistory createMetadata(String checksum, List<Path> paths, Map<Path, String> descriptions,
-            JsonUndoHistory previous) {
-        Map<String, String> descriptionsByFileName = paths.stream().collect(Collectors.toMap(
-                path -> path.getFileName().toString(),
-                path -> descriptions.getOrDefault(path, UndoHistory.MESSAGE_LEGACY_SUCCESS)));
-        return new JsonUndoHistory(checksum, paths.stream().map(path -> path.getFileName().toString()).toList(),
-                descriptionsByFileName, previous);
-    }
-
-    /**
-     * Invalidates recovery metadata before an unrelated collection write.
-     */
-    void invalidatePersistedHistory() throws IOException {
-        requireOpen();
-        Files.deleteIfExists(indexFile);
-    }
-
-    /**
-     * Atomically publishes the snapshot order only after all collection operations have finished.
-     */
-    private void persistHistory() throws IOException {
-        if (snapshots.isEmpty()) {
-            invalidatePersistedHistory();
-            deleteEmptyHistoryDirectory();
-            return;
-        }
-        try {
-            ReadOnlyAddressBook savedData = addressBookStorage.readAddressBook()
-                    .orElseThrow(() -> new IOException("Missing data file"));
-            if (!new AddressBook(savedData).equals(expectedData)) {
-                invalidatePersistedHistory();
-                logger.warning("Not persisting undo history because the saved collection changed externally");
-                return;
-            }
-        } catch (DataLoadingException e) {
-            throw new IOException("Could not validate the saved collection for undo history", e);
-        }
-        writeHistory(createMetadata(calculateDataChecksum(), List.copyOf(snapshots)));
-    }
-
-    /**
-     * Atomically writes recovery metadata, leaving the previous index intact if publication fails.
-     */
-    private void writeHistory(JsonUndoHistory metadata) throws IOException {
-        Files.createDirectories(historyDirectory);
-        Path temporaryFile = Files.createTempFile(historyDirectory, "history-", ".tmp");
-        try {
-            JsonUtil.saveJsonFile(metadata, temporaryFile);
-            Files.move(temporaryFile, indexFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } finally {
-            deleteSafely(temporaryFile);
-        }
-    }
-
-    /**
-     * Removes only owned snapshots and temporary files that the recovered history no longer references.
-     */
-    private void cleanUnusedFiles() {
-        Set<Path> retainedSnapshots = Set.copyOf(snapshots);
-        try (Stream<Path> files = Files.list(historyDirectory)) {
-            files.filter(path -> !retainedSnapshots.contains(path)).filter(path -> {
-                String name = path.getFileName().toString();
-                return name.matches("undo-[A-Za-z0-9-]+\\.json")
-                        || name.matches("(?:history|addressbook)-[A-Za-z0-9-]+\\.tmp");
-            }).forEach(this::deleteSafely);
-        } catch (IOException e) {
-            logger.warning("Could not clean recovered undo history: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Remembers the complete saved state so external edits cannot be attached to stale history on shutdown.
-     */
-    private void recordSavedData(ReadOnlyAddressBook data) {
-        expectedData = new AddressBook(data);
+        save(candidate, next);
+        entries = next;
         latestReadSnapshot = null;
     }
 
     /**
-     * Binds persisted history to the exact saved collection without changing that collection.
+     * Reads the latest shared snapshot without consuming history or changing either collection.
+     *
+     * @throws DataLoadingException If the stored snapshot is missing or invalid.
      */
-    private String calculateDataChecksum() throws IOException {
+    Optional<ContactSnapshot> readLatestSnapshot() throws DataLoadingException {
         try {
-            return calculateChecksum(Files.readAllBytes(addressBookStorage.getAddressBookFilePath()));
+            requireAvailable();
+            if (entries.isEmpty()) {
+                return Optional.empty();
+            }
+            Journal journal = readJournal();
+            if (journal.entries.size() != entries.size()) {
+                throw new IOException("Shared undo history changed during the session");
+            }
+            latestReadSnapshot = journal.entries.getLast().toModelType();
+            return Optional.of(latestReadSnapshot);
+        } catch (IOException | IllegalValueException e) {
+            throw new DataLoadingException(e);
+        }
+    }
+
+    /**
+     * Returns feedback identifying the latest operation, independent of the active section.
+     */
+    String getLatestUndoDescription() {
+        if (entries.isEmpty()) {
+            throw new IllegalStateException("No changes to undo");
+        }
+        return entries.getLast().description;
+    }
+
+    /**
+     * Restores both collections and removes the latest persisted history entry as one save operation.
+     * The caller consumes the in-memory entry only after applying the restored data to the live model.
+     *
+     * @throws IOException If either collection or the remaining history cannot be saved.
+     */
+    void saveRestoredSnapshot(ContactSnapshot snapshot) throws IOException {
+        requireAvailable();
+        if (latestReadSnapshot == null || !latestReadSnapshot.equals(snapshot)) {
+            throw new IllegalStateException("Read the latest undo snapshot before restoring it");
+        }
+        List<Entry> remaining = new ArrayList<>(entries);
+        remaining.removeLast();
+        save(snapshot, remaining);
+    }
+
+    /**
+     * Consumes the latest in-memory entry after a successful restoration and live-model update.
+     */
+    void discardLatestSnapshot() {
+        if (latestReadSnapshot == null || entries.isEmpty()) {
+            throw new IllegalStateException("No prepared undo snapshot to consume");
+        }
+        entries.removeLast();
+        latestReadSnapshot = null;
+    }
+
+    /**
+     * Invalidates shared history before a collection save outside the undoable command path.
+     *
+     * @throws IOException If history cannot be invalidated safely.
+     */
+    void invalidatePersistedHistory() throws IOException {
+        requireAvailable();
+        Files.deleteIfExists(transaction.getHistoryFile());
+        entries.clear();
+        latestReadSnapshot = null;
+    }
+
+    /**
+     * Closes this instance without deleting history, which is persisted with every successful save.
+     */
+    void close() {
+        isClosed = true;
+    }
+
+    /**
+     * Publishes the complete next state with checksums binding its history to the saved JSON bytes.
+     */
+    private void save(ContactSnapshot candidate, List<Entry> next) throws IOException {
+        JsonSerializableAddressBook contacts =
+                new JsonSerializableAddressBook(candidate.getAddressBook(ContactSection.CONTACTS));
+        JsonSerializableAddressBook favourites =
+                new JsonSerializableAddressBook(candidate.getAddressBook(ContactSection.FAVOURITES));
+        Journal journal = new Journal(digest(JsonUtil.toJsonString(contacts).getBytes(StandardCharsets.UTF_8)),
+                digest(JsonUtil.toJsonString(favourites).getBytes(StandardCharsets.UTF_8)), next);
+        try {
+            transaction.save(candidate.getAddressBook(ContactSection.CONTACTS),
+                    candidate.getAddressBook(ContactSection.FAVOURITES),
+                    JsonUtil.toJsonString(journal).getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            try {
+                transaction.recover();
+            } catch (IOException recoveryError) {
+                recoveryFailure = recoveryError;
+                e.addSuppressed(recoveryError);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Reads and validates bounded history before exposing any snapshot for restoration.
+     */
+    private Journal readJournal() throws IOException {
+        Journal journal = JsonUtil.fromJsonString(Files.readString(transaction.getHistoryFile()), Journal.class);
+        if (journal == null || journal.entries == null || journal.entries.size() > MAX_HISTORY_SIZE
+                || journal.contactsChecksum == null || journal.favouritesChecksum == null) {
+            throw new IOException("Invalid shared undo history");
+        }
+        for (Entry entry : journal.entries) {
+            if (entry == null || entry.description == null || entry.description.isBlank()
+                    || entry.contacts == null || entry.favourites == null) {
+                throw new IOException("Invalid shared undo snapshot");
+            }
+        }
+        return journal;
+    }
+
+    /**
+     * Returns the checksum of a saved file, distinguishing absent files from read failures.
+     */
+    private static String checksum(Path file) throws IOException {
+        try {
+            return digest(Files.readAllBytes(file));
         } catch (NoSuchFileException e) {
             return "missing";
         }
     }
 
     /**
-     * Calculates the SHA-256 fingerprint used to match journal states to saved data.
+     * Calculates the fingerprint used to reject history belonging to externally changed data.
      */
-    private static String calculateChecksum(byte[] data) {
+    private static String digest(byte[] bytes) {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is required for undo history checksums", e);
+            throw new IllegalStateException("SHA-256 is required for undo history", e);
         }
     }
 
     /**
-     * Removes an obsolete backup without turning an already committed change into a reported failure.
+     * Stores both complete collections before one command, together with its undo feedback.
      */
-    private void deleteSafely(Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException e) {
-            logger.warning("Could not remove undo backup: " + e.getMessage());
+    private static class Entry {
+        private JsonSerializableAddressBook contacts;
+        private JsonSerializableAddressBook favourites;
+        private String description;
+
+        private Entry(ContactSnapshot snapshot, String description) {
+            contacts = new JsonSerializableAddressBook(snapshot.getAddressBook(ContactSection.CONTACTS));
+            favourites = new JsonSerializableAddressBook(snapshot.getAddressBook(ContactSection.FAVOURITES));
+            this.description = description;
+        }
+
+        private Entry() {}
+
+        private ContactSnapshot toModelType() throws IllegalValueException {
+            return new ContactSnapshot(contacts.toModelType(), favourites.toModelType());
         }
     }
 
-    private void requireOpen() {
-        if (isClosed) {
-            throw new IllegalStateException("Undo storage session is closed.");
+    /**
+     * Binds a chronological history to the exact bytes saved in both collection files.
+     */
+    private static class Journal {
+        private String contactsChecksum;
+        private String favouritesChecksum;
+        private List<Entry> entries;
+
+        private Journal(String contactsChecksum, String favouritesChecksum, List<Entry> entries) {
+            this.contactsChecksum = contactsChecksum;
+            this.favouritesChecksum = favouritesChecksum;
+            this.entries = List.copyOf(entries);
         }
+
+        private Journal() {}
     }
 }

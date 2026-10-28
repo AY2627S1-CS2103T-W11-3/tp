@@ -4,14 +4,12 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
-import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.ReadOnlyUserPrefs;
 import seedu.address.model.UserPrefs;
@@ -25,7 +23,7 @@ public class StorageManager implements Storage {
     private JsonAddressBookStorage addressBookStorage;
     private JsonAddressBookStorage favouritesStorage;
     private JsonUserPrefsStorage userPrefsStorage;
-    private final Map<ContactSection, UndoSnapshotStorage> undoHistories = new EnumMap<>(ContactSection.class);
+    private final UndoSnapshotStorage undoHistory;
 
     /**
      * Creates a {@code StorageManager} with the given address book and user prefs storage.
@@ -36,15 +34,15 @@ public class StorageManager implements Storage {
                 userPrefsStorage);
     }
 
-    /** Creates storage for independent contact collections and shared preferences. */
+    /**
+     * Creates storage for both contact collections, shared preferences, and one persistent undo history.
+     */
     public StorageManager(JsonAddressBookStorage addressBookStorage, JsonAddressBookStorage favouritesStorage,
             JsonUserPrefsStorage userPrefsStorage) {
         this.addressBookStorage = requireNonNull(addressBookStorage);
         this.favouritesStorage = requireNonNull(favouritesStorage);
         this.userPrefsStorage = requireNonNull(userPrefsStorage);
-        undoHistories.put(ContactSection.CONTACTS, new UndoSnapshotStorage(addressBookStorage));
-        undoHistories.put(ContactSection.FAVOURITES, new UndoSnapshotStorage(favouritesStorage));
-        assert undoHistories.size() == ContactSection.values().length : "Every section must have undo storage";
+        undoHistory = new UndoSnapshotStorage(addressBookStorage, favouritesStorage);
     }
 
     // ================ UserPrefs methods ==============================
@@ -75,46 +73,51 @@ public class StorageManager implements Storage {
     @Override
     public Optional<ReadOnlyAddressBook> readAddressBook() throws DataLoadingException {
         logger.fine("Attempting to read data from file: " + addressBookStorage.getAddressBookFilePath());
+        try {
+            undoHistory.requireAvailable();
+        } catch (IOException e) {
+            throw new DataLoadingException(e);
+        }
         return addressBookStorage.readAddressBook();
     }
 
     @Override
     public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
         logger.fine("Attempting to write to data file: " + addressBookStorage.getAddressBookFilePath());
-        undoHistories.get(ContactSection.CONTACTS).invalidatePersistedHistory();
+        undoHistory.invalidatePersistedHistory();
         addressBookStorage.saveAddressBook(addressBook);
     }
 
     @Override
-    public void saveUndoableChange(ContactSection section, ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate,
+    public void saveUndoableChange(ContactSnapshot previous, ContactSnapshot candidate,
             String undoDescription) throws IOException {
-        logger.fine("Saving undoable change in " + section);
-        undoHistories.get(requireNonNull(section)).saveChange(previous, candidate, undoDescription);
+        logger.fine("Saving a shared undoable change");
+        undoHistory.saveChange(previous, candidate, undoDescription);
     }
 
     @Override
-    public Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException {
-        return undoHistories.get(requireNonNull(section)).readLatestSnapshot();
+    public Optional<ContactSnapshot> readLatestSnapshot() throws DataLoadingException {
+        return undoHistory.readLatestSnapshot();
     }
 
     @Override
-    public String getLatestUndoDescription(ContactSection section) {
-        return undoHistories.get(requireNonNull(section)).getLatestUndoDescription();
+    public String getLatestUndoDescription() {
+        return undoHistory.getLatestUndoDescription();
     }
 
     @Override
-    public void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) throws IOException {
-        undoHistories.get(requireNonNull(section)).saveRestoredSnapshot(snapshot);
+    public void saveRestoredSnapshot(ContactSnapshot snapshot) throws IOException {
+        undoHistory.saveRestoredSnapshot(snapshot);
     }
 
     @Override
-    public void discardLatestSnapshot(ContactSection section) {
-        undoHistories.get(requireNonNull(section)).discardLatestSnapshot();
+    public void discardLatestSnapshot() {
+        undoHistory.discardLatestSnapshot();
     }
 
     @Override
     public void closeUndoHistory() {
-        undoHistories.values().forEach(UndoSnapshotStorage::close);
+        undoHistory.close();
     }
 
     @Override
@@ -124,12 +127,17 @@ public class StorageManager implements Storage {
 
     @Override
     public Optional<ReadOnlyAddressBook> readFavourites() throws DataLoadingException {
+        try {
+            undoHistory.requireAvailable();
+        } catch (IOException e) {
+            throw new DataLoadingException(e);
+        }
         return favouritesStorage.readAddressBook();
     }
 
     @Override
     public void saveFavourites(ReadOnlyAddressBook favourites) throws IOException {
-        undoHistories.get(ContactSection.FAVOURITES).invalidatePersistedHistory();
+        undoHistory.invalidatePersistedHistory();
         favouritesStorage.saveAddressBook(favourites);
     }
 

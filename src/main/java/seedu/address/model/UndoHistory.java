@@ -11,29 +11,29 @@ import seedu.address.commons.exceptions.DataLoadingException;
  */
 public interface UndoHistory {
 
-    /** Fallback feedback for snapshots predating operation descriptions. */
-    String MESSAGE_LEGACY_SUCCESS = "Undo successful.";
+    /** Default feedback for commands without a more specific undo description. */
+    String MESSAGE_SUCCESS = "Undo successful.";
 
     /**
-     * Reads the section's latest snapshot without consuming it, or returns empty when history is exhausted.
+     * Reads the latest snapshot of both collections without consuming it, or returns empty when history is exhausted.
      * Missing or unreadable snapshot data leaves history unchanged and throws DataLoadingException.
      */
-    Optional<ReadOnlyAddressBook> readLatestSnapshot(ContactSection section) throws DataLoadingException;
+    Optional<ContactSnapshot> readLatestSnapshot() throws DataLoadingException;
 
     /**
      * Returns feedback for the latest entry in a nonempty history, with generic feedback for legacy entries.
      */
-    String getLatestUndoDescription(ContactSection section);
+    String getLatestUndoDescription();
 
     /**
      * Saves the previously read snapshot with recovery metadata before applying it to the live model.
      * A failed save preserves the saved collection and history. Consumption follows only after success.
      */
-    void saveRestoredSnapshot(ContactSection section, ReadOnlyAddressBook snapshot) throws IOException;
+    void saveRestoredSnapshot(ContactSnapshot snapshot) throws IOException;
 
     /**
-     * Consumes the section's latest snapshot after its data has been saved successfully.
+     * Consumes the latest shared snapshot after its data has been saved successfully.
      * History must be nonempty. Backup cleanup failures are logged without failing the completed change.
      */
-    void discardLatestSnapshot(ContactSection section);
+    void discardLatestSnapshot();
 }

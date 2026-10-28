@@ -122,7 +122,7 @@ public class LogicManagerTest {
         assertEquals(ContactSection.CONTACTS, logic.getActiveSection());
         assertEquals(List.of(target), logic.getFilteredPersonList());
         assertEquals(List.of(ALICE, target), model.getAddressBook().getPersonList());
-        assertFalse(Files.exists(temporaryFolder.resolve("addressBook.json")));
+        assertTrue(Files.exists(temporaryFolder.resolve("addressBook.json")));
 
         logic.execute("edit 1 note/Updated original");
         assertEquals(new Note("Updated original"), model.getAddressBook().getPersonList().get(1).getNote());
@@ -245,7 +245,7 @@ public class LogicManagerTest {
     }
 
     @Test
-    public void execute_favouritesChanges_preserveContactsUndoHistory() throws Exception {
+    public void execute_interleavedSections_undoLatestOperationGlobally() throws Exception {
         model.addPerson(ALICE);
         logic.execute(PersonUtil.getAddCommand(BOB));
         logic.execute("favourite 1");
@@ -258,17 +258,16 @@ public class LogicManagerTest {
 
         logic.execute("tab contacts");
         logic.execute("undo");
-        assertEquals(List.of(ALICE), model.getAddressBook().getPersonList());
-        assertEquals(List.of(ALICE), new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"))
-                .readAddressBook().orElseThrow().getPersonList());
+        assertEquals(List.of(ALICE, BOB), model.getAddressBook().getPersonList());
+        assertEquals(List.of(ALICE), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        assertEquals(ContactSection.CONTACTS, model.getActiveSection());
+        logic.execute("undo");
+        assertTrue(model.getAddressBook(ContactSection.FAVOURITES).getPersonList().isEmpty());
         logic.execute("tab favourites");
         logic.execute("undo");
-        assertEquals(List.of(ALICE), model.getAddressBook().getPersonList());
-        logic.execute("undo");
-        assertTrue(model.getAddressBook().getPersonList().isEmpty());
+        assertEquals(List.of(ALICE), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
+        assertEquals(ContactSection.FAVOURITES, model.getActiveSection());
         assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
-        assertTrue(new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
-                .readAddressBook().orElseThrow().getPersonList().isEmpty());
     }
 
     @Test
@@ -369,11 +368,10 @@ public class LogicManagerTest {
         AtomicInteger saves = new AtomicInteger();
         JsonAddressBookStorage savingStorage = new JsonAddressBookStorage(destination) {
             @Override
-            public void saveAddressBook(ReadOnlyAddressBook data) throws IOException {
+            protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
                 assertEquals(2, model.getFilteredPersonList().size());
-                assertEquals(expected, data);
                 saves.incrementAndGet();
-                super.saveAddressBook(data);
+                super.replaceAddressBook(temporaryFile, destination);
             }
         };
         logic = new LogicManager(model, new StorageManager(savingStorage,
@@ -480,11 +478,11 @@ public class LogicManagerTest {
         AtomicBoolean failSave = new AtomicBoolean(false);
         JsonAddressBookStorage saved = new JsonAddressBookStorage(dataPath) {
             @Override
-            public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
+            protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
                 if (failSave.get()) {
                     throw DUMMY_IO_EXCEPTION;
                 }
-                super.saveAddressBook(addressBook);
+                super.replaceAddressBook(temporaryFile, destination);
             }
         };
         model.addPerson(ALICE);
@@ -584,7 +582,7 @@ public class LogicManagerTest {
         // Inject LogicManager with a JsonAddressBookStorage that throws the IOException e when saving
         JsonAddressBookStorage addressBookStorage = new JsonAddressBookStorage(prefPath) {
             @Override
-            public void saveAddressBook(ReadOnlyAddressBook addressBook) throws IOException {
+            protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
                 throw e;
             }
         };

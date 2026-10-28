@@ -47,6 +47,16 @@ class CollectionSaveTransaction {
      * @throws IOException If preparation, publication, or recovery fails.
      */
     void save(ReadOnlyAddressBook contacts, ReadOnlyAddressBook favourites) throws IOException {
+        save(contacts, favourites, null);
+    }
+
+    /**
+     * Saves both collections and the shared undo index in the same recoverable operation.
+     * A null index leaves existing history untouched for callers saving only collection data.
+     *
+     * @throws IOException If preparation, publication, or recovery fails.
+     */
+    void save(ReadOnlyAddressBook contacts, ReadOnlyAddressBook favourites, byte[] history) throws IOException {
         requireAllNonNull(contacts, favourites);
         recover();
         Path contactsFile = contactsStorage.getAddressBookFilePath().toAbsolutePath();
@@ -57,11 +67,18 @@ class CollectionSaveTransaction {
             favouritesCandidate = createTemporaryFile(favouritesFile);
             contactsStorage.writeAddressBook(contacts, contactsCandidate);
             favouritesStorage.writeAddressBook(favourites, favouritesCandidate);
-            Backup backup = new Backup(readOriginal(contactsFile), readOriginal(favouritesFile), favouritesFile);
+            byte[][] originals = {readOriginal(contactsFile), readOriginal(favouritesFile)};
+            if (history != null) {
+                originals = new byte[][] {originals[0], originals[1], readOriginal(getHistoryFile())};
+            }
+            Backup backup = new Backup(originals, favouritesFile);
             writeAtomically(journalFile, JsonUtil.toJsonString(backup).getBytes(StandardCharsets.UTF_8));
             try {
                 contactsStorage.replaceAddressBook(contactsCandidate, contactsFile);
                 favouritesStorage.replaceAddressBook(favouritesCandidate, favouritesFile);
+                if (history != null) {
+                    writeAtomically(getHistoryFile(), history);
+                }
                 Files.delete(journalFile);
             } catch (IOException | RuntimeException e) {
                 try {
@@ -91,14 +108,22 @@ class CollectionSaveTransaction {
             return;
         }
         Backup backup = JsonUtil.fromJsonString(new String(journal, StandardCharsets.UTF_8), Backup.class);
-        if (backup == null || backup.originals == null || backup.originals.length != 2
+        if (backup == null || backup.originals == null || (backup.originals.length != 2 && backup.originals.length != 3)
                 || !favouritesStorage.getAddressBookFilePath().toAbsolutePath().normalize().toString()
                         .equals(backup.favouritesPath)) {
             throw new IOException("Invalid pending collection save");
         }
         restore(contactsStorage.getAddressBookFilePath(), backup.originals[0]);
         restore(favouritesStorage.getAddressBookFilePath(), backup.originals[1]);
+        if (backup.originals.length == 3) {
+            restore(getHistoryFile(), backup.originals[2]);
+        }
         Files.delete(journalFile);
+    }
+
+    Path getHistoryFile() {
+        Path contactsFile = contactsStorage.getAddressBookFilePath().toAbsolutePath().normalize();
+        return contactsFile.resolveSibling("." + contactsFile.getFileName() + "-shared-undo.json");
     }
 
     /**
@@ -163,8 +188,8 @@ class CollectionSaveTransaction {
         private final byte[][] originals;
         private final String favouritesPath;
 
-        private Backup(byte[] contacts, byte[] favourites, Path favouritesFile) {
-            originals = new byte[][] {contacts, favourites};
+        private Backup(byte[][] originals, Path favouritesFile) {
+            this.originals = originals;
             favouritesPath = favouritesFile.toAbsolutePath().normalize().toString();
         }
 

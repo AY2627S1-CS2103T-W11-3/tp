@@ -8,21 +8,21 @@ import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.Model;
-import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UndoHistory;
 
 /**
- * Restores the active section's latest snapshot and shows all its contacts after it has been saved.
+ * Restores both collections before the latest successful change, regardless of the active section.
  */
 public class UndoCommand extends Command implements StagedCommand {
     public static final String COMMAND_WORD = "undo";
 
     public static final String MESSAGE_USAGE = COMMAND_WORD
-            + ": Undoes the most recent change in the active section.\n"
+            + ": Undoes the most recent change to Contacts or Favourites.\n"
             + "Example: " + COMMAND_WORD;
-    /** Feedback for entries saved before operation descriptions were supported. */
-    public static final String MESSAGE_SUCCESS = UndoHistory.MESSAGE_LEGACY_SUCCESS;
+    /** Default feedback when the recorded operation has no more specific description. */
+    public static final String MESSAGE_SUCCESS = UndoHistory.MESSAGE_SUCCESS;
     public static final String MESSAGE_NO_HISTORY = "No changes to undo.";
     public static final String MESSAGE_SAVE_ERROR =
             "Could not save changes. Nothing was undone. Please try again.";
@@ -34,7 +34,7 @@ public class UndoCommand extends Command implements StagedCommand {
     private final UndoHistory undoHistory;
 
     /**
-     * Creates an undo command using the active section's history to prepare and consume a snapshot.
+     * Creates an undo command using shared history to restore both collections together.
      */
     public UndoCommand(UndoHistory undoHistory) {
         this.undoHistory = requireNonNull(undoHistory);
@@ -49,19 +49,23 @@ public class UndoCommand extends Command implements StagedCommand {
     public PreparedChange prepare(Model model) throws CommandException {
         requireNonNull(model);
         ContactSection section = model.getActiveSection();
-        ReadOnlyAddressBook snapshot;
+        ContactSnapshot snapshot;
         try {
-            snapshot = undoHistory.readLatestSnapshot(section)
+            snapshot = undoHistory.readLatestSnapshot()
                     .orElseThrow(() -> new CommandException(MESSAGE_NO_HISTORY));
         } catch (DataLoadingException e) {
             logger.warning("Could not read undo snapshot for " + section + ": " + e.getMessage());
             throw new CommandException(MESSAGE_LOAD_ERROR, e);
         }
-        return new PreparedChange(snapshot, () -> {
-            model.setAddressBook(snapshot);
-            model.updateFilteredPersonList(Model.PREDICATE_SHOW_ALL_PERSONS);
-            undoHistory.discardLatestSnapshot(section);
-        }, new CommandResult(undoHistory.getLatestUndoDescription(section)), MESSAGE_SAVE_ERROR, () ->
-                undoHistory.saveRestoredSnapshot(section, snapshot));
+        return new PreparedChange(snapshot.getAddressBook(section), () -> {
+            for (ContactSection restoredSection : ContactSection.values()) {
+                model.setActiveSection(restoredSection);
+                model.setAddressBook(snapshot.getAddressBook(restoredSection));
+                model.updateFilteredPersonList(Model.PREDICATE_SHOW_ALL_PERSONS);
+            }
+            model.setActiveSection(section);
+            undoHistory.discardLatestSnapshot();
+        }, new CommandResult(undoHistory.getLatestUndoDescription()), MESSAGE_SAVE_ERROR, () ->
+                undoHistory.saveRestoredSnapshot(snapshot));
     }
 }
