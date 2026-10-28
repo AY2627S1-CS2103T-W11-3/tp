@@ -1,0 +1,50 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+participant ":LogicManager" as logic LOGIC_COLOR
+participant "command:Command" as command LOGIC_COLOR
+participant "staged:StagedModel" as staged MODEL_COLOR
+participant "live:Model" as live MODEL_COLOR
+participant ":StorageManager" as storage STORAGE_COLOR
+participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+participant "candidate:JsonSerializableAddressBook" as adapted STORAGE_COLOR
+
+[-> logic : execute(commandText)
+logic -> logic : parse command
+logic -> staged : new StagedModel(live)
+staged -> live : copy both collections and visible list
+live --> staged
+logic -> command : execute(staged)
+command -> staged : mutate candidate; record operation
+staged --> command
+command --> logic : CommandResult
+logic -> staged : getChangedSection(), getAddressBook(section)
+staged --> logic : candidate
+logic -> storage : saveAddressBook(candidate)
+note right of storage
+For Favourites: saveFavourites(candidate).
+Undoable Contacts changes: saveUndoableChange(previous, candidate).
+end note
+storage -> json : saveAddressBook(candidate)
+json -> json : create temporary file in destination directory
+json -> adapted : new JsonSerializableAddressBook(candidate)
+adapted --> json : JSON representation
+json -> json : write JSON to temporary file
+json -> json : atomic move with replace existing
+alt save succeeds
+    json --> storage
+    storage --> logic
+    logic -> staged : commitTo(live)
+    staged -> live : replay recorded operations
+    live --> staged
+    staged --> logic
+    [<-- logic : CommandResult
+else write or atomic replacement fails
+    json -> json : delete temporary file if present
+    json --> storage : IOException
+    storage --> logic : IOException
+    note over live : Live model remains unchanged
+    [<-- logic : CommandException
+end
+@enduml

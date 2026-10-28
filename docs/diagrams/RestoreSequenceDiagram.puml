@@ -1,0 +1,38 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+participant ":MainApp" as app LOGIC_COLOR
+participant ":StorageManager" as storage STORAGE_COLOR
+participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+participant ":JsonSerializableAddressBook" as adapted STORAGE_COLOR
+participant ":JsonAdaptedPerson / JsonAdaptedGroup" as entries STORAGE_COLOR
+participant "m:ModelManager" as model MODEL_COLOR
+
+[-> app : init()
+app -> storage : readAddressBook()
+storage -> json : readAddressBook()
+json -> json : read UTF-8 file; parse JSON
+alt file exists and is valid
+    json -> adapted : toModelType()
+    adapted -> entries : validate and convert contacts and groups
+    entries --> adapted : model objects
+    adapted -> adapted : check duplicate contacts, groups,\nand group membership references
+    adapted --> json : AddressBook
+    json --> storage : AddressBook
+    storage --> app : Optional<AddressBook>
+else missing file
+    json --> storage : Optional.empty()
+    storage --> app : Optional.empty()
+    app -> app : use sample Contacts
+else unreadable, malformed, or invalid data
+    json --> storage : DataLoadingException
+    storage --> app : DataLoadingException
+    app -> app : use empty Contacts; record error
+end
+app -> storage : readFavourites()
+note right of storage : Same validated load; errors handled independently
+storage --> app : validated Favourites or error
+app -> model : new ModelManager(contacts, favourites, userPrefs)
+note over model : Only validated collections enter the live model
+@enduml

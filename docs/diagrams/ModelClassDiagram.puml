@@ -10,9 +10,12 @@ Class "<<interface>>\nReadOnlyUserPrefs" as ReadOnlyUserPrefs
 Class "<<interface>>\nModel" as Model
 Class AddressBook
 Class ModelManager
+Class StagedModel
+Class ContactSection
 Class UserPrefs
 
 Class UniquePersonList
+Class Group
 Class Person
 Class Address
 Class Email
@@ -29,13 +32,18 @@ HiddenOutside ..> Model
 AddressBook .up.|> ReadOnlyAddressBook
 
 ModelManager .up.|> Model
+StagedModel .up.|> Model
+StagedModel ..> ModelManager : <<candidate>>
 Model .right.> ReadOnlyUserPrefs
 Model .left.> ReadOnlyAddressBook
-ModelManager -left-> "1" AddressBook
+ModelManager --> "2" AddressBook : Contacts / Favourites
+ModelManager ..> ContactSection : <<active section>>
 ModelManager -right-> "1" UserPrefs
 UserPrefs .up.|> ReadOnlyUserPrefs
 
 AddressBook *--> "1" UniquePersonList
+AddressBook *--> "*" Group
+Group --> "*" Name : members
 UniquePersonList --> "~* all" Person
 Person *--> Name
 Person *--> Phone

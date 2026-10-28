@@ -9,8 +9,11 @@ package Logic as LogicPackage {
 package "Parser Classes" as ParserClasses{
 }
 Class XYZCommand
+Class GroupCommand
 Class CommandResult
 Class "{abstract}\nCommand" as Command
+Class "<<interface>>\nStagedCommand" as StagedCommand
+Class PreparedChange
 
 
 Class "<<interface>>\nLogic" as Logic
@@ -18,7 +21,8 @@ Class LogicManager
 }
 
 package Model {
-Class HiddenModel #FFFFFF
+Class "<<interface>>\nModel" as Model
+Class StagedModel
 }
 
 package Storage {
@@ -30,9 +34,16 @@ HiddenOutside ..> Logic
 LogicManager .right.|> Logic
 LogicManager -right->"1" ParserClasses
 ParserClasses ..> XYZCommand : <<create>>
+ParserClasses ..> GroupCommand : <<create>>
 
 XYZCommand -up-|> Command
+GroupCommand -up-|> Command
 LogicManager .left.> Command : <<call>>
+LogicManager ..> StagedModel : <<create and commit>>
+StagedModel ..|> Model
+LogicManager ..> StagedCommand : <<prepare>>
+StagedCommand ..> PreparedChange : <<create>>
+PreparedChange ..> Model : <<apply after save>>
 
 LogicManager --> Model
 LogicManager --> Storage

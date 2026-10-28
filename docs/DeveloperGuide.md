@@ -110,8 +110,9 @@ How the `Logic` component works:
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
 1. Commands without the `StagedCommand` capability execute against a `StagedModel`, which copies both collections and records model operations. Commands implementing `StagedCommand`, such as deletion, return a `PreparedChange` instead.
 1. If the command changes contacts, `LogicManager` saves the full candidate collection to its corresponding file before applying changes to the live model. If saving fails, the candidate is discarded and a `CommandException` is thrown. Commands that only change the view or active section do not save contact data.
-1. After committing, the `CommandResult` is returned to the UI. The sequence diagram above omits the
-   staging and storage interactions; the persistence flow is described below.
+1. After committing, the `CommandResult` is returned to the UI. The persistence flow is shown below.
+
+![Staged contact save and atomic replacement](images/SaveSequenceDiagram.png)
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
@@ -119,7 +120,7 @@ Here are the other classes in `Logic` (omitted from the class diagram above) tha
 
 How the parsing works:
 * When called upon to parse a user command, the `AddressBookParser` class creates an `XYZCommandParser` (`XYZ` is a placeholder for the specific command name, e.g., `AddCommandParser`). The parser uses the other classes shown above to parse the user command and create an `XYZCommand` object (e.g., `AddCommand`). The `AddressBookParser` returns that object as a `Command` object.
-* All `XYZCommandParser` classes, such as `AddCommandParser` and `DeleteCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
+* All command parsers, including `GroupCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
 ### Model component
 **API** : [`Model.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/model/Model.java)
@@ -129,7 +130,7 @@ How the parsing works:
 
 The `Model` component,
 
-* stores independent Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects.
+* stores independent Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects and groups of contact names.
 * stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -154,6 +155,10 @@ The `Storage` component,
 * saves Contacts, Favourites, and user preferences in JSON format, and reads them back into corresponding objects.
 * is implemented by `StorageManager`, which uses separate `JsonAddressBookStorage` instances for `data/addressbook.json` and `data/favourites.json`, and `JsonUserPrefsStorage` for preferences. Both contact files use the existing address-book JSON schema.
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
+
+At startup, `MainApp` loads each collection through `StorageManager`. JSON values, duplicates, and group membership references are validated before `ModelManager` is created:
+
+![Validated startup restore flow](images/RestoreSequenceDiagram.png)
 
 ### Common classes
 
@@ -248,6 +253,10 @@ then atomically replaces the destination. It rejects saves if atomic replacement
 attempts to clean up temporary files. It never falls back to truncating the original file.
 
 `MainApp` loads both collections independently and always starts on Contacts. A missing Contacts file uses sample contacts; a missing Favourites file uses an empty collection. Loading distinguishes unreadable files, malformed JSON, and invalid contact values. Conversion validates a whole collection before exposing its contacts. A load error starts only the affected collection empty, and `UiManager` reports its section and path after the window opens. If both files fail, both errors are reported. Existing files remain untouched until a command successfully saves a replacement for that collection.
+
+Group commands use the same staged save path. `GroupCommandParser` parses creation, membership changes, and deletion into `GroupCommand` actions. The candidate address book stores `Group` objects, which `JsonAdaptedGroup` writes and validates on restore:
+
+![Group command staging and save flow](images/GroupSequenceDiagram.png)
 
 Integration with the other MVP features:
 

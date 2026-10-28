@@ -1,0 +1,58 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+participant ":LogicManager" as logic LOGIC_COLOR
+participant ":AddressBookParser" as parser LOGIC_COLOR
+participant ":GroupCommandParser" as groupParser LOGIC_COLOR
+participant "command:GroupCommand" as command LOGIC_COLOR
+participant "staged:StagedModel" as staged MODEL_COLOR
+participant "live:Model" as live MODEL_COLOR
+participant ":StorageManager" as storage STORAGE_COLOR
+participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+
+loop each group command
+    [-> logic : execute(group command)
+    logic -> parser : parseCommand(text)
+    parser -> groupParser : parse(arguments)
+    groupParser -> command : new GroupCommand(action, groupName, personName)
+    command --> groupParser : command
+    groupParser --> parser : command
+    parser --> logic : command
+    logic -> staged : new StagedModel(live)
+    staged -> live : copy current collections
+    live --> staged
+    logic -> command : execute(staged)
+    alt create: group add n/...
+        command -> staged : addGroup(new Group(name, empty members))
+    else add/remove member: group member g/... add|remove/...
+        command -> staged : getGroup(name), getAddressBook()
+        staged --> command : group and contacts
+        command -> command : check contact and membership
+        command -> staged : setGroup(group.withMember/withoutMember(name))
+    else delete: group delete g/...
+        command -> staged : deleteGroup(name)
+    end
+    staged --> command
+    command --> logic : CommandResult
+    logic -> staged : getAddressBook(changedSection)
+    staged --> logic : candidate with groups
+    logic -> storage : saveAddressBook(candidate)
+    note right of storage : Favourites section uses saveFavourites(candidate)
+    storage -> json : saveAddressBook(candidate)
+    json -> json : write temporary JSON; atomically replace file
+    alt save succeeds
+        json --> storage
+        storage --> logic
+        logic -> staged : commitTo(live)
+        staged -> live : replay addGroup / setGroup / deleteGroup
+        live --> staged
+        [<-- logic : CommandResult
+    else save fails
+        json --> storage : IOException
+        storage --> logic : IOException
+        note over live : Live groups remain unchanged
+        [<-- logic : CommandException
+    end
+end
+@enduml
