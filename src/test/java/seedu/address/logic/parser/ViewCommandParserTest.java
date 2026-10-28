@@ -5,6 +5,8 @@ import static seedu.address.logic.parser.CommandParserTestUtil.assertParseFailur
 import static seedu.address.logic.parser.CommandParserTestUtil.assertParseSuccess;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
+import java.math.BigInteger;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.address.logic.commands.ViewCommand;
@@ -33,6 +35,11 @@ public class ViewCommandParserTest {
     public void parse_extraArgs_throwsParseException() {
         assertParseFailure(parser, "1 John",
                 String.format(MESSAGE_INVALID_COMMAND_FORMAT, ViewCommand.MESSAGE_USAGE));
+    }
+
+    @Test
+    public void parse_indexBeyondIntegerMax_returnsViewCommand() {
+        assertParseSuccess(parser, "2147483648", new ViewCommand(new BigInteger("2147483648")));
     }
 
     @Test

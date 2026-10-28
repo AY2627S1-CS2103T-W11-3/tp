@@ -197,7 +197,7 @@ Examples:
 | --- | --- |
 | Missing index, extra words, or a value that is not a positive integer, such as `view`, `view 1 John`, `view 0`, or `view Alice` | `Invalid command format!` followed by the `view` usage |
 | No contacts are displayed | `No contacts available to view.` |
-| Index exceeds the displayed list | `Invalid index. Please select an index shown in the contact list.` |
+| Index exceeds the displayed list, including a very large positive integer such as `view 2147483648` | `Invalid index. Please select an index shown in the contact list.` |
 
 ### Editing a person: `edit`
 
