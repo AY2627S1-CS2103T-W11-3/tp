@@ -145,16 +145,22 @@ Examples:
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street note/Known through a dating app`
 
-### Creating and deleting groups, and changing their members: `group`
+### Listing, viewing, and managing groups: `group`
 
-Create an empty group, then add or remove contacts by their exact names. The contact must already exist in the address book. Group names are case sensitive and must be unique.
+Groups belong to the active section (Contacts or Favourites). Create an empty group, then add or remove contacts by their exact names. The contact must already exist in that section. Group names are case sensitive and must be unique within the section.
 
+* `group list` — show all groups in the active section and their member counts, including empty groups.
+* `group view g/CS2103T Team` — show the group's members with their phone numbers.
 * `group add n/CS2103T Team`
 * `group delete g/CS2103T Team`
 * `group member g/CS2103T Team add/John Tan`
 * `group member g/CS2103T Team remove/John Tan`
 
-Groups and their memberships are saved with the contacts. Deleting a group removes its memberships but keeps the contacts. Deleting a contact also removes it from its groups.
+If there are no groups, `group list` reports `No groups exist.`. If a group has no members, `group view` reports `Group NAME has no members.`. Viewing a missing group reports `Group does not exist: NAME`.
+
+Membership is stored by exact contact name. If several contacts have the same name, they share that membership; `group view` shows each matching contact and phone number. The list count reflects the contacts shown by `group view`.
+
+Groups and their memberships are saved with the contacts. Listing and viewing groups do not save or change data. Deleting a group removes its memberships but keeps the contacts. Deleting a contact also removes it from its groups.
 
 ### Listing all persons: `list`
 
@@ -398,6 +404,7 @@ Action | Format, Examples
 **Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
+**Groups** | `group list`, `group view g/GROUP NAME`, `group add n/GROUP NAME`, `group delete g/GROUP NAME`, `group member g/GROUP NAME add/CONTACT NAME`, `group member g/GROUP NAME remove/CONTACT NAME`
 **Favourite** | `favourite INDEX`<br> e.g., `favourite 1` (from Contacts)
 **Switch section** | `tab contacts` or `tab favourites`
 **Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`
