@@ -302,7 +302,7 @@ New commands that change Contacts data must extend `UndoableCommand` to particip
 
 #### Restoring a snapshot
 
-[Undo logic sequence diagram](diagrams/UndoSequenceDiagram-Logic.puml) · [Undo model and storage sequence diagram](diagrams/UndoSequenceDiagram-Model.puml)
+[Undo logic sequence diagram](diagrams/UndoSequenceDiagram-Logic.puml) · [Undo persistence sequence diagram](diagrams/UndoSequenceDiagram-Model.puml)
 
 The model-level `UndoHistory` interface exposes `readLatestSnapshot()` and `discardLatestSnapshot()` without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` owns a single `UndoSnapshotStorage` for Contacts. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
 
