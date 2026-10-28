@@ -37,6 +37,7 @@ public interface Model {
 
     /**
      * Replaces the active collection with the data in {@code addressBook}.
+     * Removing Contacts also removes matching favorites by ID; replacing Favourites leaves Contacts unchanged.
      */
     void setAddressBook(ReadOnlyAddressBook addressBook);
 
@@ -53,13 +54,14 @@ public interface Model {
 
     /**
      * Returns true if a person with the same identity as {@code person} exists in the address book, excluding
-     * {@code personToExclude}.
+     * {@code personToExclude}. Also checks the counterpart's collection when an ID-linked copy exists.
      */
     boolean hasPersonOtherThan(Person person, Person personToExclude);
 
     /**
      * Deletes the given person.
-     * The person must exist in the address book.
+     * The person must exist in the active collection. Deleting from Contacts also removes its favorite by ID.
+     * Deleting from Favourites leaves the original contact unchanged.
      */
     void deletePerson(Person target);
 
@@ -69,12 +71,15 @@ public interface Model {
      */
     void addPerson(Person person);
 
-    /** Adds an independent favorite without changing the active section or its search filter. */
+    /**
+     * Adds a favorite with the original contact's ID without changing the active section or its search filter.
+     */
     void addFavourite(Person person);
 
     /**
      * Replaces the given person {@code target} with {@code editedPerson}.
-     * {@code target} must exist in the address book.
+     * Updates any counterpart with the same ID and preserves each collection's local group memberships.
+     * {@code target} must exist in the active collection.
      * The person identity of {@code editedPerson} must not be the same as another existing person in the address book.
      */
     void setPerson(Person target, Person editedPerson);

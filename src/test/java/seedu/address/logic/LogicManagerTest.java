@@ -33,6 +33,7 @@ import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.FavouriteCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RecentCommand;
@@ -110,7 +111,7 @@ public class LogicManagerTest {
     }
 
     @Test
-    public void execute_favouriteFilteredContact_copiesIndependentlyAndKeepsContext() throws Exception {
+    public void execute_favouriteFilteredContact_mirrorsEditsAndKeepsContext() throws Exception {
         Person target = new PersonBuilder(BOB).withNote("Met in class").build();
         model.addPerson(ALICE);
         model.addPerson(target);
@@ -126,8 +127,10 @@ public class LogicManagerTest {
 
         logic.execute("edit 1 note/Updated original");
         assertEquals(new Note("Updated original"), model.getAddressBook().getPersonList().get(1).getNote());
-        assertEquals(List.of(target), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
-        assertEquals(List.of(target), new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
+        Person edited = model.getAddressBook().getPersonList().get(1);
+        assertEquals(target.getId(), edited.getId());
+        assertEquals(List.of(edited), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        assertEquals(List.of(edited), new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
                 .readAddressBook().orElseThrow().getPersonList());
     }
 
@@ -143,7 +146,7 @@ public class LogicManagerTest {
         logic.execute("tab favourites");
         assertThrows(CommandException.class, FavouriteCommand.MESSAGE_WRONG_SECTION, ()
             -> logic.execute("favourite 1"));
-        assertEquals(List.of(ALICE), logic.getFilteredPersonList());
+        assertEquals("88888888", logic.getFilteredPersonList().getFirst().getPhone().value);
     }
 
     @Test
@@ -194,6 +197,12 @@ public class LogicManagerTest {
 
         shouldFail.set(false);
         logic.execute("favourite 1");
+        shouldFail.set(true);
+        assertThrows(CommandException.class, LogicManager.MESSAGE_SAVE_ERROR, () ->
+                logic.execute("edit 1 note/Unsaved edit"));
+        assertEquals(List.of(ALICE), model.getAddressBook().getPersonList());
+        assertEquals(List.of(ALICE), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
+        shouldFail.set(false);
         logic.execute("tab favourites");
         logic.execute("find Nobody");
         byte[] saved = Files.readAllBytes(favouritesFile);
@@ -209,6 +218,68 @@ public class LogicManagerTest {
         assertTrue(favouritesStorage.readAddressBook().orElseThrow().getPersonList().isEmpty());
         assertEquals(List.of(ALICE), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
         assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
+    }
+
+    @Test
+    public void execute_mirroredEditAndDelete_preserveGroupsAndUndoBothCopies() throws Exception {
+        model.addPerson(ALICE);
+        logic.execute("favourite 1");
+        logic.execute("group add n/Team");
+        logic.execute("group member g/Team add/Alice Pauline");
+        logic.execute("tab favourites");
+        logic.execute("group add n/Favourites Team");
+        logic.execute("group member g/Favourites Team add/Alice Pauline");
+        logic.execute("edit 1 n/Renamed Contact");
+        for (ContactSection section : ContactSection.values()) {
+            assertEquals("Renamed Contact",
+                    model.getAddressBook(section).getPersonList().getFirst().getName().fullName);
+            assertEquals("Renamed Contact",
+                    model.getAddressBook(section).getGroupList().getFirst().getMembers().iterator().next().fullName);
+        }
+        logic.execute("tab contacts");
+        logic.execute("delete 1");
+        assertTrue(model.getAddressBook(ContactSection.FAVOURITES).getPersonList().isEmpty());
+        assertTrue(model.getAddressBook(ContactSection.FAVOURITES).getGroupList().getFirst().getMembers().isEmpty());
+        logic.execute("undo");
+        assertEquals(1, model.getAddressBook(ContactSection.FAVOURITES).getPersonList().size());
+        logic.execute("tab favourites");
+        logic.execute("delete 1");
+        assertEquals(1, model.getAddressBook(ContactSection.CONTACTS).getPersonList().size());
+        logic.execute("undo");
+        logic.execute("clear");
+        assertEquals(1, model.getAddressBook(ContactSection.CONTACTS).getPersonList().size());
+        logic.execute("undo");
+        logic.execute("tab contacts");
+        logic.execute("clear");
+        assertTrue(model.getAddressBook(ContactSection.FAVOURITES).getPersonList().isEmpty());
+        logic.execute("undo");
+        assertEquals(1, model.getAddressBook(ContactSection.FAVOURITES).getPersonList().size());
+    }
+
+    @Test
+    public void execute_reusedPhone_canFavouriteDifferentContact() throws Exception {
+        model.addPerson(ALICE);
+        logic.execute("favourite 1");
+        logic.execute("edit 1 p/80000000");
+        Person bob = new PersonBuilder(BOB).withPhone(ALICE.getPhone().value).build();
+        logic.execute(PersonUtil.getAddCommand(bob));
+        logic.execute("favourite 2");
+        assertEquals(2, model.getAddressBook(ContactSection.FAVOURITES).getPersonList().size());
+        assertEquals("80000000", model.getAddressBook(ContactSection.FAVOURITES)
+                .getPersonList().getFirst().getPhone().value);
+    }
+
+    @Test
+    public void execute_mirroredEdit_conflictingFavouriteRejectsBothChanges() throws Exception {
+        model.addPerson(ALICE);
+        logic.execute("favourite 1");
+        logic.execute("tab favourites");
+        logic.execute(PersonUtil.getAddCommand(BOB));
+        logic.execute("tab contacts");
+        assertThrows(CommandException.class, EditCommand.MESSAGE_DUPLICATE_PERSON, () ->
+                logic.execute("edit 1 p/" + BOB.getPhone().value));
+        assertEquals(List.of(ALICE), model.getAddressBook().getPersonList());
+        assertEquals(List.of(ALICE, BOB), model.getAddressBook(ContactSection.FAVOURITES).getPersonList());
     }
 
     @Test
@@ -254,7 +325,8 @@ public class LogicManagerTest {
         logic.execute("delete 1");
         logic.execute("undo");
         assertEquals(new Note("Edited favourite"), model.getAddressBook().getPersonList().getFirst().getNote());
-        assertEquals(List.of(ALICE, BOB), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
+        assertEquals(new Note("Edited favourite"),
+                model.getAddressBook(ContactSection.CONTACTS).getPersonList().getFirst().getNote());
 
         logic.execute("tab contacts");
         logic.execute("undo");

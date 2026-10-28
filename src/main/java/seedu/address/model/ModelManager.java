@@ -8,8 +8,10 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -19,6 +21,7 @@ import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.exceptions.DuplicatePersonException;
 
 /**
  * Represents the in-memory model of the address book data.
@@ -92,7 +95,17 @@ public class ModelManager implements Model {
 
     @Override
     public void setAddressBook(ReadOnlyAddressBook addressBook) {
-        addressBooks.get(activeSection).resetData(addressBook);
+        AddressBook replacement = new AddressBook(requireNonNull(addressBook));
+        if (activeSection == ContactSection.CONTACTS) {
+            Set<UUID> retainedIds = replacement.getPersonList().stream()
+                    .map(Person::getId).collect(Collectors.toSet());
+            for (Person person : List.copyOf(getAddressBook().getPersonList())) {
+                if (!retainedIds.contains(person.getId())) {
+                    removeMatchingFavourite(person);
+                }
+            }
+        }
+        addressBooks.get(activeSection).resetData(replacement);
     }
 
     @Override
@@ -114,12 +127,21 @@ public class ModelManager implements Model {
     @Override
     public boolean hasPersonOtherThan(Person person, Person personToExclude) {
         requireAllNonNull(person, personToExclude);
-        return addressBooks.get(activeSection).hasPersonOtherThan(person, personToExclude);
+        if (addressBooks.get(activeSection).hasPersonOtherThan(person, personToExclude)) {
+            return true;
+        }
+        ContactSection otherSection = activeSection == ContactSection.CONTACTS
+                ? ContactSection.FAVOURITES : ContactSection.CONTACTS;
+        Person other = findById(otherSection, personToExclude);
+        return other != null && addressBooks.get(otherSection).hasPersonOtherThan(person, other);
     }
 
     @Override
     public void deletePerson(Person target) {
         addressBooks.get(activeSection).removePerson(target);
+        if (activeSection == ContactSection.CONTACTS) {
+            removeMatchingFavourite(target);
+        }
     }
 
     @Override
@@ -136,7 +158,34 @@ public class ModelManager implements Model {
     @Override
     public void setPerson(Person target, Person editedPerson) {
         requireAllNonNull(target, editedPerson);
+        if (hasPersonOtherThan(editedPerson, target)) {
+            throw new DuplicatePersonException();
+        }
         addressBooks.get(activeSection).setPerson(target, editedPerson);
+        ContactSection otherSection = activeSection == ContactSection.CONTACTS
+                ? ContactSection.FAVOURITES : ContactSection.CONTACTS;
+        Person other = findById(otherSection, target);
+        if (other != null) {
+            addressBooks.get(otherSection).setPerson(other, editedPerson);
+        }
+    }
+
+    /**
+     * Returns the counterpart identified by its persistent ID, ignoring editable contact details.
+     */
+    private Person findById(ContactSection section, Person person) {
+        return addressBooks.get(section).getPersonList().stream()
+                .filter(candidate -> candidate.getId().equals(person.getId())).findFirst().orElse(null);
+    }
+
+    /**
+     * Removes a favorite counterpart and its local group memberships when its original is deleted.
+     */
+    private void removeMatchingFavourite(Person person) {
+        Person favourite = findById(ContactSection.FAVOURITES, person);
+        if (favourite != null) {
+            addressBooks.get(ContactSection.FAVOURITES).removePerson(favourite);
+        }
     }
 
     @Override

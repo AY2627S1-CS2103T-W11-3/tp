@@ -85,11 +85,9 @@ public class LogicManager implements Logic {
         PreparedChange change = command.prepare(model);
         ContactSection section = model.getActiveSection();
         ContactSnapshot previous = capture(model);
-        ContactSnapshot candidate = new ContactSnapshot(
-                section == ContactSection.CONTACTS ? change.getCandidate()
-                        : model.getAddressBook(ContactSection.CONTACTS),
-                section == ContactSection.FAVOURITES ? change.getCandidate()
-                        : model.getAddressBook(ContactSection.FAVOURITES));
+        StagedModel candidateModel = new StagedModel(model);
+        candidateModel.setAddressBook(change.getCandidate());
+        ContactSnapshot candidate = capture(candidateModel);
         String description = command instanceof UndoableCommand undoableCommand
                 ? undoableCommand.describeUndo(previous.getAddressBook(section), change.getCandidate(), section)
                 : UndoHistory.MESSAGE_SUCCESS;
