@@ -251,6 +251,7 @@ Format: `filter t/TAG [t/TAG]…​`
 * Tag matching is case-insensitive; for example, `t/friends` matches `Friends`.
 * Only whole tags match; for example, `t/friend` does not match `friends`.
 * If more than one tag is given, a person must have every listed tag.
+* While a filter is active, the heading above the contact list shows `Active filter: TAG`. It remains visible after commands such as `view`. `list`, `find`, `recent`, and switching sections remove it.
 * A filter that matches nobody shows `No contacts match the specified tag(s).` The contacts remain saved. Use `list` to show them again.
 * The index numbers in the result list can be used by commands such as `view`, `edit`, and `delete`.
 * Use `list` to show all persons again.

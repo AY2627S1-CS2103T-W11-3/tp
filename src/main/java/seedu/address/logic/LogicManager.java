@@ -122,6 +122,11 @@ public class LogicManager implements Logic {
     }
 
     @Override
+    public String getActiveFilter() {
+        return model.getActiveFilter();
+    }
+
+    @Override
     public GuiSettings getGuiSettings() {
         return model.getGuiSettings();
     }

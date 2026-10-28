@@ -243,6 +243,26 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_viewAfterFilter_keepsActiveFilter() throws Exception {
+        model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+        JsonAddressBookStorage addressBookStorage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("filter-view.json"));
+        JsonUserPrefsStorage userPrefsStorage =
+                new JsonUserPrefsStorage(temporaryFolder.resolve("filter-view-prefs.json"));
+        logic = new LogicManager(model, new StorageManager(addressBookStorage, userPrefsStorage));
+
+        logic.execute("filter t/owesMoney t/friends");
+        assertEquals("friends, owesMoney", logic.getActiveFilter());
+
+        logic.execute("view 1");
+        assertEquals("friends, owesMoney", logic.getActiveFilter());
+        assertEquals(List.of(BENSON), logic.getFilteredPersonList());
+
+        logic.execute("list");
+        assertEquals("", logic.getActiveFilter());
+    }
+
+    @Test
     public void execute_storageThrowsIoException_throwsCommandException() {
         assertCommandFailureForExceptionFromStorage(DUMMY_IO_EXCEPTION, LogicManager.MESSAGE_SAVE_ERROR);
     }
