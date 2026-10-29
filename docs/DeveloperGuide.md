@@ -74,10 +74,7 @@ The **API** of this component is specified in [`Ui.java`](https://github.com/se-
 
 The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDisplay`, `PersonListPanel`, and `StatusBarFooter`. All of these, including `MainWindow`, inherit from the abstract `UiPart` class, which captures common behavior among classes that represent visible GUI parts.
 
-`CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and
-to navigate them with the Up and Down arrow keys. Submitted commands and the unfinished draft are kept in memory only.
-This history belongs to the UI component because it records command input rather than address-book data; it does not
-pass through `Logic`, `Model`, or `Storage`.
+`CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and to navigate them with the Up and Down arrow keys. Submitted commands and the unfinished draft are kept in memory only. This history belongs to the UI component because it records command input rather than address-book data; it does not pass through `Logic`, `Model`, or `Storage`.
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
@@ -196,9 +193,7 @@ The sequence diagram below shows the interactions within the `Logic` component f
 
 ### Command history
 
-`CommandHistory` records every non-empty command submitted from `CommandBox`, including commands that later fail
-parsing or execution. Recording occurs before `CommandExecutor.execute` is called. Therefore, a user can recall and
-correct an invalid command instead of typing it again. Empty input is ignored and is not added to history.
+`CommandHistory` records every non-empty command submitted from `CommandBox`, including commands that later fail parsing or execution. Recording occurs before `CommandExecutor.execute` is called. Therefore, a user can recall and correct an invalid command instead of typing it again. Empty input is ignored and is not added to history.
 
 Each `CommandHistory` maintains:
 
@@ -206,33 +201,20 @@ Each `CommandHistory` maintains:
 * a `commandDraft` containing unfinished input saved when history navigation starts; and
 * a `nextCommandIndex` identifying the current navigation position.
 
-When a command is added, `CommandHistory` adds it to the in-memory list and moves `nextCommandIndex` to the position
-immediately after the newest command. This reset ensures that pressing Up after submitting a new command recalls that
-new command, even if the user had previously navigated to an older entry.
+When a command is added, `CommandHistory` adds it to the in-memory list and moves `nextCommandIndex` to the position immediately after the newest command. This reset ensures that pressing Up after submitting a new command recalls that new command, even if the user had previously navigated to an older entry.
 
 `CommandBox` handles navigation on JavaFX `KEY_PRESSED` events:
 
-- When the user first presses Up, `getPreviousCommand` saves the text in the command box as the draft, moves the index
-  toward the beginning of the list, and returns the older command.
-- When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns either the newer
-  command or the saved draft after the newest command.
-- `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
-- If the index is already at the oldest command or past the newest entry, the corresponding method returns an empty
-  `Optional`; the input remains unchanged.
+* When the user first presses Up, `getPreviousCommand` saves the text in the command box as the draft, moves the index toward the beginning of the list, and returns the older command.
+* When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns either the newer command or the saved draft after the newest command.
+* `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
+* If the index is already at the oldest command or past the newest entry, the corresponding method returns an empty `Optional`; the input remains unchanged.
 
-The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key
-behavior. Other key events are left untouched.
+The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key behavior. Other key events are left untouched.
 
-Command history remains only in memory. It does not pass through the `Storage` component or create a temporary history
-file, so neither a normal shutdown nor an abnormal process exit leaves a command-history file containing submitted
-commands. Every launch starts with an empty history.
+Command history remains only in memory. It does not pass through the `Storage` component or create a temporary history file, so neither a normal shutdown nor an abnormal process exit leaves a command-history file containing submitted commands. Every launch starts with an empty history.
 
-`CommandHistoryTest` verifies navigation order and boundaries, draft restoration, cursor reset after a new command,
-defensive checks, and the absence of a readable history file after an abnormal subprocess exit.
-`CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, draft restoration, and retention of a
-failed command on the JavaFX application thread. Run them with
-`./gradlew test --tests '*CommandHistoryTest' --tests '*CommandHistoryUiTest'`. The UI test is skipped on Linux when
-`DISPLAY` is absent; the non-UI history tests remain independent of the display.
+`CommandHistoryTest` verifies navigation order and boundaries, draft restoration, cursor reset after a new command, defensive checks, and the absence of a readable history file after an abnormal subprocess exit. `CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, draft restoration, and retention of a failed command on the JavaFX application thread. Run them with `./gradlew test --tests '*CommandHistoryTest' --tests '*CommandHistoryUiTest'`. The UI test is skipped on Linux when `DISPLAY` is absent; the non-UI history tests remain independent of the display.
 
 ### Automatic contact persistence (F5)
 
@@ -701,7 +683,7 @@ Use a disposable app folder with its own `data/addressbook.json`, since these ch
 1. Type an unfinished command without pressing Enter. Press Up to recall the newest command, then press Down. Expect the unfinished command to be restored.
 1. Enter an invalid command such as `notACommand`, press `Enter`, then replace it with `list`, and press Enter. Press Up to recall `list`, then press Up again. Expect `notACommand`, confirming that failed commands are also recorded.
 1. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty, confirming that history from the previous launch was cleared.
-1. Enter a command containing disposable contact details, then force-stop the application. Confirm that the operating system's temporary directory contains no `addressbook-command-history-*.txt` file and that relaunching the application provides no command from the terminated session.
+1. Create a fresh, isolated temporary directory and launch the application with that directory configured as the JVM temporary directory (for example, using `-Djava.io.tmpdir=<path>`). Enter a command containing disposable contact details, then force-stop the application. Confirm that this launch creates no `addressbook-command-history-*.txt` file in the isolated directory and that relaunching the application provides no command from the terminated session. If an isolated directory cannot be used, compare the matching files in the shared temporary directory before and after the test and confirm that no new history file is created.
 
 ### Saving data
 
