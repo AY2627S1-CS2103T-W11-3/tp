@@ -22,6 +22,7 @@ import seedu.address.commons.core.LogsCenter;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.exceptions.DuplicatePersonException;
+import seedu.address.model.person.PersonHasTagsPredicate;
 
 /**
  * Represents the in-memory model of the address book data.
@@ -35,6 +36,7 @@ public class ModelManager implements Model {
     private FilteredList<Person> filteredPersons;
     private SortedList<Person> displayedPersons;
     private ObservableList<Person> visiblePersons;
+    private String activeFilter = "";
 
     /**
      * Initializes a ModelManager with the given addressBook and userPrefs.
@@ -215,6 +217,7 @@ public class ModelManager implements Model {
         filteredPersons = new FilteredList<>(getAddressBook().getPersonList());
         displayedPersons = new SortedList<>(filteredPersons);
         visiblePersons = FXCollections.unmodifiableObservableList(displayedPersons);
+        activeFilter = "";
     }
 
     /**
@@ -227,10 +230,18 @@ public class ModelManager implements Model {
     }
 
     @Override
+    public String getActiveFilter() {
+        return activeFilter;
+    }
+
+    @Override
     public void updateFilteredPersonList(Predicate<Person> predicate) {
         requireNonNull(predicate);
         displayedPersons.setComparator(null);
         filteredPersons.setPredicate(predicate);
+        activeFilter = predicate instanceof PersonHasTagsPredicate tagPredicate
+                ? tagPredicate.getDisplayNames()
+                : "";
     }
 
     /** Copies the visible membership and order used to resolve indices in a staged command. */
@@ -243,6 +254,7 @@ public class ModelManager implements Model {
 
     @Override
     public void updateFilteredPersonListToShowRecent() {
+        activeFilter = "";
         filteredPersons.setPredicate(PREDICATE_SHOW_ALL_PERSONS);
         displayedPersons.setComparator((first, second) -> Integer.compare(
                 getAddressBook().getPersonList().indexOf(second), getAddressBook().getPersonList().indexOf(first)));
@@ -262,6 +274,7 @@ public class ModelManager implements Model {
         return addressBooks.equals(otherModelManager.addressBooks)
                 && activeSection == otherModelManager.activeSection
                 && userPrefs.equals(otherModelManager.userPrefs)
+                && activeFilter.equals(otherModelManager.activeFilter)
                 && displayedPersons.equals(otherModelManager.displayedPersons);
     }
 

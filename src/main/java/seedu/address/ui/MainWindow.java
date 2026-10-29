@@ -43,6 +43,9 @@ public class MainWindow extends UiPart<Stage> {
     private Label activeSectionLabel;
 
     @FXML
+    private Label activeFilterLabel;
+
+    @FXML
     private StackPane commandBoxPlaceholder;
 
     @FXML
@@ -133,9 +136,16 @@ public class MainWindow extends UiPart<Stage> {
         refreshActiveSection();
     }
 
-    /** Aligns the displayed list and file path with the section used by commands. */
+    /** Aligns the section label, active filter, list, and file path with the model. */
     private void refreshActiveSection() {
         activeSectionLabel.setText(logic.getActiveSection().getDisplayName());
+        String activeFilter = logic.getActiveFilter();
+        boolean hasFilter = !activeFilter.isEmpty();
+        activeFilterLabel.setVisible(hasFilter);
+        activeFilterLabel.setManaged(hasFilter);
+        if (hasFilter) {
+            activeFilterLabel.setText("Active filter: " + activeFilter);
+        }
         personListPanel.setPersonList(logic.getFilteredPersonList());
         statusBarFooter.setSaveLocation(logic.getActiveDataFilePath());
     }

@@ -2,6 +2,8 @@ package seedu.address.logic.parser;
 
 import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 
+import java.math.BigInteger;
+
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.commands.ViewCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -25,6 +27,10 @@ public class ViewCommandParser implements Parser<ViewCommand> {
             Index index = ParserUtil.parseIndex(trimmedArgs);
             return new ViewCommand(index);
         } catch (ParseException pe) {
+            // A positive integer larger than Integer.MAX_VALUE is still a valid index format.
+            if (trimmedArgs.matches("[1-9]\\d*")) {
+                return new ViewCommand(new BigInteger(trimmedArgs));
+            }
             throw new ParseException(
                     String.format(MESSAGE_INVALID_COMMAND_FORMAT, ViewCommand.MESSAGE_USAGE), pe);
         }
