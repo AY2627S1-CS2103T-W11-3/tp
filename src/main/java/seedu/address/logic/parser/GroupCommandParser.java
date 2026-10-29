@@ -1,5 +1,7 @@
 package seedu.address.logic.parser;
 
+import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,7 +50,7 @@ public class GroupCommandParser implements Parser<GroupCommand> {
             Name personName = ParserUtil.parseName(member);
             return new GroupCommand(action, groupName, personName);
         }
-        throw new ParseException(GroupCommand.MESSAGE_USAGE);
+        throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, GroupCommand.MESSAGE_USAGE));
     }
 
     private String parseGroupName(String rawName) throws ParseException {

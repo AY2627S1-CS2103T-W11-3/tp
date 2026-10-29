@@ -106,6 +106,7 @@ public class AddressBookTest {
 
         addressBook.setPerson(ALICE, renamedAlice);
 
+        assertEquals(ALICE.getId(), renamedAlice.getId());
         assertEquals(Set.of(ALICE.getId()), addressBook.getGroup("Project").getMembers());
         assertEquals(Set.of(), addressBook.getGroup("Committee").getMembers());
     }
