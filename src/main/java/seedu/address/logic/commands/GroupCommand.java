@@ -5,13 +5,15 @@ import static java.util.Objects.requireNonNull;
 import java.util.Set;
 
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 
 /** Creates or deletes a group, or changes one of its memberships. */
-public class GroupCommand extends Command {
+public class GroupCommand extends UndoableCommand {
     public static final String COMMAND_WORD = "group";
     public static final String MESSAGE_USAGE = "Usage: group add n/<GROUP NAME> | "
             + "group delete g/<GROUP NAME> | "
@@ -68,5 +70,15 @@ public class GroupCommand extends Command {
         }
         model.setGroup(group.withoutMember(personName));
         return new CommandResult("Removed " + personName + " from " + groupName);
+    }
+
+    @Override
+    public String describeUndo(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, ContactSection section) {
+        return switch (action) {
+            case CREATE -> "Undid creation of group " + groupName + ".";
+            case DELETE -> "Undid deletion of group " + groupName + ".";
+            case ADD_MEMBER -> "Undid addition of " + personName + " to group " + groupName + ".";
+            case REMOVE_MEMBER -> "Undid removal of " + personName + " from group " + groupName + ".";
+        };
     }
 }
