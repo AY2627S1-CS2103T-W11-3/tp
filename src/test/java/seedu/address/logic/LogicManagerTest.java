@@ -138,6 +138,24 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void isFavourite_matchesContactIdentityAndUpdatesAfterRemoval() throws Exception {
+        model.addPerson(ALICE);
+        assertFalse(logic.isFavourite(ALICE));
+        logic.execute("favourite 1");
+        logic.execute("tab favourites");
+        logic.execute("find Nobody");
+
+        assertTrue(logic.isFavourite(ALICE));
+        assertTrue(logic.isFavourite(new PersonBuilder(ALICE).withPhone(BOB.getPhone().value).build()));
+        assertTrue(logic.isFavourite(new PersonBuilder(ALICE).withEmail(BOB.getEmail().value).build()));
+        assertFalse(logic.isFavourite(BOB));
+
+        logic.execute("list");
+        logic.execute("delete 1");
+        assertFalse(logic.isFavourite(ALICE));
+    }
+
+    @Test
     public void execute_favouriteInvalidSelectionDuplicateAndWrongSection_reportDistinctErrors() throws Exception {
         assertThrows(CommandException.class, FavouriteCommand.MESSAGE_EMPTY_LIST, () -> logic.execute("favourite 1"));
         model.addPerson(ALICE);
@@ -165,12 +183,59 @@ public class LogicManagerTest {
         logic.execute("tab contacts");
         assertEquals(List.of(ALICE), logic.getFilteredPersonList());
         logic.execute("tab favourites");
+        assertTrue(logic.getFilteredPersonList().isEmpty());
+        logic.execute("list");
         assertEquals(List.of(BOB), logic.getFilteredPersonList());
         assertEquals(temporaryFolder.resolve("favourites.json"), logic.getActiveDataFilePath());
         logic.execute("delete 1");
         assertTrue(new JsonAddressBookStorage(temporaryFolder.resolve("favourites.json"))
                 .readAddressBook().orElseThrow().getPersonList().isEmpty());
         assertEquals(List.of(ALICE), model.getAddressBook(ContactSection.CONTACTS).getPersonList());
+    }
+
+    @Test
+    public void execute_tab_restoresEachSectionsFilter() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+        logic.execute("favourite 1");
+        logic.execute("favourite 2");
+
+        for (String command : List.of("find Alice", "filter t/friends")) {
+            logic.execute("tab contacts");
+            logic.execute(command);
+            logic.execute("tab favourites");
+            logic.execute("find Bob");
+            assertEquals("", logic.getActiveFilter());
+            logic.execute("tab contacts");
+            assertEquals(List.of(ALICE), logic.getFilteredPersonList());
+            assertEquals(command.startsWith("filter") ? "friends" : "", logic.getActiveFilter());
+
+            logic.execute("list");
+            assertEquals(List.of(ALICE, BOB), logic.getFilteredPersonList());
+            assertEquals("", logic.getActiveFilter());
+            logic.execute("tab favourites");
+            assertEquals(List.of(BOB), logic.getFilteredPersonList());
+        }
+    }
+
+    @Test
+    public void execute_addAfterSectionSwitch_preservesEachSectionsRecentView() throws Exception {
+        model.addPerson(ALICE);
+        model.addPerson(BOB);
+        logic.execute("recent");
+        logic.execute("tab favourites");
+        logic.execute("recent");
+        logic.execute("tab contacts");
+
+        logic.execute(PersonUtil.getAddCommand(AMY));
+
+        assertEquals(List.of(AMY, BOB, ALICE), logic.getFilteredPersonList());
+        logic.execute("tab favourites");
+        logic.execute(PersonUtil.getAddCommand(ALICE));
+        logic.execute(PersonUtil.getAddCommand(BOB));
+        assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
+        logic.execute("tab contacts");
+        assertEquals(List.of(AMY, BOB, ALICE), logic.getFilteredPersonList());
     }
 
     @Test
@@ -423,6 +488,12 @@ public class LogicManagerTest {
         logic.execute("recent");
         assertEquals(List.of(BOB), logic.getFilteredPersonList());
         logic.execute("tab contacts");
+        assertEquals(List.of(BOB, ALICE), logic.getFilteredPersonList());
+        logic.execute("favourite 2");
+        logic.execute("tab favourites");
+        assertEquals(List.of(ALICE, BOB), logic.getFilteredPersonList());
+        logic.execute("tab contacts");
+        logic.execute("tab favourites");
         assertEquals(List.of(ALICE, BOB), logic.getFilteredPersonList());
     }
 

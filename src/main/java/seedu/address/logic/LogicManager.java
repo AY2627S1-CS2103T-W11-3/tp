@@ -130,6 +130,11 @@ public class LogicManager implements Logic {
     }
 
     @Override
+    public boolean isFavourite(Person person) {
+        return model.getAddressBook(ContactSection.FAVOURITES).getPersonList().stream().anyMatch(person::isSamePerson);
+    }
+
+    @Override
     public String getActiveFilter() {
         return model.getActiveFilter();
     }

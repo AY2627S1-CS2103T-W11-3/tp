@@ -18,6 +18,7 @@ import seedu.address.logic.Logic;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.ContactSection;
 
 /**
  * The Main Window. Provides the basic application layout containing
@@ -136,7 +137,10 @@ public class MainWindow extends UiPart<Stage> {
         refreshActiveSection();
     }
 
-    /** Aligns the section label, active filter, list, and file path with the model. */
+    /**
+     * Updates the section label, active filter, displayed contacts, favorite indicators, and save path.
+     * Shows favorite indicators only in Contacts, using the same identity rule as the favorite command.
+     */
     private void refreshActiveSection() {
         activeSectionLabel.setText(logic.getActiveSection().getDisplayName());
         String activeFilter = logic.getActiveFilter();
@@ -146,7 +150,8 @@ public class MainWindow extends UiPart<Stage> {
         if (hasFilter) {
             activeFilterLabel.setText("Active filter: " + activeFilter);
         }
-        personListPanel.setPersonList(logic.getFilteredPersonList());
+        personListPanel.setPersonList(logic.getFilteredPersonList(),
+                person -> logic.getActiveSection() == ContactSection.CONTACTS && logic.isFavourite(person));
         statusBarFooter.setSaveLocation(logic.getActiveDataFilePath());
     }
 
