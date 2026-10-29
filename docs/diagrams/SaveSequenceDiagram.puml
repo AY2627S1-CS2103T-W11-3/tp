@@ -1,0 +1,58 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+participant ":LogicManager" as logic LOGIC_COLOR
+participant "command:Command" as command LOGIC_COLOR
+participant "staged:StagedModel" as staged MODEL_COLOR
+participant "live:Model" as live MODEL_COLOR
+participant ":StorageManager" as storage STORAGE_COLOR
+participant ":UndoSnapshotStorage" as undo STORAGE_COLOR
+participant ":CollectionSaveTransaction" as transaction STORAGE_COLOR
+participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+
+[-> logic : execute(commandText)
+logic -> logic : parse command
+logic -> staged : new StagedModel(live)
+staged -> live : copy both collections and displayed list
+live --> staged
+logic -> command : execute(staged)
+command -> staged : mutate candidate; record operation
+staged --> command
+command --> logic : CommandResult
+logic -> logic : capture previous and candidate ContactSnapshots
+logic -> storage : saveUndoableChange(previous, candidate, description, section)
+storage -> undo : saveChange(previous, candidate, description, section)
+undo -> undo : prepare shared undo history
+undo -> transaction : save(contacts, favourites, history, savedSections)
+transaction -> transaction : recover pending save, if any
+transaction -> json : write selected collection candidates to temporary files
+json --> transaction
+transaction -> transaction : record original files in pending journal
+transaction -> json : atomically replace selected collection files
+json --> transaction
+transaction -> transaction : atomically replace undo history; remove journal
+alt all saves succeed
+    transaction --> undo
+    undo --> storage
+    storage --> logic
+    logic -> staged : commitTo(live)
+    staged -> live : replay recorded operations
+    live --> staged
+    staged --> logic
+    [<-- logic : CommandResult
+else preparation or publication fails
+    transaction -> transaction : recover published files if needed; clean temporary files
+    transaction --> undo : IOException
+    undo --> storage : IOException
+    storage --> logic : IOException
+    note over live : Live model remains unchanged
+    [<-- logic : CommandException
+end
+
+note over logic
+StagedCommand operations use PreparedChange instead of
+command.execute(staged), but save before applying the live change.
+Read-only commands skip contact persistence.
+end note
+@enduml

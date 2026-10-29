@@ -17,11 +17,12 @@ Class JsonUserPrefsStorage
 
 package "AddressBook Storage" #F4F6F6{
 Class UndoSnapshotStorage
+Class CollectionSaveTransaction
 Class JsonAddressBookStorage
 Class JsonSerializableAddressBook
 Class JsonAdaptedPerson
-Class JsonAdaptedTag
 Class JsonAdaptedGroup
+Class JsonAdaptedTag
 }
 
 }
@@ -31,15 +32,20 @@ HiddenOutside ..> Storage
 
 StorageManager .up.|> Storage
 Storage .up.|> UndoHistory
-UndoSnapshotStorage .up.|> UndoHistory
 StorageManager -down-> "1" JsonUserPrefsStorage
-StorageManager -down-> "2" JsonAddressBookStorage
+StorageManager -down-> "2\nContacts, Favourites" JsonAddressBookStorage
 StorageManager *-down-> "1" UndoSnapshotStorage
-UndoSnapshotStorage -down-> "1" JsonAddressBookStorage : Contacts
+UndoSnapshotStorage *-down-> "1" CollectionSaveTransaction
+CollectionSaveTransaction -down-> "2" JsonAddressBookStorage
 
 JsonAddressBookStorage ..> JsonSerializableAddressBook
 JsonSerializableAddressBook *--> "* persons" JsonAdaptedPerson
 JsonSerializableAddressBook *--> "* groups" JsonAdaptedGroup
 JsonAdaptedPerson --> "*" JsonAdaptedTag
+JsonAdaptedGroup ..> Group : <<convert and validate>>
+
+package Model {
+Class Group
+}
 
 @enduml

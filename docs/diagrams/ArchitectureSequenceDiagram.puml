@@ -2,38 +2,41 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
-Actor User as user USER_COLOR
-Participant ":UI" as ui UI_COLOR
-Participant ":Logic" as logic LOGIC_COLOR
-Participant ":Model" as model MODEL_COLOR
-Participant ":Storage" as storage STORAGE_COLOR
+actor User as user USER_COLOR
+participant ":UI" as ui UI_COLOR
+participant ":LogicManager" as logic LOGIC_COLOR
+participant "d:DeleteCommand" as delete LOGIC_COLOR
+participant "m:Model" as model MODEL_COLOR
+participant ":StorageManager" as storage STORAGE_COLOR
+participant ":UndoSnapshotStorage" as undo STORAGE_COLOR
+participant ":CollectionSaveTransaction" as transaction STORAGE_COLOR
 
-user -[USER_COLOR]> ui : "delete 1"
-activate ui UI_COLOR
-
-ui -[UI_COLOR]> logic : execute("delete 1")
-activate logic LOGIC_COLOR
-
-logic -[LOGIC_COLOR]> model : deletePerson(p)
-activate model MODEL_COLOR
-
-model -[MODEL_COLOR]-> logic
-deactivate model
-
-logic -[LOGIC_COLOR]> storage : saveAddressBook(addressBook)
-activate storage STORAGE_COLOR
-
-storage -[STORAGE_COLOR]> storage : Save to file
-activate storage STORAGE_COLOR_T1
-storage --[STORAGE_COLOR]> storage
-deactivate storage
-
-storage --[STORAGE_COLOR]> logic
-deactivate storage
-
-logic --[LOGIC_COLOR]> ui
-deactivate logic
-
-ui--[UI_COLOR]> user
-deactivate ui
+user -> ui : "delete 1"
+ui -> logic : execute("delete 1")
+logic -> delete : prepare(model)
+delete -> model : get displayed contact and address book
+model --> delete : contact and current data
+delete --> logic : PreparedChange(candidate, apply)
+logic -> logic : capture previous and candidate ContactSnapshots
+logic -> storage : saveUndoableChange(previous, candidate, description, section)
+storage -> undo : saveChange(...)
+undo -> transaction : save selected collections and undo history
+transaction -> transaction : prepare temporary files; journal originals; publish
+alt save succeeds
+    transaction --> undo
+    undo --> storage
+    storage --> logic
+    logic -> model : PreparedChange.apply()
+    model --> logic
+    logic --> ui : CommandResult
+    ui --> user : success
+else save fails
+    transaction -> transaction : recover published files if needed
+    transaction --> undo : IOException
+    undo --> storage : IOException
+    storage --> logic : IOException
+    note over model : Live model remains unchanged
+    logic --> ui : CommandException
+    ui --> user : save error; command retained
+end
 @enduml

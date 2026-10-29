@@ -11,6 +11,8 @@ Class "<<interface>>\nReadOnlyUserPrefs" as ReadOnlyUserPrefs
 Class "<<interface>>\nModel" as Model
 Class AddressBook
 Class ModelManager
+Class StagedModel
+Class ContactSnapshot
 Class UserPrefs
 Class "<<enumeration>>\nContactSection" as ContactSection
 
@@ -35,11 +37,14 @@ HiddenOutside ..> Model
 AddressBook .up.|> ReadOnlyAddressBook
 
 ModelManager .up.|> Model
+StagedModel .up.|> Model
+StagedModel *--> "1 candidate" ModelManager
 Model .right.> ReadOnlyUserPrefs
 Model .left.> ReadOnlyAddressBook
 ModelManager *-left-> "2\nContacts, Favourites" AddressBook : addressBooks
 ModelManager -right-> "1" UserPrefs
 ModelManager --> "1" ContactSection : activeSection
+ContactSnapshot *--> "2\nContacts, Favourites" AddressBook
 UserPrefs .up.|> ReadOnlyUserPrefs
 
 AddressBook *--> "1" UniquePersonList
@@ -51,7 +56,8 @@ Person *--> Email
 Person *--> Address
 Person *--> Note
 Person *--> "*" Tag
-Group *--> "* members" Name
+Group ..> Person : member IDs match Person.id
+note on link : Group.members is Set<UUID>; Person.id is UUID
 
 Person -[hidden]up--> I
 UniquePersonList -[hidden]right-> I

@@ -107,9 +107,10 @@ How the `Logic` component works:
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
 1. Commands without the `StagedCommand` capability execute against a `StagedModel`, which copies both collections and records model operations. Commands implementing `StagedCommand`, such as deletion, return a `PreparedChange` instead.
-1. If the command changes contacts, `LogicManager` saves the full candidate collection to its corresponding file before applying changes to the live model. If saving fails, the candidate is discarded and a `CommandException` is thrown. Commands that only change the view or active section do not save contact data.
-1. After committing, the `CommandResult` is returned to the UI. The sequence diagram above omits the
-   staging and storage interactions; the persistence flow is described below.
+1. If the command changes contacts or groups, `LogicManager` saves the candidate collections and shared undo history before applying changes to the live model. If saving fails, the candidate is discarded and a `CommandException` is thrown. Commands that only change the view or active section do not save contact data.
+1. After committing, the `CommandResult` is returned to the UI. The persistence flow is shown below.
+
+![Staged contact save and atomic replacement](images/SaveSequenceDiagram.png)
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
@@ -117,7 +118,7 @@ Here are the other classes in `Logic` (omitted from the class diagram above) tha
 
 How the parsing works:
 * When called upon to parse a user command, the `AddressBookParser` class creates an `XYZCommandParser` (`XYZ` is a placeholder for the specific command name, e.g., `AddCommandParser`). The parser uses the other classes shown above to parse the user command and create an `XYZCommand` object (e.g., `AddCommand`). The `AddressBookParser` returns that object as a `Command` object.
-* All `XYZCommandParser` classes, such as `AddCommandParser` and `DeleteCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
+* All command parsers, including `GroupCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
 ### Model component
 **API** : [`Model.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/model/Model.java)
@@ -127,7 +128,7 @@ How the parsing works:
 
 The `Model` component,
 
-* stores separate Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects. Linked contacts share a persistent UUID across the two collections.
+* stores separate Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects and groups whose memberships reference contact IDs. Linked contacts share a persistent UUID across the two collections.
 * maintains `FilteredList<Person>` and `SortedList<Person>` views backed by each address book's person list. It exposes the active section's displayed view as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the source list, filter, or ordering changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -150,8 +151,12 @@ The `Model` component,
 The `Storage` component,
 
 * saves Contacts, Favourites, shared undo history, and user preferences in JSON format, and reads them back into corresponding objects.
-* is implemented by `StorageManager`, which uses separate `JsonAddressBookStorage` instances for `data/addressbook.json` and `data/favourites.json`, and `JsonUserPrefsStorage` for preferences. Both contact files use the existing address-book JSON schema.
+* is implemented by `StorageManager`, which uses separate `JsonAddressBookStorage` instances for `data/addressbook.json` and `data/favourites.json`, and `JsonUserPrefsStorage` for preferences. `UndoSnapshotStorage` coordinates shared history through `CollectionSaveTransaction`. Both contact files use the existing address-book JSON schema.
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
+
+At startup, `UndoSnapshotStorage` recovers any interrupted save before `MainApp` loads each collection through `StorageManager`. JSON values, duplicate IDs and contacts, and group membership references are validated before `ModelManager` is created:
+
+![Validated startup restore flow](images/RestoreSequenceDiagram.png)
 
 ### Common classes
 
@@ -181,9 +186,9 @@ Each `find` replaces any existing filter rather than searching only the contacts
 
 ### Recently added contacts
 
-The insertion order of each `AddressBook` person list is the source of truth for recency. There is no timestamp, last-modified field, or additional JSON schema field. `ModelManager` wraps the active collection's observable person list in a `FilteredList` and then a `SortedList`. `recent` shows all contacts and installs a comparator that orders their source-list indices from highest to lowest, producing newest-added-first display order without changing the stored list.
+The insertion order of each `AddressBook` person list is the source of truth for recency. There is no timestamp, last-modified field, or additional JSON schema field. `ModelManager` maintains a `FilteredList` and `SortedList` for each collection. `recent` shows all contacts in the active section and installs a comparator that orders their source-list indices from highest to lowest, producing newest-added-first display order without changing the stored list.
 
-Add appends to the source list, so a new contact appears first while Recent remains active. Edit replaces a contact at the same source index, and Delete removes one entry, so both preserve the relative recency of the remaining contacts. Intentional view-changing commands such as `list`, `find`, and `filter` clear the Recent comparator; switching contact sections rebuilds the displayed view as well.
+Add appends to the source list, so a new contact appears first while Recent remains active. Edit replaces a contact at the same source index, and Delete removes one entry, so both preserve the relative recency of the remaining contacts. Intentional view-changing commands such as `list`, `find`, and `filter` clear the active section's Recent comparator; switching sections retains each section's view.
 
 `JsonSerializableAddressBook` writes and reconstructs the `persons` array in list order, so insertion order survives persistence and restart. The active Recent view is UI/model state and is not persisted: startup initially displays the stored addition order, and the user invokes `recent` again to restore newest-added-first display.
 
@@ -249,11 +254,13 @@ notifications instead of replacing the whole list for every change. A deletion l
 predicate active. A rejected command or failed save emits no changes to the live list, preserving UI
 selection and the input command. The UI displays success only after `LogicManager.execute` returns.
 
-`JsonAddressBookStorage` serializes UTF-8, pretty-printed JSON to a temporary file in the data directory,
-then atomically replaces the destination. It rejects saves if atomic replacement is unavailable and
-attempts to clean up temporary files. It never falls back to truncating the original file.
+`UndoSnapshotStorage` uses `CollectionSaveTransaction` to prepare both selected collection files and the shared undo-history file. The transaction records original file bytes in a pending journal before publishing the candidates with atomic replacement. If publication fails or the app stops mid-save, recovery restores the selected originals before either collection is loaded again. A section whose file failed to load is excluded from an unrelated save, preserving that invalid file for inspection. `JsonAddressBookStorage` writes each collection candidate to a temporary file beside its destination and rejects saves if atomic replacement is unavailable.
 
 `MainApp` loads both collections independently and always starts on Contacts. A missing Contacts file uses sample contacts; a missing Favourites file uses an empty collection. Loading distinguishes unreadable files, malformed JSON, and invalid contact values. Conversion validates a whole collection before exposing its contacts. A load error starts only the affected collection empty, and `UiManager` reports its section and path after the window opens. If both files fail, both errors are reported. Existing files remain untouched until a command successfully saves a replacement for that collection.
+
+Group commands use the same staged save path. `GroupCommandParser` parses creation, listing, viewing, membership changes, and deletion into `GroupCommand` actions. Membership commands resolve a unique contact name or a displayed index to a persistent contact ID; ambiguous names require an index. Listing and viewing are read-only. The candidate address book stores `Group` objects with member IDs, which `JsonAdaptedGroup` writes and validates on restore. Legacy name-based memberships are migrated while loading:
+
+![Group command staging and save flow](images/GroupSequenceDiagram.png)
 
 Integration with the other MVP features:
 
