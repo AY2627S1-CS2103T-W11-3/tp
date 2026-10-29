@@ -3,7 +3,7 @@ layout: page
 title: User Guide
 ---
 
-AB4 is a **desktop contact manager for NUS students, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). It helps you keep contact details, tags, and notes locally and retrieve contacts by name or tag.
+AB4 is a **desktop contact manager for NUS students, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). It helps you keep contact details, tags, and notes locally and retrieve contacts by name, tag, or note.
 
 * Table of Contents
 {:toc}
@@ -148,16 +148,31 @@ Examples:
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street note/Known through a dating app`
 
-### Creating and deleting groups, and changing their members: `group`
+Contacts may have the same name as long as their phone numbers and email addresses differ. `add` checks the complete active collection, including contacts hidden by a current search or filter, and rejects a contact if either identity field is already used. No contact is added or saved on a conflict.
 
-Create an empty group, then add or remove contacts by their exact names. The contact must already exist in the address book. Group names are case sensitive and must be unique.
+| Conflict | Message |
+| --- | --- |
+| Phone number matches one existing contact | `A contact with the same phone number already exists: NAME` |
+| Email address matches one existing contact | `A contact with the same email address already exists: NAME` |
+| Both fields match the same existing contact | `A contact with the same phone number and email address already exists: NAME` |
+| Phone and email match two different existing contacts | The phone and email messages above are shown on separate lines, naming the respective contacts. |
 
+### Listing, viewing, and managing groups: `group`
+
+Groups belong to the active section (Contacts or Favourites). Create an empty group, then add or remove contacts by their exact names. The contact must already exist in that section. Group names are case sensitive and must be unique within the section.
+
+* `group list` — show all groups in the active section and their member counts, including empty groups.
+* `group view g/CS2103T Team` — show the group's members with their phone numbers.
 * `group add n/CS2103T Team`
 * `group delete g/CS2103T Team`
 * `group member g/CS2103T Team add/John Tan`
 * `group member g/CS2103T Team remove/John Tan`
 
-Groups and their memberships are saved with the contacts. Deleting a group removes its memberships but keeps the contacts. Deleting a contact also removes it from its groups.
+If there are no groups, `group list` reports `No groups exist.`. If a group has no members, `group view` reports `Group NAME has no members.`. Viewing a missing group reports `Group does not exist: NAME`.
+
+Membership is stored by exact contact name. If several contacts have the same name, they share that membership; `group view` shows each matching contact and phone number. The list count reflects the contacts shown by `group view`.
+
+Groups and their memberships are saved with the contacts. Listing and viewing groups do not save or change data. Deleting a group removes its memberships but keeps the contacts. Deleting a contact also removes it from its groups.
 
 ### Listing all persons: `list`
 
@@ -171,9 +186,10 @@ Shows all contacts with the most recently added contact first.
 
 Format: `recent`
 
-* Addition order is based on the order in which contacts were added. Editing a contact does not make it recent again.
-* Deleted contacts are omitted. Commands such as `find`, `list`, and `view` do not change addition order.
-* Addition order is preserved after restarting the application. Run `recent` again to display contacts newest first; the selected display order is not restored on startup.
+* “Recent” means recently **added**, not recently edited. Editing a contact keeps it at its original position in the Recent ordering.
+* While Recent is active, adding a contact keeps Recent active and displays the new contact first. Deleting a contact immediately removes it while preserving the Recent order of the remaining contacts.
+* `list`, `find`, and `filter` switch away from Recent ordering to their normal addition-order results. These commands do not change the underlying addition order.
+* The underlying addition order is saved and restored after restarting the application. The active Recent view itself is not restored; enter `recent` again to display newest-added-first order.
 * If there are no contacts, the command shows `No contacts available.`
 * The command does not accept parameters.
 
@@ -215,6 +231,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * To remove all of a person's tags, enter `t/` without a tag after it.
 * To replace a note, use `note/NOTE` as the final argument, following the same rules as `add`. Omitting it preserves the existing note. For example: `edit 1 note/Discussed frontend implementation`.
+* An edit may keep the contact's own phone number and email address, but its resulting phone number or email address cannot match any other contact in the complete active collection. The contact's name may match another contact's name. A conflict shows `This person already exists in the address book.` and leaves the contact unchanged.
 
 Examples:
 
@@ -224,23 +241,20 @@ Examples:
 
 ### Locating persons by name, tag, or note: `find`
 
-Finds persons in the active section whose names, tags, or notes contain any of the given keywords.
+Finds persons in the active section whose names, tags, or notes match any of the given keywords.
 
 
 Format: `find KEYWORD [MORE_KEYWORDS]`
 
-* The search is case-insensitive; for example, `hans` matches `Hans`.
-* Keyword order does not matter; for example, `Hans Bo` matches `Bo Hans`.
-
-
-* The search considers names, tags, and notes only.
-* Names support partial matching; for example, `Han` matches `Hans`. Tags and notes require full-word matches.
-
-* Persons matching at least one keyword are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`.
+* The search is case-insensitive and considers names, tags, and notes only.
+* Names use partial matching; for example, `Han` matches `Hans`.
+* Tags require an exact tag match; for example, `friend` does not match the tag `friends`.
+* Notes are split only at whitespace. A keyword must equal one complete note token, ignoring case. Punctuation remains part of the token: for a note containing `Met at college,`, `find college,` matches but `find college` does not.
+* Persons matching at least one keyword in any of those fields are returned (an `OR` search). Keyword order does not matter; for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`.
 
 Examples:
 
-* `find John` returns contacts named `john` or `John Doe`, as well as contacts tagged `John`.
+* `find John` returns contacts named `john` or `John Doe`, as well as contacts with the exact tag or note token `John`.
 * `find CS2103T` returns contacts tagged `CS2103T` (case-insensitive).
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
@@ -405,6 +419,7 @@ Action | Format, Examples
 **Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
+**Groups** | `group list`, `group view g/GROUP NAME`, `group add n/GROUP NAME`, `group delete g/GROUP NAME`, `group member g/GROUP NAME add/CONTACT NAME`, `group member g/GROUP NAME remove/CONTACT NAME`
 **Favourite** | `favourite INDEX`<br> e.g., `favourite 1` (from Contacts)
 **Switch section** | `tab contacts` or `tab favourites`
 **Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`

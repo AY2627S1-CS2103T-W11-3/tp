@@ -74,9 +74,7 @@ The **API** of this component is specified in [`Ui.java`](https://github.com/se-
 
 The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDisplay`, `PersonListPanel`, and `StatusBarFooter`. All of these, including `MainWindow`, inherit from the abstract `UiPart` class, which captures common behavior among classes that represent visible GUI parts.
 
-`CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and
-to navigate them with the Up and Down arrow keys. This history belongs to the UI component because it records command
-input rather than address-book data; it does not pass through `Logic`, `Model`, or `Storage`.
+`CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and to navigate them with the Up and Down arrow keys. Submitted commands and the unfinished draft are kept in memory only. This history belongs to the UI component because it records command input rather than address-book data; it does not pass through `Logic`, `Model`, or `Storage`.
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
@@ -124,17 +122,17 @@ How the parsing works:
 ### Model component
 **API** : [`Model.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/model/Model.java)
 
-<img src="images/ModelClassDiagram.png" width="450" />
+<img src="images/ModelClassDiagram.png" width="650" />
 
 
 The `Model` component,
 
 * stores separate Contacts and Favourites address books, keyed by `ContactSection`, each with its own `UniquePersonList` of `Person` objects. Linked contacts share a persistent UUID across the two collections.
-* stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
+* maintains `FilteredList<Person>` and `SortedList<Person>` views backed by each address book's person list. It exposes the active section's displayed view as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the source list, filter, or ordering changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
 
-`getAddressBook()` and ordinary contact operations use the active section; `getAddressBook(section)` reads a specific complete collection. Switching sections selects that section's retained filtered and sorted views. Each section preserves its own search predicate and display order during the current session, including empty results, until a command resets its view. Successful undo resets both views. Views are initialized to show all contacts in addition order and are not persisted across restarts. GUI preferences remain shared across sections. The partial class diagram above omits this section-selection state.
+`getAddressBook()` and ordinary contact operations use the active section; `getAddressBook(section)` reads a specific complete collection. Switching sections selects that section's retained filtered and sorted views. Each section preserves its own search predicate and display order during the current session, including empty results, until a command resets its view. Successful undo resets both views. Views are initialized to show all contacts in addition order and are not persisted across restarts. GUI preferences remain shared across sections. The class diagram above shows the active views; cached views for the inactive section are omitted.
 
 <div markdown="span" class="alert alert-info">:information_source: **Note:** The alternative, arguably more object-oriented, design below keeps a unique list of tags in `AddressBook`, and each `Person` references tags from that list. This lets `AddressBook` maintain one `Tag` object per unique tag instead of each `Person` holding its own `Tag` objects.<br>
 
@@ -164,6 +162,30 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 ## **Implementation**
 
 This section describes some noteworthy details on how certain features are implemented.
+
+### Finding contacts
+
+`FindCommandParser` trims the arguments, rejects an empty query, splits the query at whitespace, and creates a `PersonContainsKeywordsPredicate`. `FindCommand` passes that predicate to `Model.updateFilteredPersonList`, which applies it to the complete person list of the active section.
+
+The predicate combines all keywords and searchable fields with OR semantics. Name matching is a case-insensitive substring test, so partial names match. A tag must equal a keyword ignoring case. Notes use `StringUtil.containsWordIgnoreCase`, which splits the stored note only at whitespace and compares complete tokens ignoring case; punctuation therefore remains part of a note token.
+
+Each `find` replaces any existing filter rather than searching only the contacts currently displayed. `ModelManager.updateFilteredPersonList` also clears the `SortedList` comparator, so invoking `find` intentionally switches away from Recent ordering and displays matching contacts in their underlying insertion order. No additional sequence diagram is needed because this follows the standard parser → command/predicate → model flow.
+
+### Duplicate detection
+
+`Person.isSamePerson` defines contact identity: two contacts conflict when either their non-empty phone numbers match or their non-empty email addresses match. Names are not identity fields, so same-name contacts are allowed when both identity fields differ. The non-empty checks are defensive; normal `add` and `edit` input validation requires valid phone and email values.
+
+`AddressBook` delegates uniqueness enforcement to `UniquePersonList`. Its `add`, `setPerson`, and bulk replacement paths use `Person.isSamePerson`, so the invariant also applies when a collection is loaded from storage. `EditCommand` checks the proposed contact with `hasPersonOtherThan`, which excludes the target contact itself but compares against every other contact. Both Add and Edit inspect the complete active collection through the model, not only the displayed `FilteredList`.
+
+`AddCommand` scans all conflicts before mutation and classifies them for user feedback: phone only, email only, both fields matching the same contact, or phone and email matching two different contacts. `EditCommand` reports its single duplicate-contact message for any identity conflict. Through `LogicManager`, command execution first uses a staged candidate; a duplicate is rejected before any staged mutation, save, undo-history registration, or commit to the live model.
+
+### Recently added contacts
+
+The insertion order of each `AddressBook` person list is the source of truth for recency. There is no timestamp, last-modified field, or additional JSON schema field. `ModelManager` wraps the active collection's observable person list in a `FilteredList` and then a `SortedList`. `recent` shows all contacts and installs a comparator that orders their source-list indices from highest to lowest, producing newest-added-first display order without changing the stored list.
+
+Add appends to the source list, so a new contact appears first while Recent remains active. Edit replaces a contact at the same source index, and Delete removes one entry, so both preserve the relative recency of the remaining contacts. Intentional view-changing commands such as `list`, `find`, and `filter` clear the Recent comparator; switching contact sections rebuilds the displayed view as well.
+
+`JsonSerializableAddressBook` writes and reconstructs the `persons` array in list order, so insertion order survives persistence and restart. The active Recent view is UI/model state and is not persisted: startup initially displays the stored addition order, and the user invokes `recent` again to restore newest-added-first display.
 
 ### Contact deletion (F4)
 
@@ -195,44 +217,28 @@ The sequence diagram below shows the interactions within the `Logic` component f
 
 ### Command history
 
-`CommandHistory` records every non-empty command submitted from `CommandBox`, including commands that later fail
-parsing or execution. Recording occurs before `CommandExecutor.execute` is called. Therefore, a user can recall and
-correct an invalid command instead of typing it again. Empty input is ignored and is not added to history.
+`CommandHistory` records every non-empty command submitted from `CommandBox`, including commands that later fail parsing or execution. Recording occurs before `CommandExecutor.execute` is called. Therefore, a user can recall and correct an invalid command instead of typing it again. Empty input is ignored and is not added to history.
 
 Each `CommandHistory` maintains:
 
 * a `List<String>` containing the commands available for navigation during the current session;
-* a `nextCommandIndex` identifying the current navigation position; and
-* a UTF-8 temporary text file containing the same submitted commands, one command per line.
+* a `commandDraft` containing unfinished input saved when history navigation starts; and
+* a `nextCommandIndex` identifying the current navigation position.
 
-When a command is added, `CommandHistory` first appends it to the temporary file, then adds it to the in-memory list
-and moves `nextCommandIndex` to the position immediately after the newest command. This reset ensures that pressing Up
-after submitting a new command recalls that new command, even if the user had previously navigated to an older entry.
+When a command is added, `CommandHistory` adds it to the in-memory list and moves `nextCommandIndex` to the position immediately after the newest command. This reset ensures that pressing Up after submitting a new command recalls that new command, even if the user had previously navigated to an older entry.
 
 `CommandBox` handles navigation on JavaFX `KEY_PRESSED` events:
 
-- When the user presses Up, `getPreviousCommand` moves the index toward the beginning of the list and returns the
-   older command.
-- When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns the newer
-   command.
-- `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
-- If the index is already at the oldest or newest available command, the corresponding method returns an empty
-   `Optional`; the input remains unchanged. Down does not clear the newest command or restore an earlier draft.
+* When the user first presses Up, `getPreviousCommand` saves the text in the command box as the draft, moves the index toward the beginning of the list, and returns the older command.
+* When the user presses Down, `getNextCommand` moves the index toward the end of the list and returns either the newer command or the saved draft after the newest command.
+* `CommandBox` replaces the input text with the returned command and places the caret at the end of that text.
+* If the index is already at the oldest command or past the newest entry, the corresponding method returns an empty `Optional`; the input remains unchanged.
 
-The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key
-behavior. Other key events are left untouched.
+The arrow-key event is consumed after history navigation so the `TextField` does not also apply its default key behavior. Other key events are left untouched.
 
-The default `CommandHistory` constructor creates a new file in the operating system's temporary directory using
-`Files.createTempFile`. The file starts empty and is registered for deletion when the JVM exits normally. Every launch
-creates a different empty file, so command history is never restored in a later session. It is deliberately separate
-from `data/addressbook.json` and the `Storage` component. If appending to the temporary file fails, `CommandBox` logs a
-warning and still executes the submitted command; the failed append is not added to the navigable in-memory history.
+Command history remains only in memory. It does not pass through the `Storage` component or create a temporary history file, so neither a normal shutdown nor an abnormal process exit leaves a command-history file containing submitted commands. Every launch starts with an empty history.
 
-`CommandHistoryTest` verifies file reset, line-based storage, navigation order and boundaries, and cursor reset
-after a new command. `CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, and retention of a
-failed command on the JavaFX application thread. Run them with
-`./gradlew test --tests '*CommandHistoryTest' --tests '*CommandHistoryUiTest'`. The UI test is skipped on Linux when
-`DISPLAY` is absent; the non-UI history tests remain independent of the display.
+`CommandHistoryTest` verifies navigation order and boundaries, draft restoration, cursor reset after a new command, defensive checks, and the absence of a readable history file after an abnormal subprocess exit. `CommandHistoryUiTest` verifies the Up and Down key bindings, caret placement, draft restoration, and retention of a failed command on the JavaFX application thread. Run them with `./gradlew test --tests '*CommandHistoryTest' --tests '*CommandHistoryUiTest'`. The UI test is skipped on Linux when `DISPLAY` is absent; the non-UI history tests remain independent of the display.
 
 ### Automatic contact persistence (F5)
 
@@ -703,9 +709,11 @@ Use a disposable app folder with its own Contacts, Favourites, and shared histor
 ### Command history
 
 1. Enter `list`, then enter `find Alex`. Press Up once and expect `find Alex`. Press Up again and expect `list`. Pressing Up again should leave `list` unchanged.
-1. From `list`, press Down once and expect `find Alex`. Pressing Down again should leave `find Alex` unchanged. The caret should be at the end of each recalled command.
+1. From `list`, press Down once and expect `find Alex`. Press Down again and expect the empty draft that was present before the first Up press. The caret should be at the end of each recalled command.
+1. Type an unfinished command without pressing Enter. Press Up to recall the newest command, then press Down. Expect the unfinished command to be restored.
 1. Enter an invalid command such as `notACommand`, press `Enter`, then replace it with `list`, and press Enter. Press Up to recall `list`, then press Up again. Expect `notACommand`, confirming that failed commands are also recorded.
 1. Close and relaunch the application. With the command box empty, press Up and Down. Expect the input to remain empty, confirming that history from the previous launch was cleared.
+1. Create a fresh, isolated temporary directory and launch the application with that directory configured as the JVM temporary directory (for example, using `-Djava.io.tmpdir=<path>`). Enter a command containing disposable contact details, then force-stop the application. Confirm that this launch creates no `addressbook-command-history-*.txt` file in the isolated directory and that relaunching the application provides no command from the terminated session. If an isolated directory cannot be used, compare the matching files in the shared temporary directory before and after the test and confirm that no new history file is created.
 
 ### Saving data
 

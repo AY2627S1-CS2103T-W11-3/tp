@@ -204,6 +204,19 @@ public class EditCommandTest {
     }
 
     @Test
+    public void execute_phoneAndEmailChangedToConflictWithDifferentPersons_failure() {
+        Person firstPerson = model.getFilteredPersonList().get(0);
+        Person secondPerson = model.getFilteredPersonList().get(1);
+        Index thirdPersonIndex = Index.fromOneBased(3);
+        EditCommand editCommand = new EditCommand(thirdPersonIndex, new EditPersonDescriptorBuilder()
+                .withPhone(firstPerson.getPhone().value)
+                .withEmail(secondPerson.getEmail().value)
+                .build());
+
+        assertCommandFailure(editCommand, model, EditCommand.MESSAGE_DUPLICATE_PERSON);
+    }
+
+    @Test
     public void execute_unrelatedFieldsChangedOwnPhoneAndEmailRetained_success() {
         Person personToEdit = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         Person editedPerson = new PersonBuilder(personToEdit).withName(VALID_NAME_BOB)

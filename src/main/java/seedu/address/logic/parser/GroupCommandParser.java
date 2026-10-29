@@ -1,5 +1,7 @@
 package seedu.address.logic.parser;
 
+import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -9,8 +11,10 @@ import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Name;
 
-/** Parses commands for creating or deleting groups and changing memberships. */
+/** Parses group creation, deletion, membership changes, and read-only views. */
 public class GroupCommandParser implements Parser<GroupCommand> {
+    private static final Pattern LIST = Pattern.compile("^\\s*list\\s*$");
+    private static final Pattern VIEW = Pattern.compile("^\\s*view\\s+g/(.*?)\\s*$", Pattern.DOTALL);
     private static final Pattern CREATE = Pattern.compile("^\\s*add\\s+n/(.*?)\\s*$", Pattern.DOTALL);
     private static final Pattern DELETE = Pattern.compile("^\\s*delete\\s+g/(.*?)\\s*$", Pattern.DOTALL);
     private static final Pattern MEMBER = Pattern.compile(
@@ -18,6 +22,13 @@ public class GroupCommandParser implements Parser<GroupCommand> {
 
     @Override
     public GroupCommand parse(String args) throws ParseException {
+        if (LIST.matcher(args).matches()) {
+            return new GroupCommand(Action.LIST, null, null);
+        }
+        Matcher viewMatcher = VIEW.matcher(args);
+        if (viewMatcher.matches()) {
+            return new GroupCommand(Action.VIEW, parseGroupName(viewMatcher.group(1)), null);
+        }
         Matcher createMatcher = CREATE.matcher(args);
         if (createMatcher.matches()) {
             return new GroupCommand(Action.CREATE, parseGroupName(createMatcher.group(1)), null);
@@ -33,7 +44,7 @@ public class GroupCommandParser implements Parser<GroupCommand> {
             Action action = memberMatcher.group(2).equals("add") ? Action.ADD_MEMBER : Action.REMOVE_MEMBER;
             return new GroupCommand(action, groupName, personName);
         }
-        throw new ParseException(GroupCommand.MESSAGE_USAGE);
+        throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, GroupCommand.MESSAGE_USAGE));
     }
 
     private String parseGroupName(String rawName) throws ParseException {

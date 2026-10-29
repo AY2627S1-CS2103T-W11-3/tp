@@ -76,9 +76,8 @@ public class RecentCommandTest {
     public void execute_afterDeletingContact_omitsDeletedContact() throws Exception {
         Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
         recentCommand.execute(model);
-        new DeleteCommand(Index.fromOneBased(1)).execute(model);
 
-        recentCommand.execute(model);
+        new DeleteCommand(Index.fromOneBased(1)).execute(model);
 
         assertEquals(List.of(FIONA, ELLE, DANIEL, CARL, BENSON, ALICE), model.getFilteredPersonList());
     }

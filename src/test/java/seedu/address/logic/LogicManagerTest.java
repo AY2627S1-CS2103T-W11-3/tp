@@ -409,6 +409,45 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_duplicateAdd_doesNotMutateModelPersistedDataOrUndoHistory() throws Exception {
+        logic.execute(PersonUtil.getAddCommand(ALICE));
+        Path dataPath = temporaryFolder.resolve("addressBook.json");
+        byte[] persistedBeforeRejection = Files.readAllBytes(dataPath);
+        AddressBook modelBeforeRejection = new AddressBook(model.getAddressBook());
+        Person duplicate = new PersonBuilder(ALICE).withName("Another Alice").build();
+        String expectedMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PHONE_AND_EMAIL, ALICE.getName());
+
+        assertThrows(CommandException.class, expectedMessage, () ->
+                logic.execute(PersonUtil.getAddCommand(duplicate)));
+
+        assertEquals(modelBeforeRejection, model.getAddressBook());
+        assertArrayEquals(persistedBeforeRejection, Files.readAllBytes(dataPath));
+        logic.execute("undo");
+        assertTrue(model.getAddressBook().getPersonList().isEmpty());
+        assertTrue(new JsonAddressBookStorage(dataPath).readAddressBook().orElseThrow().getPersonList().isEmpty());
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
+    }
+
+    @Test
+    public void execute_recentAfterRestart_usesPersistedInsertionOrderNewestFirst() throws Exception {
+        logic.execute(PersonUtil.getAddCommand(ALICE));
+        logic.execute(PersonUtil.getAddCommand(BOB));
+        Path dataPath = temporaryFolder.resolve("addressBook.json");
+        JsonAddressBookStorage persistedStorage = new JsonAddressBookStorage(dataPath);
+
+        ReadOnlyAddressBook reloaded = persistedStorage.readAddressBook().orElseThrow();
+        Model restartedModel = new ModelManager(reloaded, new UserPrefs());
+        Logic restartedLogic = new LogicManager(restartedModel, new StorageManager(persistedStorage,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("restartedUserPrefs.json"))));
+
+        assertEquals(List.of(ALICE, BOB), restartedModel.getAddressBook().getPersonList());
+        assertEquals(List.of(ALICE, BOB), restartedLogic.getFilteredPersonList());
+        restartedLogic.execute("recent");
+        assertEquals(List.of(BOB, ALICE), restartedLogic.getFilteredPersonList());
+        assertEquals(List.of(ALICE, BOB), restartedModel.getAddressBook().getPersonList());
+    }
+
+    @Test
     public void execute_interleavedSections_undoLatestOperationGlobally() throws Exception {
         model.addPerson(ALICE);
         logic.execute(PersonUtil.getAddCommand(BOB));
