@@ -8,6 +8,8 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_NOTE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
+import java.util.List;
+
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
@@ -44,7 +46,12 @@ public class AddCommand extends UndoableCommand {
             "Must be at the end of command. Usage: add n/<NAME> p/<NUMBER> e/EMAIL note/<NOTE>";
 
     public static final String MESSAGE_SUCCESS = "New person added: %1$s";
-    public static final String MESSAGE_DUPLICATE_PERSON = "This person already exists in the address book.";
+    public static final String MESSAGE_DUPLICATE_PHONE =
+            "A contact with the same phone number already exists: %1$s";
+    public static final String MESSAGE_DUPLICATE_EMAIL =
+            "A contact with the same email address already exists: %1$s";
+    public static final String MESSAGE_DUPLICATE_PHONE_AND_EMAIL =
+            "A contact with the same phone number and email address already exists: %1$s";
 
     private final Person toAdd;
 
@@ -60,12 +67,48 @@ public class AddCommand extends UndoableCommand {
     public CommandResult execute(Model model) throws CommandException {
         requireNonNull(model);
 
-        if (model.hasPerson(toAdd)) {
-            throw new CommandException(MESSAGE_DUPLICATE_PERSON);
+        List<Person> conflictingPersons = model.getAddressBook().getPersonList().stream()
+                .filter(toAdd::isSamePerson)
+                .toList();
+        Person phoneConflict = conflictingPersons.stream()
+                .filter(this::hasSameNonEmptyPhone)
+                .findFirst()
+                .orElse(null);
+        Person emailConflict = conflictingPersons.stream()
+                .filter(this::hasSameNonEmptyEmail)
+                .findFirst()
+                .orElse(null);
+
+        if (phoneConflict != null && phoneConflict.equals(emailConflict)) {
+            throw new CommandException(String.format(MESSAGE_DUPLICATE_PHONE_AND_EMAIL,
+                    phoneConflict.getName()));
+        }
+        if (phoneConflict != null && emailConflict != null) {
+            String phoneMessage = String.format(MESSAGE_DUPLICATE_PHONE, phoneConflict.getName());
+            String emailMessage = String.format(MESSAGE_DUPLICATE_EMAIL, emailConflict.getName());
+            throw new CommandException(phoneMessage + "\n" + emailMessage);
+        }
+        if (phoneConflict != null) {
+            throw new CommandException(String.format(MESSAGE_DUPLICATE_PHONE, phoneConflict.getName()));
+        }
+        if (emailConflict != null) {
+            throw new CommandException(String.format(MESSAGE_DUPLICATE_EMAIL, emailConflict.getName()));
         }
 
         model.addPerson(toAdd);
         return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(toAdd)));
+    }
+
+    private boolean hasSameNonEmptyPhone(Person person) {
+        return !toAdd.getPhone().value.isEmpty()
+                && !person.getPhone().value.isEmpty()
+                && toAdd.getPhone().equals(person.getPhone());
+    }
+
+    private boolean hasSameNonEmptyEmail(Person person) {
+        return !toAdd.getEmail().value.isEmpty()
+                && !person.getEmail().value.isEmpty()
+                && toAdd.getEmail().equals(person.getEmail());
     }
 
     @Override
