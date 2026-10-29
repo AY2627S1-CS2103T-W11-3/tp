@@ -236,8 +236,8 @@ public class LogicManagerTest {
         for (ContactSection section : ContactSection.values()) {
             assertEquals("Renamed Contact",
                     model.getAddressBook(section).getPersonList().getFirst().getName().fullName);
-            assertEquals("Renamed Contact",
-                    model.getAddressBook(section).getGroupList().getFirst().getMembers().iterator().next().fullName);
+            assertEquals(ALICE.getId(),
+                    model.getAddressBook(section).getGroupList().getFirst().getMembers().iterator().next());
         }
         logic.execute("tab contacts");
         logic.execute("delete 1");

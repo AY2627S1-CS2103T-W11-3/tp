@@ -50,7 +50,7 @@ class UndoSnapshotStorageTest {
     @Test
     public void saveChange_restoresBothCollectionsAndIdsAfterRestart() throws Exception {
         AddressBook original = book(ALICE);
-        original.addGroup(new Group("Team", Set.of(ALICE.getName())));
+        original.addGroup(new Group("Team", Set.of(ALICE.getId())));
         ContactSnapshot before = new ContactSnapshot(original, book(BOB));
         history.saveChange(before, new ContactSnapshot(book(BOB), book(ALICE)),
                 "Undid edit in Contacts.", ContactSection.CONTACTS);

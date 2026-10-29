@@ -3,6 +3,7 @@ package seedu.address.logic.parser;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import seedu.address.commons.core.index.Index;
 import seedu.address.logic.commands.GroupCommand;
 import seedu.address.logic.commands.GroupCommand.Action;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -38,8 +39,13 @@ public class GroupCommandParser implements Parser<GroupCommand> {
         Matcher memberMatcher = MEMBER.matcher(args);
         if (memberMatcher.matches()) {
             String groupName = parseGroupName(memberMatcher.group(1));
-            Name personName = ParserUtil.parseName(memberMatcher.group(3));
             Action action = memberMatcher.group(2).equals("add") ? Action.ADD_MEMBER : Action.REMOVE_MEMBER;
+            String member = memberMatcher.group(3).strip();
+            if (member.startsWith("i/")) {
+                Index index = ParserUtil.parseIndex(member.substring(2));
+                return GroupCommand.forMemberIndex(action, groupName, index);
+            }
+            Name personName = ParserUtil.parseName(member);
             return new GroupCommand(action, groupName, personName);
         }
         throw new ParseException(GroupCommand.MESSAGE_USAGE);

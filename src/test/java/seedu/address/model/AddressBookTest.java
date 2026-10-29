@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import seedu.address.model.group.Group;
-import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.exceptions.DuplicatePersonException;
 import seedu.address.testutil.PersonBuilder;
@@ -99,23 +98,23 @@ public class AddressBookTest {
     }
 
     @Test
-    public void setPerson_renamingMemberUpdatesOnlyAffectedGroups() {
+    public void setPerson_renamingMemberKeepsMembershipById() {
         Person renamedAlice = new PersonBuilder(ALICE).withName("Alice New").build();
         addressBook.addPerson(ALICE);
-        addressBook.addGroup(new Group("Project", Set.of(ALICE.getName())));
+        addressBook.addGroup(new Group("Project", Set.of(ALICE.getId())));
         addressBook.addGroup(new Group("Committee", Set.of()));
 
         addressBook.setPerson(ALICE, renamedAlice);
 
-        assertEquals(Set.of(new Name("Alice New")), addressBook.getGroup("Project").getMembers());
+        assertEquals(Set.of(ALICE.getId()), addressBook.getGroup("Project").getMembers());
         assertEquals(Set.of(), addressBook.getGroup("Committee").getMembers());
     }
 
     @Test
     public void removePerson_removesMembershipFromEveryGroup() {
         addressBook.addPerson(ALICE);
-        addressBook.addGroup(new Group("Project", Set.of(ALICE.getName())));
-        addressBook.addGroup(new Group("Committee", Set.of(ALICE.getName())));
+        addressBook.addGroup(new Group("Project", Set.of(ALICE.getId())));
+        addressBook.addGroup(new Group("Committee", Set.of(ALICE.getId())));
         addressBook.addGroup(new Group("Unaffected", Set.of()));
 
         addressBook.removePerson(ALICE);

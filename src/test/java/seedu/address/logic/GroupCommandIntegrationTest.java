@@ -92,10 +92,10 @@ public class GroupCommandIntegrationTest {
     }
 
     @Test
-    public void view_sameNameContacts_showsPhoneForEachMatch() throws Exception {
+    public void view_sameNameContacts_requiresIndexAndShowsOnlySelectedMember() throws Exception {
         ModelManager model = new ModelManager();
         model.addPerson(ALICE);
-        model.addPerson(new PersonBuilder(ALICE).withPhone("91234567")
+        model.addPerson(new PersonBuilder().withName("Alice Pauline").withPhone("91234567")
                 .withEmail("other-alice@example.com").build());
         StorageManager storage = new StorageManager(
                 new JsonAddressBookStorage(temporaryFolder.resolve("contacts.json")),
@@ -103,12 +103,57 @@ public class GroupCommandIntegrationTest {
         LogicManager logic = new LogicManager(model, storage);
 
         logic.execute("group add n/Team");
-        logic.execute("group member g/Team add/Alice Pauline");
+        CommandException error = assertThrows(CommandException.class, () ->
+                logic.execute("group member g/Team add/Alice Pauline"));
+        assertEquals("Multiple contacts named Alice Pauline. Use add/i/INDEX or remove/i/INDEX "
+                + "with a displayed contact index.", error.getMessage());
+        logic.execute("filter t/friends");
+        assertEquals(1, logic.getFilteredPersonList().size());
+        logic.execute("group member g/Team add/i/1");
+        logic.execute("list");
 
-        assertEquals("Groups:\n1. Team (2 members)", logic.execute("group list").getFeedbackToUser());
-        assertEquals("Members of Team:\n1. Alice Pauline (Phone: 94351253)"
-                        + "\n2. Alice Pauline (Phone: 91234567)",
+        assertEquals(Set.of(ALICE.getId()), model.getGroup("Team").getMembers());
+        assertEquals("Groups:\n1. Team (1 member)", logic.execute("group list").getFeedbackToUser());
+        assertEquals("Members of Team:\n1. Alice Pauline (Phone: 94351253)",
                 logic.execute("group view g/Team").getFeedbackToUser());
+        assertThrows(CommandException.class, () -> logic.execute("group member g/Team remove/Alice Pauline"));
+        assertThrows(CommandException.class, () -> logic.execute("group member g/Team remove/i/3"));
+        assertEquals(Set.of(ALICE.getId()), model.getGroup("Team").getMembers());
+
+        logic.execute("group member g/Team add/i/2");
+        assertEquals("Groups:\n1. Team (2 members)", logic.execute("group list").getFeedbackToUser());
+        logic.execute("group member g/Team remove/i/1");
+        assertEquals("Members of Team:\n1. Alice Pauline (Phone: 91234567)",
+                logic.execute("group view g/Team").getFeedbackToUser());
+        assertEquals("Undid removal of Alice Pauline (Phone: 94351253) from group Team.",
+                logic.execute("undo").getFeedbackToUser());
+        assertEquals("Groups:\n1. Team (2 members)", logic.execute("group list").getFeedbackToUser());
+    }
+
+    @Test
+    public void delete_sameNameContact_preservesOtherMembershipAfterSaveAndReload() throws Exception {
+        Path dataFile = temporaryFolder.resolve("contacts.json");
+        StorageManager storage = new StorageManager(new JsonAddressBookStorage(dataFile),
+                new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json")));
+        ModelManager model = new ModelManager();
+        LogicManager logic = new LogicManager(model, storage);
+        try {
+            logic.execute("add n/Alex Tan p/91234567 e/alex1@example.com a/NUS");
+            logic.execute("group add n/Project Team");
+            logic.execute("group member g/Project Team add/Alex Tan");
+            logic.execute("add n/Alex Tan p/92345678 e/alex2@example.com a/NUS");
+            logic.execute("delete 2");
+
+            assertEquals("Members of Project Team:\n1. Alex Tan (Phone: 91234567)",
+                    logic.execute("group view g/Project Team").getFeedbackToUser());
+            assertEquals(model.getGroup("Project Team"),
+                    new JsonAddressBookStorage(dataFile).readAddressBook().orElseThrow().getGroupList().getFirst());
+
+            logic.execute("group member g/Project Team remove/Alex Tan");
+            assertEquals(Set.of(), model.getGroup("Project Team").getMembers());
+        } finally {
+            storage.closeUndoHistory();
+        }
     }
 
     @Test
