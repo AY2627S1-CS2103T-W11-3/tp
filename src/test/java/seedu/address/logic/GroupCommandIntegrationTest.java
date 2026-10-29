@@ -1,9 +1,12 @@
 package seedu.address.logic;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,11 +23,93 @@ import seedu.address.model.group.Group;
 import seedu.address.storage.JsonAddressBookStorage;
 import seedu.address.storage.JsonUserPrefsStorage;
 import seedu.address.storage.StorageManager;
+import seedu.address.testutil.PersonBuilder;
 
 /** Checks group commands through parsing, saving, and model updates. */
 public class GroupCommandIntegrationTest {
     @TempDir
     public Path temporaryFolder;
+
+    @Test
+    public void listAndView_showGroupsWithoutSavingOrChangingFilter() throws Exception {
+        Path dataFile = temporaryFolder.resolve("contacts.json");
+        ModelManager model = new ModelManager();
+        model.addPerson(ALICE);
+        StorageManager storage = new StorageManager(new JsonAddressBookStorage(dataFile),
+                new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json")));
+        LogicManager logic = new LogicManager(model, storage);
+
+        assertEquals("No groups exist.", logic.execute("group list").getFeedbackToUser());
+        assertFalse(Files.exists(dataFile));
+        logic.execute("group add n/Empty Team");
+        logic.execute("group add n/CS2103T Team");
+        logic.execute("group member g/CS2103T Team add/Alice Pauline");
+        logic.execute("find Nobody");
+        byte[] savedBytes = Files.readAllBytes(dataFile);
+
+        assertEquals("Groups:\n1. Empty Team (0 members)\n2. CS2103T Team (1 member)",
+                logic.execute("group list").getFeedbackToUser());
+        assertEquals("Group Empty Team has no members.",
+                logic.execute("group view g/Empty Team").getFeedbackToUser());
+        assertEquals("Members of CS2103T Team:\n1. Alice Pauline (Phone: 94351253)",
+                logic.execute("group view g/CS2103T Team").getFeedbackToUser());
+        assertEquals(0, logic.getFilteredPersonList().size());
+        assertArrayEquals(savedBytes, Files.readAllBytes(dataFile));
+        CommandException error = assertThrows(CommandException.class, () ->
+                logic.execute("group view g/Missing Team"));
+        assertEquals("Group does not exist: Missing Team", error.getMessage());
+    }
+
+    @Test
+    public void listAndView_preserveUndoHistory() throws Exception {
+        ModelManager model = new ModelManager();
+        model.addPerson(ALICE);
+        JsonAddressBookStorage dataStorage = new JsonAddressBookStorage(temporaryFolder.resolve("contacts.json"));
+        StorageManager storage = new StorageManager(dataStorage,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json")));
+        LogicManager logic = new LogicManager(model, storage);
+        try {
+            logic.execute("group add n/Team");
+            logic.execute("group member g/Team add/Alice Pauline");
+            logic.execute("group list");
+            logic.execute("group view g/Team");
+
+            assertEquals("Undid addition of Alice Pauline to group Team.",
+                    logic.execute("undo").getFeedbackToUser());
+            assertEquals(0, model.getGroup("Team").getMembers().size());
+            assertEquals(model.getAddressBook(), dataStorage.readAddressBook().orElseThrow());
+
+            logic.execute("group list");
+            logic.execute("group view g/Team");
+
+            assertEquals("Undid creation of group Team.", logic.execute("undo").getFeedbackToUser());
+            assertEquals(0, model.getAddressBook().getGroupList().size());
+            assertEquals(model.getAddressBook(), dataStorage.readAddressBook().orElseThrow());
+            assertThrows(CommandException.class, () -> logic.execute("undo"));
+        } finally {
+            storage.closeUndoHistory();
+        }
+    }
+
+    @Test
+    public void view_sameNameContacts_showsPhoneForEachMatch() throws Exception {
+        ModelManager model = new ModelManager();
+        model.addPerson(ALICE);
+        model.addPerson(new PersonBuilder(ALICE).withPhone("91234567")
+                .withEmail("other-alice@example.com").build());
+        StorageManager storage = new StorageManager(
+                new JsonAddressBookStorage(temporaryFolder.resolve("contacts.json")),
+                new JsonUserPrefsStorage(temporaryFolder.resolve("prefs.json")));
+        LogicManager logic = new LogicManager(model, storage);
+
+        logic.execute("group add n/Team");
+        logic.execute("group member g/Team add/Alice Pauline");
+
+        assertEquals("Groups:\n1. Team (2 members)", logic.execute("group list").getFeedbackToUser());
+        assertEquals("Members of Team:\n1. Alice Pauline (Phone: 94351253)"
+                        + "\n2. Alice Pauline (Phone: 91234567)",
+                logic.execute("group view g/Team").getFeedbackToUser());
+    }
 
     @Test
     public void createAddRemove_persistsEmptyGroupAndMembership() throws Exception {
@@ -66,8 +151,10 @@ public class GroupCommandIntegrationTest {
 
         logic.execute("group add n/Team");
         logic.execute("tab favourites");
+        assertEquals("No groups exist.", logic.execute("group list").getFeedbackToUser());
         logic.execute("group add n/Team");
         logic.execute("group member g/Team add/Alice Pauline");
+        assertEquals("Groups:\n1. Team (1 member)", logic.execute("group list").getFeedbackToUser());
         assertEquals(1, model.getGroup("Team").getMembers().size());
         assertEquals(model.getGroup("Team"),
                 favouritesStorage.readAddressBook().orElseThrow().getGroupList().get(0));

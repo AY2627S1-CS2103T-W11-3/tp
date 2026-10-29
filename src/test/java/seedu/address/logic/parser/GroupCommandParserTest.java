@@ -17,5 +17,9 @@ public class GroupCommandParserTest {
         assertThrows(ParseException.class, () -> parser.parse(" delete g/ "));
         assertThrows(ParseException.class, () -> parser.parse(" member g/Team add/ "));
         assertThrows(ParseException.class, () -> parser.parse(" member g/Team remove/Invalid/Name"));
+        assertThrows(ParseException.class, () -> parser.parse(" list extra"));
+        assertThrows(ParseException.class, () -> parser.parse(" view"));
+        assertThrows(ParseException.class, () -> parser.parse(" view g/ "));
+        assertThrows(ParseException.class, () -> parser.parse(" view g/!!!"));
     }
 }
