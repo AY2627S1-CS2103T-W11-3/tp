@@ -33,6 +33,7 @@ public class ModelManager implements Model {
     private FilteredList<Person> filteredPersons;
     private SortedList<Person> displayedPersons;
     private ObservableList<Person> visiblePersons;
+    private boolean isRecentPersonListActive;
     private String activeFilter = "";
 
     /**
@@ -127,7 +128,7 @@ public class ModelManager implements Model {
     @Override
     public void addPerson(Person person) {
         addressBooks.get(activeSection).addPerson(person);
-        updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+        updatePersonListAfterAdd();
     }
 
     @Override
@@ -168,6 +169,7 @@ public class ModelManager implements Model {
         filteredPersons = new FilteredList<>(getAddressBook().getPersonList());
         displayedPersons = new SortedList<>(filteredPersons);
         visiblePersons = FXCollections.unmodifiableObservableList(displayedPersons);
+        isRecentPersonListActive = false;
         activeFilter = "";
     }
 
@@ -190,6 +192,7 @@ public class ModelManager implements Model {
         requireNonNull(predicate);
         displayedPersons.setComparator(null);
         filteredPersons.setPredicate(predicate);
+        isRecentPersonListActive = false;
         activeFilter = predicate instanceof PersonHasTagsPredicate tagPredicate
                 ? tagPredicate.getDisplayNames()
                 : "";
@@ -209,6 +212,14 @@ public class ModelManager implements Model {
         filteredPersons.setPredicate(PREDICATE_SHOW_ALL_PERSONS);
         displayedPersons.setComparator((first, second) -> Integer.compare(
                 getAddressBook().getPersonList().indexOf(second), getAddressBook().getPersonList().indexOf(first)));
+        isRecentPersonListActive = true;
+    }
+
+    /** Shows all persons after an add unless the recent view is active. */
+    private void updatePersonListAfterAdd() {
+        if (!isRecentPersonListActive) {
+            updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+        }
     }
 
     @Override
@@ -225,6 +236,7 @@ public class ModelManager implements Model {
         return addressBooks.equals(otherModelManager.addressBooks)
                 && activeSection == otherModelManager.activeSection
                 && userPrefs.equals(otherModelManager.userPrefs)
+                && isRecentPersonListActive == otherModelManager.isRecentPersonListActive
                 && activeFilter.equals(otherModelManager.activeFilter)
                 && displayedPersons.equals(otherModelManager.displayedPersons);
     }
