@@ -89,7 +89,7 @@ Format: `tab contacts` or `tab favourites`
 
 * Switch sections by typing a command; the section label is not a clickable tab.
 * Commands use the displayed contacts in the active section. Edits to linked contacts update both sections, and deleting or clearing Contacts also removes matching favourites. `undo` reverses the latest change across either section. You can use `add` to create a contact directly in Favourites; that contact has no linked original in Contacts.
-* Each section keeps its own search results and display order during the current session. Switching back restores the view left by `find`, `filter`, or `recent`, including an empty result. Selecting the section that is already active keeps its view.
+* Each section keeps its own search results and display order during the current session. Switching back restores the view left by `find`, `filter`, or `recent`, including an empty result. Selecting the section that is already active keeps its view. A successful `undo` resets searches, tag filters, and display order in both sections, showing all contacts in addition order.
 * Use `list` to show all contacts in the active section in addition order, or `recent` to show them newest first. Restarting resets both section views and starts on Contacts; searches and display order are not saved.
 * Switching sections does not save or modify contact data. Success shows `Showing Contacts.` or `Showing Favourites.`
 * Use the exact lowercase names `contacts` and `favourites`. A missing, unknown, or extra section produces `Invalid command format!` followed by the `tab` usage, without switching sections.
@@ -312,7 +312,7 @@ Reverses the most recent successful `add`, `delete`, `edit`, `clear`, `favourite
 Format: `undo`
 
 * Use lowercase `undo` with no arguments. Surrounding spaces and tabs are accepted.
-* Undo restores both sections to their states before the operation, including contact details, tags, notes, contact order, groups, and memberships. Mirrored changes are reversed together. The active section stays selected and shows all contacts; previous searches and sorting are not restored.
+* Undo restores both sections to their states before the operation, including contact details, tags, notes, contact order, groups, and memberships. Mirrored changes are reversed together. The active section stays selected. Both sections show all contacts in addition order; their previous searches, tag filters, and sorting are reset.
 * Up to five operations across both sections can be undone, most recent first. A sixth operation removes the oldest available undo entry. One operation that changes both sections uses one entry.
 * Failed commands, identical edits, and clearing a section with no contacts or groups do not consume history. Clearing a section that contains only groups does consume an entry. Commands such as `tab`, `find`, `list`, and `view` leave history unchanged.
 * Each successful undo consumes one history entry. Undo itself does not create an entry, and there is no redo command.
