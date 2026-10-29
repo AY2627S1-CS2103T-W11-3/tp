@@ -198,7 +198,7 @@ Examples:
 | --- | --- |
 | Missing index, extra words, or a value that is not a positive integer, such as `view`, `view 1 John`, `view 0`, or `view Alice` | `Invalid command format!` followed by the `view` usage |
 | No contacts are displayed | `No contacts available to view.` |
-| Index exceeds the displayed list | `Invalid index. Please select an index shown in the contact list.` |
+| Index exceeds the displayed list, including a very large positive integer such as `view 2147483648` | `Invalid index. Please select an index shown in the contact list.` |
 
 ### Editing a person: `edit`
 
@@ -209,6 +209,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note
 * Edits the person at the specified `INDEX`. The index refers to the index number shown in the displayed person list. The index **must be a positive integer** 1, 2, 3, …​
 * At least one of the optional fields must be provided.
 * Existing values will be updated to the input values. A linked edit is rejected if its phone number or email address conflicts with another contact in either affected section; neither contact is changed.
+* Editing keeps the current `find` or `filter` results. A contact that no longer matches disappears from that list, and the other matches stay. Use `list` to show every contact again.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * To remove all of a person's tags, enter `t/` without a tag after it.
 * To replace a note, use `note/NOTE` as the final argument, following the same rules as `add`. Omitting it preserves the existing note. For example: `edit 1 note/Discussed frontend implementation`.
@@ -251,6 +252,8 @@ Format: `filter t/TAG [t/TAG]…​`
 * Tag matching is case-insensitive; for example, `t/friends` matches `Friends`.
 * Only whole tags match; for example, `t/friend` does not match `friends`.
 * If more than one tag is given, a person must have every listed tag.
+* While a filter is active, the heading above the contact list shows `Active filter: TAG`. It remains visible after commands such as `view`. `list`, `find`, `recent`, and switching sections remove it.
+* A filter that matches nobody shows `No contacts match the specified tag(s).` The contacts remain saved. Use `list` to show them again.
 * The index numbers in the result list can be used by commands such as `view`, `edit`, and `delete`.
 * Use `list` to show all persons again.
 

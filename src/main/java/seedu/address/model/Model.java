@@ -100,6 +100,11 @@ public interface Model {
     ObservableList<Person> getFilteredPersonList();
 
     /**
+     * Returns the tag names of the active tag filter, or an empty string when the list is not filtered by tag.
+     */
+    String getActiveFilter();
+
+    /**
      * Updates the filter of the filtered person list to filter by the given {@code predicate}.
      * @throws NullPointerException if {@code predicate} is null.
      */
