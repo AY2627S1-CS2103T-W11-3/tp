@@ -15,7 +15,6 @@ import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.group.Group;
-import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 
 /**
@@ -85,14 +84,9 @@ class JsonSerializableAddressBook {
             if (jsonAdaptedGroup == null) {
                 throw new IllegalValueException("A group must not be null.");
             }
-            Group group = jsonAdaptedGroup.toModelType();
+            Group group = jsonAdaptedGroup.toModelType(addressBook.getPersonList());
             if (addressBook.getGroup(group.getName()) != null) {
                 throw new IllegalValueException("Groups list contains duplicate group names.");
-            }
-            for (Name member : group.getMembers()) {
-                if (addressBook.getPersonList().stream().noneMatch(person -> person.getName().equals(member))) {
-                    throw new IllegalValueException("Group contains a contact that does not exist.");
-                }
             }
             addressBook.addGroup(group);
         }

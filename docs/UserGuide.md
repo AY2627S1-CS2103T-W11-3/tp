@@ -157,7 +157,7 @@ Contacts may have the same name as long as their phone numbers and email address
 
 ### Listing, viewing, and managing groups: `group`
 
-Groups belong to the active section (Contacts or Favourites). Create an empty group, then add or remove contacts by their exact names. The contact must already exist in that section. Group names are case sensitive and must be unique within the section.
+Groups belong to the active section (Contacts or Favourites). Create an empty group, then add or remove contacts by name or by their displayed contact index. The contact must already exist in that section. Group names are case sensitive and must be unique within the section.
 
 * `group list` — show all groups in the active section and their member counts, including empty groups.
 * `group view g/CS2103T Team` — show the group's members with their phone numbers.
@@ -165,10 +165,12 @@ Groups belong to the active section (Contacts or Favourites). Create an empty gr
 * `group delete g/CS2103T Team`
 * `group member g/CS2103T Team add/John Tan`
 * `group member g/CS2103T Team remove/John Tan`
+* `group member g/CS2103T Team add/i/2` — add the contact at index 2 in the displayed list.
+* `group member g/CS2103T Team remove/i/2` — remove that specific contact.
 
 If there are no groups, `group list` reports `No groups exist.`. If a group has no members, `group view` reports `Group NAME has no members.`. Viewing a missing group reports `Group does not exist: NAME`.
 
-Membership is stored by exact contact name. If several contacts have the same name, they share that membership; `group view` shows each matching contact and phone number. The list count reflects the contacts shown by `group view`.
+Membership is stored by a persistent contact ID. A name can be used only when it identifies one contact in the active section. If several contacts share that name, the command asks you to use a displayed index, such as `add/i/2` or `remove/i/2`. The index follows the current list or search results and starts at 1. `group view` shows each member's name and phone number, and `group list` counts individual members. Renaming a contact keeps its membership; deleting one contact removes only that contact from groups.
 
 Groups and their memberships are saved with the contacts. Listing and viewing groups do not save or change data. Deleting a group removes its memberships but keeps the contacts. Deleting a contact also removes it from its groups.
 
@@ -417,7 +419,7 @@ Action | Format, Examples
 **Delete** | `delete <INDEX>`<br> e.g., `delete 3`
 **Edit** | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]…​ [note/NOTE]`<br> e.g., `edit 2 n/James Lee e/jameslee@example.com`
 **Find** | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
-**Groups** | `group list`, `group view g/GROUP NAME`, `group add n/GROUP NAME`, `group delete g/GROUP NAME`, `group member g/GROUP NAME add/CONTACT NAME`, `group member g/GROUP NAME remove/CONTACT NAME`
+**Groups** | `group list`, `group view g/GROUP NAME`, `group add n/GROUP NAME`, `group delete g/GROUP NAME`, `group member g/GROUP NAME add/CONTACT NAME`, `group member g/GROUP NAME remove/CONTACT NAME`<br>Use `add/i/INDEX` or `remove/i/INDEX` to select one contact by its displayed index.
 **Favourite** | `favourite INDEX`<br> e.g., `favourite 1` (from Contacts)
 **Switch section** | `tab contacts` or `tab favourites`
 **Filter** | `filter t/TAG [t/TAG]…​`<br> e.g., `filter t/friends t/owesMoney`

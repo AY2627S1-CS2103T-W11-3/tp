@@ -87,11 +87,11 @@ public class AddressBook implements ReadOnlyAddressBook {
         requireNonNull(editedPerson);
 
         persons.setPerson(target, editedPerson);
-        if (!target.getName().equals(editedPerson.getName())) {
+        if (!target.getId().equals(editedPerson.getId())) {
             for (int i = 0; i < groups.size(); i++) {
                 Group group = groups.get(i);
-                if (group.getMembers().contains(target.getName())) {
-                    groups.set(i, group.withoutMember(target.getName()).withMember(editedPerson.getName()));
+                if (group.getMembers().contains(target.getId())) {
+                    groups.set(i, group.withoutMember(target.getId()).withMember(editedPerson.getId()));
                 }
             }
         }
@@ -105,8 +105,8 @@ public class AddressBook implements ReadOnlyAddressBook {
         persons.remove(key);
         for (int i = 0; i < groups.size(); i++) {
             Group group = groups.get(i);
-            if (group.getMembers().contains(key.getName())) {
-                groups.set(i, group.withoutMember(key.getName()));
+            if (group.getMembers().contains(key.getId())) {
+                groups.set(i, group.withoutMember(key.getId()));
             }
         }
     }
