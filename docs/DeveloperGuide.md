@@ -278,6 +278,8 @@ Integration with the other MVP features:
 
 ### Favourites and section switching
 
+![Favourite command sequence diagram](images/FavouriteSequenceDiagram.png)
+
 `TabCommandParser` accepts exactly `contacts` or `favourites` after trimming surrounding whitespace. `TabCommand` calls `Model.setActiveSection` through staging. This changes the visible collection without marking contact data as changed, so navigation remains available when saving fails. Existing commands use the active collection through the `Model` interface; linked edits and deletions may also affect the other collection.
 
 `ModelManager` caches a `FilteredList<Person>` and a `SortedList<Person>` for each `ContactSection`. `initializeFilteredPersons` selects or creates those views and exposes an unmodifiable observable wrapper for the active section. The views remain backed by their own collection, so a new favourite updates the retained Favourites view even while Contacts is active. The `recent` comparator captures its owning collection rather than consulting the active section when comparing contacts. `list` resets only the active section's filter and sorting. Successful undo resets both sections to all contacts in addition order, while retaining the active section.
@@ -298,6 +300,8 @@ The `undo` command restores both collections to their state before the latest su
 
 #### Recording changes
 
+![Recording changes activity diagram](images/CommitActivityDiagram.png)
+
 `AddCommand`, `DeleteCommand`, `EditCommand`, `ClearCommand`, `FavouriteCommand`, and `GroupCommand` extend the abstract `UndoableCommand`. Its `describeUndo` method supplies feedback identifying the operation and, where applicable, the contact. `LogicManager` creates `ContactSnapshot` objects containing both full address books, including IDs, order, fields, groups, and memberships. These copy model data rather than the existing file bytes, so history also works before the first data file has been created.
 
 Both execution paths capture previous and candidate snapshots: commands executed against `StagedModel`, and commands implementing `StagedCommand` that return a `PreparedChange`. `StorageManager.saveUndoableChange(previous, candidate, description, initiatingSection)` delegates to `UndoSnapshotStorage`:
@@ -314,6 +318,10 @@ A rejected command or failed save leaves live contacts and existing history unch
 New commands that change data in either section should extend `UndoableCommand` to describe their undo operation and use the shared staging and persistence path. Keep snapshot registration in logic/storage rather than adding command-specific inverse operations.
 
 #### Restoring a snapshot
+
+![Undo logic sequence diagram](images/UndoSequenceDiagram-Logic.png)
+
+![Undo persistence sequence diagram](images/UndoSequenceDiagram-Model.png)
 
 The model-level `UndoHistory` interface exposes snapshot reading, description, restoration saving, and consumption without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` owns one `UndoSnapshotStorage` shared by both collections. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
 

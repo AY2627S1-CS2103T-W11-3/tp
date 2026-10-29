@@ -2,49 +2,67 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
+title Successful execution of "delete 1"
+
 box Logic LOGIC_COLOR_T1
 participant ":LogicManager" as LogicManager LOGIC_COLOR
-participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
-participant ":DeleteCommandParser" as DeleteCommandParser LOGIC_COLOR
 participant "d:DeleteCommand" as DeleteCommand LOGIC_COLOR
 participant "change:PreparedChange" as PreparedChange LOGIC_COLOR
 end box
 box Model MODEL_COLOR_T1
 participant "m:Model" as Model MODEL_COLOR
 end box
-box Storage STORAGE_COLOR_T1
-participant ":Storage" as Storage STORAGE_COLOR
-end box
 
 [-> LogicManager : execute("delete 1")
-LogicManager -> AddressBookParser : parseCommand("delete 1")
-AddressBookParser -> DeleteCommandParser : parse("1")
-DeleteCommandParser -> DeleteCommand : new DeleteCommand(index)
-DeleteCommand --> AddressBookParser : d
-AddressBookParser --> LogicManager : d
+activate LogicManager
+
+ref over LogicManager, DeleteCommand
+Parse command
+end ref
+
 LogicManager -> DeleteCommand : prepare(m)
+activate DeleteCommand
 DeleteCommand -> Model : getFilteredPersonList()
+activate Model
 Model --> DeleteCommand : displayed contacts
+deactivate Model
 DeleteCommand -> Model : getAddressBook()
+activate Model
 Model --> DeleteCommand : current collection
-DeleteCommand -> PreparedChange : new PreparedChange(candidate, apply)
-PreparedChange --> LogicManager : change
-LogicManager -> LogicManager : capture previous and candidate ContactSnapshots
-LogicManager -> PreparedChange : save(defaultSave)
-PreparedChange -> Storage : saveUndoableChange(previous, candidate, description, section)
-note over Storage : Journaled transaction saves collections and shared undo history
-alt save succeeds
-    Storage --> PreparedChange
-    PreparedChange --> LogicManager
-    LogicManager -> PreparedChange : apply()
-    PreparedChange -> Model : deletePerson(target)
-    Model --> PreparedChange
-    PreparedChange --> LogicManager : CommandResult
-    [<-- LogicManager : success
-else save fails
-    Storage --> PreparedChange : IOException
-    PreparedChange --> LogicManager : IOException
-    note over Model : No live-model mutation
-    [<-- LogicManager : CommandException
-end
+deactivate Model
+
+note right of DeleteCommand
+Validate the displayed index.
+Copy the collection and remove the target
+from the candidate, leaving m unchanged.
+end note
+
+create PreparedChange
+DeleteCommand -> PreparedChange : PreparedChange(candidate, ...)
+activate PreparedChange
+PreparedChange --> DeleteCommand
+deactivate PreparedChange
+DeleteCommand --> LogicManager : change
+deactivate DeleteCommand
+
+' The ref hides PreparedChange.save(), its callback to LogicManager, and Storage calls.
+ref over LogicManager, PreparedChange
+Capture both collections and save shared undo history
+end ref
+
+LogicManager -> PreparedChange : apply()
+activate PreparedChange
+PreparedChange -> Model : deletePerson(target)
+activate Model
+Model --> PreparedChange
+deactivate Model
+note over PreparedChange, Model
+Contacts deletion also removes its linked favourite.
+Favourites deletion leaves Contacts unchanged.
+end note
+PreparedChange --> LogicManager : result
+deactivate PreparedChange
+
+[<--LogicManager : result
+deactivate LogicManager
 @enduml

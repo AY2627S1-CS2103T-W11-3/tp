@@ -2,41 +2,35 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
+title Component interactions for a successful "delete 1"
+
 actor User as user USER_COLOR
 participant ":UI" as ui UI_COLOR
-participant ":LogicManager" as logic LOGIC_COLOR
-participant "d:DeleteCommand" as delete LOGIC_COLOR
-participant "m:Model" as model MODEL_COLOR
-participant ":StorageManager" as storage STORAGE_COLOR
-participant ":UndoSnapshotStorage" as undo STORAGE_COLOR
-participant ":CollectionSaveTransaction" as transaction STORAGE_COLOR
+participant ":Logic" as logic LOGIC_COLOR
+participant ":Model" as model MODEL_COLOR
+participant ":Storage" as storage STORAGE_COLOR
 
 user -> ui : "delete 1"
+activate ui
 ui -> logic : execute("delete 1")
-logic -> delete : prepare(model)
-delete -> model : get displayed contact and address book
-model --> delete : contact and current data
-delete --> logic : PreparedChange(candidate, apply)
-logic -> logic : capture previous and candidate ContactSnapshots
-logic -> storage : saveUndoableChange(previous, candidate, description, section)
-storage -> undo : saveChange(...)
-undo -> transaction : save selected collections and undo history
-transaction -> transaction : prepare temporary files; journal originals; publish
-alt save succeeds
-    transaction --> undo
-    undo --> storage
-    storage --> logic
-    logic -> model : PreparedChange.apply()
-    model --> logic
-    logic --> ui : CommandResult
-    ui --> user : success
-else save fails
-    transaction -> transaction : recover published files if needed
-    transaction --> undo : IOException
-    undo --> storage : IOException
-    storage --> logic : IOException
-    note over model : Live model remains unchanged
-    logic --> ui : CommandException
-    ui --> user : save error; command retained
-end
+activate logic
+
+ref over logic, model
+Prepare both candidate collections and shared undo history
+end ref
+
+logic -> storage : saveUndoableChange(...)
+activate storage
+storage --> logic
+deactivate storage
+
+logic -> model : deletePerson(target)
+activate model
+model --> logic
+deactivate model
+
+logic --> ui : result
+deactivate logic
+ui --> user : success feedback
+deactivate ui
 @enduml

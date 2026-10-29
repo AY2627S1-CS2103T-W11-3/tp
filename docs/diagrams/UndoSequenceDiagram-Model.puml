@@ -2,22 +2,42 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
-box Model MODEL_COLOR_T1
-participant ":Model" as Model MODEL_COLOR
-participant ":VersionedAddressBook" as VersionedAddressBook MODEL_COLOR
+title Save restored snapshot
+
+box Logic LOGIC_COLOR_T1
+participant "change:PreparedChange" as PreparedChange LOGIC_COLOR
 end box
 
-[-> Model : undoAddressBook()
-activate Model
+box Storage STORAGE_COLOR_T1
+participant "history:StorageManager" as History STORAGE_COLOR
+participant "sharedHistory:UndoSnapshotStorage" as Snapshots STORAGE_COLOR
+participant "transaction:CollectionSaveTransaction" as Transaction STORAGE_COLOR
+end box
 
-Model -> VersionedAddressBook : undo()
-activate VersionedAddressBook
+[-> PreparedChange : save(...)
+activate PreparedChange
+PreparedChange -> History : saveRestoredSnapshot(snapshot)
+activate History
+History -> Snapshots : saveRestoredSnapshot(snapshot)
+activate Snapshots
 
-VersionedAddressBook -> VersionedAddressBook :resetData(ReadOnlyAddressBook)
-VersionedAddressBook --> Model :
-deactivate VersionedAddressBook
+Snapshots -> Transaction : save(contacts, favourites, remainingHistory, ...)
+activate Transaction
+ref over Transaction
+Save selected collections and shared history
+with rollback and interrupted-save recovery
+end ref
+Transaction --> Snapshots
+deactivate Transaction
+Snapshots --> History
+deactivate Snapshots
+History --> PreparedChange
+deactivate History
+[<--PreparedChange
+deactivate PreparedChange
 
-[<-- Model
-deactivate Model
-
+note over PreparedChange, History
+The undo logic applies the restoration and consumes history
+only after this save succeeds.
+end note
 @enduml

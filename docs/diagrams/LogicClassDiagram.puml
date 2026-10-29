@@ -13,6 +13,9 @@ Class GroupCommand
 Class CommandResult
 Class "{abstract}\nCommand" as Command
 Class "{abstract}\nUndoableCommand" as UndoableCommand
+Class DeleteCommand
+Class FavouriteCommand
+Class UndoCommand
 Class "<<interface>>\nStagedCommand" as StagedCommand
 Class PreparedChange
 
@@ -39,12 +42,17 @@ ParserClasses ..> GroupCommand : <<create>>
 
 XYZCommand -up-|> Command
 UndoableCommand -up-|> Command
-GroupCommand -up-|> UndoableCommand
+DeleteCommand -up-|> UndoableCommand
+FavouriteCommand -up-|> UndoableCommand
+UndoCommand -up-|> Command
+DeleteCommand .down.|> StagedCommand
+UndoCommand .down.|> StagedCommand
+StagedCommand ..> PreparedChange : <<return>>
 LogicManager .left.> Command : <<call>>
+LogicManager ..> StagedCommand : <<prepare>>
+GroupCommand -up-|> UndoableCommand
 LogicManager ..> StagedModel : <<create and commit>>
 StagedModel ..|> Model
-LogicManager ..> StagedCommand : <<prepare>>
-StagedCommand ..> PreparedChange : <<create>>
 PreparedChange ..> Model : <<apply after save>>
 
 LogicManager --> Model
@@ -57,4 +65,8 @@ note right of XYZCommand: XYZCommand = AddCommand, \nFindCommand, etc
 Logic ..> CommandResult
 LogicManager .down.> CommandResult
 Command .up.> CommandResult : <<create>>
+note bottom of PreparedChange
+Candidate data and the operation
+to publish after saving.
+end note
 @enduml

@@ -2,45 +2,76 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 
+title Successful execution of "undo"
+
 box Logic LOGIC_COLOR_T1
 participant ":LogicManager" as LogicManager LOGIC_COLOR
-participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
 participant "u:UndoCommand" as UndoCommand LOGIC_COLOR
+participant "change:PreparedChange" as PreparedChange LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant ":Model" as Model MODEL_COLOR
+participant "m:Model" as Model MODEL_COLOR
+participant "history:UndoHistory" as UndoHistory MODEL_COLOR
 end box
-[-> LogicManager : execute(undo)
+
+[-> LogicManager : execute("undo")
 activate LogicManager
 
-LogicManager -> AddressBookParser : parseCommand(undo)
-activate AddressBookParser
+ref over LogicManager, UndoCommand
+Parse command and supply UndoHistory
+end ref
 
-create UndoCommand
-AddressBookParser -> UndoCommand
+LogicManager -> UndoCommand : prepare(m)
 activate UndoCommand
-
-UndoCommand --> AddressBookParser
-deactivate UndoCommand
-
-AddressBookParser --> LogicManager : u
-deactivate AddressBookParser
-
-LogicManager -> UndoCommand : execute()
-activate UndoCommand
-
-UndoCommand -> Model : undoAddressBook()
+UndoCommand -> Model : getActiveSection()
 activate Model
-
-Model --> UndoCommand
+Model --> UndoCommand : section
 deactivate Model
+UndoCommand -> UndoHistory : readLatestSnapshot()
+activate UndoHistory
+UndoHistory --> UndoCommand : snapshot:ContactSnapshot
+deactivate UndoHistory
 
-UndoCommand --> LogicManager : result
+create PreparedChange
+UndoCommand -> PreparedChange : PreparedChange(activeCollection, ...)
+activate PreparedChange
+PreparedChange --> UndoCommand
+deactivate PreparedChange
+UndoCommand --> LogicManager : change
 deactivate UndoCommand
-UndoCommand -[hidden]-> LogicManager : result
-destroy UndoCommand
 
-[<--LogicManager
+ref over LogicManager, UndoHistory
+Save restored snapshot
+end ref
+
+LogicManager -> PreparedChange : apply()
+activate PreparedChange
+loop each section in snapshot (Contacts, Favourites)
+PreparedChange -> Model : setActiveSection(restoredSection)
+activate Model
+Model --> PreparedChange
+deactivate Model
+PreparedChange -> Model : setAddressBook(restoredCollection)
+activate Model
+Model --> PreparedChange
+deactivate Model
+PreparedChange -> Model : updateFilteredPersonList(...)\n(show all contacts)
+activate Model
+Model --> PreparedChange
+deactivate Model
+end
+PreparedChange -> Model : setActiveSection(section)
+activate Model
+Model --> PreparedChange
+deactivate Model
+PreparedChange -> UndoHistory : discardLatestSnapshot()
+activate UndoHistory
+UndoHistory --> PreparedChange
+deactivate UndoHistory
+PreparedChange --> LogicManager : result
+deactivate PreparedChange
+
+[<--LogicManager : result
 deactivate LogicManager
 @enduml

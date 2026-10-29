@@ -1,0 +1,63 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+title Successful execution of "favourite 1"
+
+box Logic LOGIC_COLOR_T1
+participant ":LogicManager" as LogicManager LOGIC_COLOR
+participant "f:FavouriteCommand" as FavouriteCommand LOGIC_COLOR
+end box
+
+box Model MODEL_COLOR_T1
+participant "staged:StagedModel" as StagedModel MODEL_COLOR
+participant "m:Model" as Model MODEL_COLOR
+end box
+
+[-> LogicManager : execute("favourite 1")
+activate LogicManager
+
+ref over LogicManager, StagedModel
+Parse command and create isolated model
+end ref
+
+LogicManager -> FavouriteCommand : execute(staged)
+activate FavouriteCommand
+FavouriteCommand -> StagedModel : getFilteredPersonList()
+activate StagedModel
+StagedModel --> FavouriteCommand : displayed contacts
+deactivate StagedModel
+
+note right of FavouriteCommand
+Check Contacts is active, the index is valid,
+and the contact is not already in Favourites.
+end note
+
+FavouriteCommand -> StagedModel : addFavourite(person)
+activate StagedModel
+StagedModel --> FavouriteCommand
+deactivate StagedModel
+FavouriteCommand --> LogicManager : result
+deactivate FavouriteCommand
+
+ref over LogicManager, StagedModel
+Save both collections and shared undo history
+end ref
+
+LogicManager -> StagedModel : commitTo(m)
+activate StagedModel
+StagedModel -> Model : addFavourite(person)
+activate Model
+Model --> StagedModel
+deactivate Model
+StagedModel --> LogicManager
+deactivate StagedModel
+
+note over StagedModel, Model
+The favourite retains the contact's UUID.
+Contacts remains active with its view unchanged.
+end note
+
+[<--LogicManager : result
+deactivate LogicManager
+@enduml

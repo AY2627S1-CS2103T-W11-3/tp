@@ -7,18 +7,28 @@ skinparam classBackgroundColor LOGIC_COLOR
 Class "{abstract}\nCommand" as Command
 Class "{abstract}\nUndoableCommand" as UndoableCommand
 Class XYZCommand
+Class DeleteCommand
+Class FavouriteCommand
+Class UndoCommand
 Class GroupCommand
 
-package "Parser classes"{
+package "Parser classes" as ParserClasses {
 Class "<<interface>>\nParser" as Parser
 Class AddressBookParser
 Class XYZCommandParser
+Class DeleteCommandParser
+Class FavouriteCommandParser
+Class UndoCommandParser
 Class GroupCommandParser
 Class CliSyntax
 Class ParserUtil
 Class ArgumentMultimap
 Class ArgumentTokenizer
 Class Prefix
+}
+
+package Model {
+Class "<<interface>>\nUndoHistory" as UndoHistory MODEL_COLOR
 }
 
 Class HiddenOutside #FFFFFF
@@ -41,6 +51,21 @@ XYZCommandParser ..> ParserUtil
 ParserUtil .down.> Prefix
 ArgumentTokenizer .down.> Prefix
 XYZCommand -up-|> Command
+' Command-specific inheritance is shown in LogicClassDiagram.
+
+AddressBookParser .down.> DeleteCommandParser : <<create>>
+AddressBookParser .down.> FavouriteCommandParser : <<create>>
+AddressBookParser .down.> UndoCommandParser : <<create>>
+DeleteCommandParser .up.|> Parser
+FavouriteCommandParser .up.|> Parser
+UndoCommandParser .up.|> Parser
+DeleteCommandParser .down.> DeleteCommand : <<create>>
+FavouriteCommandParser .down.> FavouriteCommand : <<create>>
+UndoCommandParser .down.> UndoCommand : <<create>>
+DeleteCommandParser ..> ParserUtil
+FavouriteCommandParser ..> ParserUtil
+AddressBookParser --> "1" UndoHistory
+UndoCommandParser --> "1" UndoHistory
 UndoableCommand -up-|> Command
 GroupCommand -up-|> UndoableCommand
 @enduml
