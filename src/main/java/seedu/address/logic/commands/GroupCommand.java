@@ -17,12 +17,10 @@ import seedu.address.model.person.Person;
 /** Creates, deletes, lists, or views groups and changes their memberships. */
 public class GroupCommand extends UndoableCommand {
     public static final String COMMAND_WORD = "group";
-    public static final String MESSAGE_USAGE = "Usage: group list | "
-            + "group view g/<GROUP NAME> | "
-            + "group add n/<GROUP NAME> | "
-            + "group delete g/<GROUP NAME> | "
-            + "group member g/<GROUP NAME> add/<CONTACT NAME> | "
-            + "group member g/<GROUP NAME> remove/<CONTACT NAME>";
+    public static final String MESSAGE_USAGE = "Invalid group command. Try:\n"
+            + "group list | group view g/NAME\n"
+            + "group add n/NAME | group delete g/NAME\n"
+            + "group member g/NAME add/CONTACT or remove/CONTACT";
 
     /** The supported group operations. */
     public enum Action { LIST, VIEW, CREATE, DELETE, ADD_MEMBER, REMOVE_MEMBER }
