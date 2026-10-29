@@ -173,6 +173,11 @@ public class StagedModel implements Model {
     }
 
     @Override
+    public String getActiveFilter() {
+        return candidate.getActiveFilter();
+    }
+
+    @Override
     public void updateFilteredPersonList(Predicate<Person> predicate) {
         candidate.updateFilteredPersonList(predicate);
         changes.add(model -> model.updateFilteredPersonList(predicate));
