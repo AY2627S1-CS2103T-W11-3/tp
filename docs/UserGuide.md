@@ -231,7 +231,7 @@ Format: `find KEYWORD [MORE_KEYWORDS]`
 
 
 * The search considers names, tags, and notes only.
-* Only full words match; for example, `Han` does not match `Hans`.
+* Names support partial matching; for example, `Han` matches `Hans`. Tags and notes require full-word matches.
 
 * Persons matching at least one keyword are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`.
 
