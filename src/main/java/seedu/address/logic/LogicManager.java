@@ -67,7 +67,7 @@ public class LogicManager implements Logic {
                         ? undoableCommand.describeUndo(previous.getAddressBook(changedSection),
                                 candidate.getAddressBook(changedSection), changedSection)
                         : UndoHistory.MESSAGE_SUCCESS;
-                storage.saveUndoableChange(previous, candidate, description);
+                storage.saveUndoableChange(previous, candidate, description, changedSection);
             } catch (IOException ioe) {
                 logger.warning("Could not save contact changes: " + ioe.getMessage());
                 throw new CommandException(MESSAGE_SAVE_ERROR, ioe);
@@ -92,7 +92,7 @@ public class LogicManager implements Logic {
                 ? undoableCommand.describeUndo(previous.getAddressBook(section), change.getCandidate(), section)
                 : UndoHistory.MESSAGE_SUCCESS;
         try {
-            change.save(() -> storage.saveUndoableChange(previous, candidate, description));
+            change.save(() -> storage.saveUndoableChange(previous, candidate, description, section));
         } catch (IOException e) {
             logger.warning("Could not save prepared contact changes: " + e.getMessage());
             throw new CommandException(change.getSaveErrorMessage(), e);

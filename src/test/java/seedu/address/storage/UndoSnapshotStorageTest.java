@@ -52,7 +52,8 @@ class UndoSnapshotStorageTest {
         AddressBook original = book(ALICE);
         original.addGroup(new Group("Team", Set.of(ALICE.getName())));
         ContactSnapshot before = new ContactSnapshot(original, book(BOB));
-        history.saveChange(before, new ContactSnapshot(book(BOB), book(ALICE)), "Undid edit in Contacts.");
+        history.saveChange(before, new ContactSnapshot(book(BOB), book(ALICE)),
+                "Undid edit in Contacts.", ContactSection.CONTACTS);
         original.removePerson(ALICE);
         history.close();
         history = new UndoSnapshotStorage(contacts, favourites);
@@ -79,7 +80,7 @@ class UndoSnapshotStorageTest {
             ContactSnapshot next = new ContactSnapshot(
                     book(new PersonBuilder(ALICE).withNote("Contact " + i).build()),
                     book(new PersonBuilder(BOB).withNote("Favourite " + i).build()));
-            history.saveChange(previous, next, "Undid operation " + i + ".");
+            history.saveChange(previous, next, "Undid operation " + i + ".", ContactSection.CONTACTS);
             previous = next;
         }
         for (int i = 6; i >= 2; i--) {
@@ -97,10 +98,10 @@ class UndoSnapshotStorageTest {
         AddressBook grouped = book();
         grouped.addGroup(new Group("Team", Set.of()));
         ContactSnapshot changed = new ContactSnapshot(grouped, book());
-        history.saveChange(empty, empty, "No change.");
+        history.saveChange(empty, empty, "No change.", ContactSection.CONTACTS);
         assertTrue(history.readLatestSnapshot().isEmpty());
-        history.saveChange(empty, changed, "Undid group creation.");
-        history.saveChange(changed, changed, "No change.");
+        history.saveChange(empty, changed, "Undid group creation.", ContactSection.CONTACTS);
+        history.saveChange(changed, changed, "No change.", ContactSection.CONTACTS);
         assertEquals("Undid group creation.", history.getLatestUndoDescription());
         assertEquals(empty, history.readLatestSnapshot().orElseThrow());
     }
@@ -108,7 +109,8 @@ class UndoSnapshotStorageTest {
     @Test
     public void saveChange_secondFileFails_preservesBothFilesAndHistory() throws Exception {
         ContactSnapshot original = new ContactSnapshot(book(ALICE), book(BOB));
-        history.saveChange(new ContactSnapshot(book(), book()), original, "Undid first operation.");
+        history.saveChange(new ContactSnapshot(book(), book()), original,
+                "Undid first operation.", ContactSection.CONTACTS);
         byte[] savedContacts = Files.readAllBytes(contacts.getAddressBookFilePath());
         byte[] savedFavourites = Files.readAllBytes(favourites.getAddressBookFilePath());
         byte[] savedHistory = Files.readAllBytes(indexFile());
@@ -120,7 +122,7 @@ class UndoSnapshotStorageTest {
         };
         history = new UndoSnapshotStorage(contacts, failing);
         assertThrows(IOException.class, () -> history.saveChange(original,
-                new ContactSnapshot(book(BOB), book(ALICE)), "Undid second operation."));
+                new ContactSnapshot(book(BOB), book(ALICE)), "Undid second operation.", ContactSection.CONTACTS));
         assertArrayEquals(savedContacts, Files.readAllBytes(contacts.getAddressBookFilePath()));
         assertArrayEquals(savedFavourites, Files.readAllBytes(favourites.getAddressBookFilePath()));
         assertArrayEquals(savedHistory, Files.readAllBytes(indexFile()));
@@ -131,7 +133,7 @@ class UndoSnapshotStorageTest {
     public void newSession_interruptedUndo_restoresDataAndRetainsUnconsumedHistory() throws Exception {
         ContactSnapshot before = new ContactSnapshot(book(ALICE), book(BOB));
         ContactSnapshot after = new ContactSnapshot(book(BOB), book(ALICE));
-        history.saveChange(before, after, "Undid edit.");
+        history.saveChange(before, after, "Undid edit.", ContactSection.CONTACTS);
         JsonAddressBookStorage interrupted = new JsonAddressBookStorage(favourites.getAddressBookFilePath()) {
             @Override
             protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
@@ -153,7 +155,7 @@ class UndoSnapshotStorageTest {
     @Test
     public void readLatestSnapshot_missingOrInvalidHistory_preservesData() throws Exception {
         history.saveChange(new ContactSnapshot(book(), book()),
-                new ContactSnapshot(book(ALICE), book(BOB)), "Undid add.");
+                new ContactSnapshot(book(ALICE), book(BOB)), "Undid add.", ContactSection.CONTACTS);
         byte[] saved = Files.readAllBytes(contacts.getAddressBookFilePath());
         for (String invalid : List.of("invalid JSON", "null", "{}")) {
             Files.writeString(indexFile(), invalid);
@@ -167,7 +169,8 @@ class UndoSnapshotStorageTest {
     @Test
     public void saveChange_historyReplacementFails_blocksAccessUntilRecoverySucceeds() throws Exception {
         ContactSnapshot before = new ContactSnapshot(book(ALICE), book(BOB));
-        history.saveChange(new ContactSnapshot(book(), book()), before, "Undid first operation.");
+        history.saveChange(new ContactSnapshot(book(), book()), before,
+                "Undid first operation.", ContactSection.CONTACTS);
         byte[] originalHistory = Files.readAllBytes(indexFile());
         Path obstruction = indexFile().resolve("obstruction");
         JsonAddressBookStorage blocked = new JsonAddressBookStorage(favourites.getAddressBookFilePath()) {
@@ -181,7 +184,7 @@ class UndoSnapshotStorageTest {
         };
         history = new UndoSnapshotStorage(contacts, blocked);
         assertThrows(IOException.class, () -> history.saveChange(before,
-                new ContactSnapshot(book(BOB), book(ALICE)), "Undid second operation."));
+                new ContactSnapshot(book(BOB), book(ALICE)), "Undid second operation.", ContactSection.CONTACTS));
         assertThrows(DataLoadingException.class, history::readLatestSnapshot);
         StorageManager restarting = new StorageManager(contacts, favourites,
                 new JsonUserPrefsStorage(testFolder.resolve("prefs.json")));
@@ -201,7 +204,7 @@ class UndoSnapshotStorageTest {
     @Test
     public void newSession_eitherCollectionChanged_discardsStaleHistory() throws Exception {
         history.saveChange(new ContactSnapshot(book(), book()),
-                new ContactSnapshot(book(ALICE), book(BOB)), "Undid add.");
+                new ContactSnapshot(book(ALICE), book(BOB)), "Undid add.", ContactSection.CONTACTS);
         history.close();
         favourites.saveAddressBook(book());
         history = new UndoSnapshotStorage(contacts, favourites);

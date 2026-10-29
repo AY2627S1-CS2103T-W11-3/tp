@@ -8,15 +8,18 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.util.JsonUtil;
+import seedu.address.model.ContactSection;
 import seedu.address.model.ReadOnlyAddressBook;
 
 /**
- * Saves Contacts and Favourites together, retaining their original bytes until both replacements succeed.
- * A pending journal restores both originals after a failed or interrupted save.
+ * Saves contact collections together, retaining their original bytes until all selected replacements succeed.
+ * A pending journal restores the selected originals after a failed or interrupted save.
  * Callers must recover before loading collections and publish live-model changes only after saving succeeds.
  */
 class CollectionSaveTransaction {
@@ -57,25 +60,48 @@ class CollectionSaveTransaction {
      * @throws IOException If preparation, publication, or recovery fails.
      */
     void save(ReadOnlyAddressBook contacts, ReadOnlyAddressBook favourites, byte[] history) throws IOException {
-        requireAllNonNull(contacts, favourites);
+        save(contacts, favourites, history, EnumSet.allOf(ContactSection.class));
+    }
+
+    /**
+     * Saves selected collections and shared history without touching files excluded after a failed load.
+     * The journal records which originals need restoration if this operation fails or is interrupted.
+     *
+     * @throws IOException If preparation, publication, or recovery fails.
+     */
+    void save(ReadOnlyAddressBook contacts, ReadOnlyAddressBook favourites, byte[] history,
+            Set<ContactSection> savedSections) throws IOException {
+        requireAllNonNull(contacts, favourites, savedSections);
         recover();
         Path contactsFile = contactsStorage.getAddressBookFilePath().toAbsolutePath();
         Path favouritesFile = favouritesStorage.getAddressBookFilePath().toAbsolutePath();
-        Path contactsCandidate = createTemporaryFile(contactsFile);
+        Path contactsCandidate = null;
         Path favouritesCandidate = null;
         try {
-            favouritesCandidate = createTemporaryFile(favouritesFile);
-            contactsStorage.writeAddressBook(contacts, contactsCandidate);
-            favouritesStorage.writeAddressBook(favourites, favouritesCandidate);
-            byte[][] originals = {readOriginal(contactsFile), readOriginal(favouritesFile)};
+            if (savedSections.contains(ContactSection.CONTACTS)) {
+                contactsCandidate = createTemporaryFile(contactsFile);
+                contactsStorage.writeAddressBook(contacts, contactsCandidate);
+            }
+            if (savedSections.contains(ContactSection.FAVOURITES)) {
+                favouritesCandidate = createTemporaryFile(favouritesFile);
+                favouritesStorage.writeAddressBook(favourites, favouritesCandidate);
+            }
+            byte[][] originals = {
+                savedSections.contains(ContactSection.CONTACTS) ? readOriginal(contactsFile) : null,
+                savedSections.contains(ContactSection.FAVOURITES) ? readOriginal(favouritesFile) : null
+            };
             if (history != null) {
                 originals = new byte[][] {originals[0], originals[1], readOriginal(getHistoryFile())};
             }
-            Backup backup = new Backup(originals, favouritesFile);
+            Backup backup = new Backup(originals, favouritesFile, savedSections);
             writeAtomically(journalFile, JsonUtil.toJsonString(backup).getBytes(StandardCharsets.UTF_8));
             try {
-                contactsStorage.replaceAddressBook(contactsCandidate, contactsFile);
-                favouritesStorage.replaceAddressBook(favouritesCandidate, favouritesFile);
+                if (contactsCandidate != null) {
+                    contactsStorage.replaceAddressBook(contactsCandidate, contactsFile);
+                }
+                if (favouritesCandidate != null) {
+                    favouritesStorage.replaceAddressBook(favouritesCandidate, favouritesFile);
+                }
                 if (history != null) {
                     writeAtomically(getHistoryFile(), history);
                 }
@@ -89,7 +115,9 @@ class CollectionSaveTransaction {
                 throw e;
             }
         } finally {
-            deleteTemporaryFile(contactsCandidate);
+            if (contactsCandidate != null) {
+                deleteTemporaryFile(contactsCandidate);
+            }
             if (favouritesCandidate != null) {
                 deleteTemporaryFile(favouritesCandidate);
             }
@@ -97,8 +125,8 @@ class CollectionSaveTransaction {
     }
 
     /**
-     * Restores both original files when a pending save exists, including their original absence.
-     * Retains the journal until both restorations succeed, allowing recovery to be retried safely.
+     * Restores selected original files when a pending save exists, including their original absence.
+     * Retains the journal until all restorations succeed, allowing recovery to be retried safely.
      *
      * @throws IOException If the journal is invalid or either file cannot be restored.
      */
@@ -113,8 +141,15 @@ class CollectionSaveTransaction {
                         .equals(backup.favouritesPath)) {
             throw new IOException("Invalid pending collection save");
         }
-        restore(contactsStorage.getAddressBookFilePath(), backup.originals[0]);
-        restore(favouritesStorage.getAddressBookFilePath(), backup.originals[1]);
+        // Older journals saved both collections and have no section selection.
+        Set<ContactSection> savedSections = backup.savedSections == null
+                ? EnumSet.allOf(ContactSection.class) : backup.savedSections;
+        if (savedSections.contains(ContactSection.CONTACTS)) {
+            restore(contactsStorage.getAddressBookFilePath(), backup.originals[0]);
+        }
+        if (savedSections.contains(ContactSection.FAVOURITES)) {
+            restore(favouritesStorage.getAddressBookFilePath(), backup.originals[1]);
+        }
         if (backup.originals.length == 3) {
             restore(getHistoryFile(), backup.originals[2]);
         }
@@ -182,20 +217,23 @@ class CollectionSaveTransaction {
     }
 
     /**
-     * Stores exact original bytes, including null entries for missing files, and the paired destination.
+     * Stores selected originals, including null for missing or excluded files, and the paired destination.
      */
     private static class Backup {
         private final byte[][] originals;
         private final String favouritesPath;
+        private final Set<ContactSection> savedSections;
 
-        private Backup(byte[][] originals, Path favouritesFile) {
+        private Backup(byte[][] originals, Path favouritesFile, Set<ContactSection> savedSections) {
             this.originals = originals;
+            this.savedSections = Set.copyOf(savedSections);
             favouritesPath = favouritesFile.toAbsolutePath().normalize().toString();
         }
 
         private Backup() {
             originals = null;
             favouritesPath = null;
+            savedSections = null;
         }
     }
 }

@@ -9,6 +9,7 @@ import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.ContactSnapshot;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.ReadOnlyUserPrefs;
@@ -78,7 +79,7 @@ public class StorageManager implements Storage {
         } catch (IOException e) {
             throw new DataLoadingException(e);
         }
-        return addressBookStorage.readAddressBook();
+        return readCollection(addressBookStorage, ContactSection.CONTACTS);
     }
 
     @Override
@@ -86,13 +87,14 @@ public class StorageManager implements Storage {
         logger.fine("Attempting to write to data file: " + addressBookStorage.getAddressBookFilePath());
         undoHistory.invalidatePersistedHistory();
         addressBookStorage.saveAddressBook(addressBook);
+        undoHistory.setLoadFailed(ContactSection.CONTACTS, false);
     }
 
     @Override
     public void saveUndoableChange(ContactSnapshot previous, ContactSnapshot candidate,
-            String undoDescription) throws IOException {
+            String undoDescription, ContactSection initiatingSection) throws IOException {
         logger.fine("Saving a shared undoable change");
-        undoHistory.saveChange(previous, candidate, undoDescription);
+        undoHistory.saveChange(previous, candidate, undoDescription, initiatingSection);
     }
 
     @Override
@@ -132,13 +134,29 @@ public class StorageManager implements Storage {
         } catch (IOException e) {
             throw new DataLoadingException(e);
         }
-        return favouritesStorage.readAddressBook();
+        return readCollection(favouritesStorage, ContactSection.FAVOURITES);
     }
 
     @Override
     public void saveFavourites(ReadOnlyAddressBook favourites) throws IOException {
         undoHistory.invalidatePersistedHistory();
         favouritesStorage.saveAddressBook(favourites);
+        undoHistory.setLoadFailed(ContactSection.FAVOURITES, false);
+    }
+
+    /**
+     * Records whether a collection loaded successfully so unrelated saves preserve a failed file.
+     */
+    private Optional<ReadOnlyAddressBook> readCollection(JsonAddressBookStorage collectionStorage,
+            ContactSection section) throws DataLoadingException {
+        try {
+            Optional<ReadOnlyAddressBook> result = collectionStorage.readAddressBook();
+            undoHistory.setLoadFailed(section, false);
+            return result;
+        } catch (DataLoadingException e) {
+            undoHistory.setLoadFailed(section, true);
+            throw e;
+        }
     }
 
 }

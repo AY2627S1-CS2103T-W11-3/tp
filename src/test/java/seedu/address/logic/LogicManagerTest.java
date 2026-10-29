@@ -587,6 +587,125 @@ public class LogicManagerTest {
     }
 
     @Test
+    public void execute_otherSectionFailedToLoad_preservesFileAcrossUndoRestartAndClear() throws Exception {
+        for (ContactSection failedSection : ContactSection.values()) {
+            Path folder = Files.createTempDirectory(temporaryFolder, "failed-load-");
+            JsonAddressBookStorage contacts = new JsonAddressBookStorage(folder.resolve("contacts.json"));
+            JsonAddressBookStorage favourites = new JsonAddressBookStorage(folder.resolve("favourites.json"));
+            JsonAddressBookStorage failed = failedSection == ContactSection.CONTACTS ? contacts : favourites;
+            JsonAddressBookStorage healthy = failedSection == ContactSection.CONTACTS ? favourites : contacts;
+            healthy.saveAddressBook(getTypicalAddressBook());
+            Files.writeString(failed.getAddressBookFilePath(), "Invalid JSON to preserve\n");
+            byte[] original = Files.readAllBytes(failed.getAddressBookFilePath());
+            StorageManager storage = new StorageManager(contacts, favourites,
+                    new JsonUserPrefsStorage(folder.resolve("prefs.json")));
+            model = loadModel(storage);
+            ContactSection healthySection = failedSection == ContactSection.CONTACTS
+                    ? ContactSection.FAVOURITES : ContactSection.CONTACTS;
+            model.setActiveSection(healthySection);
+            logic = new LogicManager(model, storage);
+
+            logic.execute("edit 1 note/Updated healthy section");
+            assertArrayEquals(original, Files.readAllBytes(failed.getAddressBookFilePath()));
+            storage.closeUndoHistory();
+            storage = new StorageManager(contacts, favourites,
+                    new JsonUserPrefsStorage(folder.resolve("prefs.json")));
+            model = loadModel(storage);
+            model.setActiveSection(healthySection);
+            logic = new LogicManager(model, storage);
+            logic.execute("undo");
+            assertEquals(getTypicalAddressBook(), healthy.readAddressBook().orElseThrow());
+            assertArrayEquals(original, Files.readAllBytes(failed.getAddressBookFilePath()));
+
+            logic.execute("clear");
+            logic.execute("clear");
+            assertArrayEquals(original, Files.readAllBytes(failed.getAddressBookFilePath()));
+            logic.execute("undo");
+            assertEquals(getTypicalAddressBook(), healthy.readAddressBook().orElseThrow());
+            assertArrayEquals(original, Files.readAllBytes(failed.getAddressBookFilePath()));
+            model.setActiveSection(failedSection);
+            logic.execute("clear");
+            assertEquals(new AddressBook(), failed.readAddressBook().orElseThrow());
+            assertThrows(CommandException.class, UndoCommand.MESSAGE_NO_HISTORY, () -> logic.execute("undo"));
+        }
+    }
+
+    @Test
+    public void execute_failedRepair_keepsFailedFileProtectedUntilSuccessfulRetry() throws Exception {
+        Path contactsFile = temporaryFolder.resolve("repair-contacts.json");
+        Path favouritesFile = temporaryFolder.resolve("repair-favourites.json");
+        AtomicBoolean shouldFailContacts = new AtomicBoolean(false);
+        JsonAddressBookStorage contacts = new JsonAddressBookStorage(contactsFile) {
+            @Override
+            protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
+                if (shouldFailContacts.get()) {
+                    throw DUMMY_IO_EXCEPTION;
+                }
+                super.replaceAddressBook(temporaryFile, destination);
+            }
+        };
+        contacts.saveAddressBook(getTypicalAddressBook());
+        Files.writeString(favouritesFile, "Invalid favourites JSON");
+        byte[] original = Files.readAllBytes(favouritesFile);
+        AtomicBoolean shouldFail = new AtomicBoolean(true);
+        JsonAddressBookStorage favourites = new JsonAddressBookStorage(favouritesFile) {
+            @Override
+            protected void replaceAddressBook(Path temporaryFile, Path destination) throws IOException {
+                if (shouldFail.get()) {
+                    throw DUMMY_IO_EXCEPTION;
+                }
+                super.replaceAddressBook(temporaryFile, destination);
+            }
+        };
+        StorageManager storage = new StorageManager(contacts, favourites,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("repair-prefs.json")));
+        model = loadModel(storage);
+        logic = new LogicManager(model, storage);
+        logic.execute("tab favourites");
+        assertThrows(CommandException.class, LogicManager.MESSAGE_SAVE_ERROR, () -> logic.execute("clear"));
+        assertArrayEquals(original, Files.readAllBytes(favouritesFile));
+        logic.execute("tab contacts");
+        logic.execute("edit 1 note/Healthy change after failed repair");
+        byte[] savedContacts = Files.readAllBytes(contactsFile);
+        shouldFailContacts.set(true);
+        assertThrows(CommandException.class, UndoCommand.MESSAGE_SAVE_ERROR, () -> logic.execute("undo"));
+        assertArrayEquals(savedContacts, Files.readAllBytes(contactsFile));
+        assertArrayEquals(original, Files.readAllBytes(favouritesFile));
+        assertEquals(new Note("Healthy change after failed repair"),
+                model.getAddressBook().getPersonList().getFirst().getNote());
+        shouldFailContacts.set(false);
+        logic.execute("undo");
+        assertArrayEquals(original, Files.readAllBytes(favouritesFile));
+        assertEquals(getTypicalAddressBook(), contacts.readAddressBook().orElseThrow());
+
+        shouldFail.set(false);
+        logic.execute("favourite 1");
+        assertEquals(List.of(ALICE), favourites.readAddressBook().orElseThrow().getPersonList());
+        logic.execute("edit 1 note/Linked after repair");
+        assertEquals(new Note("Linked after repair"),
+                favourites.readAddressBook().orElseThrow().getPersonList().getFirst().getNote());
+        logic.execute("undo");
+        logic.execute("undo");
+        assertEquals(new AddressBook(), favourites.readAddressBook().orElseThrow());
+    }
+
+    private Model loadModel(StorageManager storage) {
+        ReadOnlyAddressBook contacts;
+        ReadOnlyAddressBook favourites;
+        try {
+            contacts = storage.readAddressBook().orElseGet(AddressBook::new);
+        } catch (DataLoadingException e) {
+            contacts = new AddressBook();
+        }
+        try {
+            favourites = storage.readFavourites().orElseGet(AddressBook::new);
+        } catch (DataLoadingException e) {
+            favourites = new AddressBook();
+        }
+        return new ModelManager(contacts, favourites, new UserPrefs());
+    }
+
+    @Test
     public void execute_saveFailure_preservesDataAndFilterUntilRetry() throws Exception {
         Path dataPath = temporaryFolder.resolve("retry.json");
         AtomicBoolean failSave = new AtomicBoolean(false);

@@ -10,9 +10,11 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
@@ -33,6 +35,7 @@ class UndoSnapshotStorage {
     private final JsonAddressBookStorage contactsStorage;
     private final JsonAddressBookStorage favouritesStorage;
     private final CollectionSaveTransaction transaction;
+    private final Set<ContactSection> failedSections = EnumSet.noneOf(ContactSection.class);
     private List<Entry> entries = new ArrayList<>();
     private ContactSnapshot latestReadSnapshot;
     private IOException recoveryFailure;
@@ -82,16 +85,19 @@ class UndoSnapshotStorage {
     }
 
     /**
-     * Saves both candidate collections and records one before-state when their data changes.
-     * Identical data is still saved without consuming undo capacity.
+     * Saves candidate collections and records one before-state when their data changes.
+     * Identical data is still saved without consuming undo capacity. Unchanged failed sections are preserved
+     * unless the command explicitly targets them, including a clear of an empty startup fallback.
      *
      * @throws IOException If data or history cannot be saved consistently.
      */
-    void saveChange(ContactSnapshot previous, ContactSnapshot candidate, String description) throws IOException {
+    void saveChange(ContactSnapshot previous, ContactSnapshot candidate, String description,
+            ContactSection initiatingSection) throws IOException {
         requireAvailable();
         requireNonNull(previous);
         requireNonNull(candidate);
         requireNonNull(description);
+        requireNonNull(initiatingSection);
         if (description.isBlank()) {
             throw new IllegalArgumentException("Undo description must not be blank");
         }
@@ -102,7 +108,15 @@ class UndoSnapshotStorage {
                 next.removeFirst();
             }
         }
-        save(candidate, next);
+        Set<ContactSection> savedSections = EnumSet.allOf(ContactSection.class);
+        for (ContactSection section : failedSections) {
+            if (section != initiatingSection
+                    && previous.getAddressBook(section).equals(candidate.getAddressBook(section))) {
+                savedSections.remove(section);
+            }
+        }
+        save(candidate, next, savedSections);
+        failedSections.removeAll(savedSections);
         entries = next;
         latestReadSnapshot = null;
     }
@@ -140,7 +154,8 @@ class UndoSnapshotStorage {
     }
 
     /**
-     * Restores both collections and removes the latest persisted history entry as one save operation.
+     * Restores loaded collections and removes the latest persisted history entry as one save operation.
+     * Files for sections that failed to load remain untouched.
      * The caller consumes the in-memory entry only after applying the restored data to the live model.
      *
      * @throws IOException If either collection or the remaining history cannot be saved.
@@ -152,7 +167,9 @@ class UndoSnapshotStorage {
         }
         List<Entry> remaining = new ArrayList<>(entries);
         remaining.removeLast();
-        save(snapshot, remaining);
+        Set<ContactSection> savedSections = EnumSet.allOf(ContactSection.class);
+        savedSections.removeAll(failedSections);
+        save(snapshot, remaining, savedSections);
     }
 
     /**
@@ -179,6 +196,18 @@ class UndoSnapshotStorage {
     }
 
     /**
+     * Marks a failed load until that section is read or deliberately saved successfully.
+     */
+    void setLoadFailed(ContactSection section, boolean hasFailed) {
+        requireNonNull(section);
+        if (hasFailed) {
+            failedSections.add(section);
+        } else {
+            failedSections.remove(section);
+        }
+    }
+
+    /**
      * Closes this instance without deleting history, which is persisted with every successful save.
      */
     void close() {
@@ -186,19 +215,25 @@ class UndoSnapshotStorage {
     }
 
     /**
-     * Publishes the complete next state with checksums binding its history to the saved JSON bytes.
+     * Publishes the next state with checksums covering saved candidates and any preserved failed files.
      */
-    private void save(ContactSnapshot candidate, List<Entry> next) throws IOException {
+    private void save(ContactSnapshot candidate, List<Entry> next, Set<ContactSection> savedSections)
+            throws IOException {
         JsonSerializableAddressBook contacts =
                 new JsonSerializableAddressBook(candidate.getAddressBook(ContactSection.CONTACTS));
         JsonSerializableAddressBook favourites =
                 new JsonSerializableAddressBook(candidate.getAddressBook(ContactSection.FAVOURITES));
-        Journal journal = new Journal(digest(JsonUtil.toJsonString(contacts).getBytes(StandardCharsets.UTF_8)),
-                digest(JsonUtil.toJsonString(favourites).getBytes(StandardCharsets.UTF_8)), next);
+        Journal journal = new Journal(
+                savedSections.contains(ContactSection.CONTACTS)
+                        ? digest(JsonUtil.toJsonString(contacts).getBytes(StandardCharsets.UTF_8))
+                        : checksum(contactsStorage.getAddressBookFilePath()),
+                savedSections.contains(ContactSection.FAVOURITES)
+                        ? digest(JsonUtil.toJsonString(favourites).getBytes(StandardCharsets.UTF_8))
+                        : checksum(favouritesStorage.getAddressBookFilePath()), next);
         try {
             transaction.save(candidate.getAddressBook(ContactSection.CONTACTS),
                     candidate.getAddressBook(ContactSection.FAVOURITES),
-                    JsonUtil.toJsonString(journal).getBytes(StandardCharsets.UTF_8));
+                    JsonUtil.toJsonString(journal).getBytes(StandardCharsets.UTF_8), savedSections);
         } catch (IOException e) {
             try {
                 transaction.recover();
