@@ -89,7 +89,8 @@ Format: `tab contacts` or `tab favourites`
 
 * Switch sections by typing a command; the section label is not a clickable tab.
 * Commands use the displayed contacts in the active section. Edits to linked contacts update both sections, and deleting or clearing Contacts also removes matching favourites. `undo` reverses the latest change across either section. You can use `add` to create a contact directly in Favourites; that contact has no linked original in Contacts.
-* Switching to a different section shows all contacts there. Returning to a section resets its previous search. Selecting the section that is already active keeps its current search.
+* Each section keeps its own search results and display order during the current session. Switching back restores the view left by `find`, `filter`, or `recent`, including an empty result. Selecting the section that is already active keeps its view. A successful `undo` resets searches, tag filters, and display order in both sections, showing all contacts in addition order.
+* Use `list` to show all contacts in the active section in addition order, or `recent` to show them newest first. Restarting resets both section views and starts on Contacts; searches and display order are not saved.
 * Switching sections does not save or modify contact data. Success shows `Showing Contacts.` or `Showing Favourites.`
 * Use the exact lowercase names `contacts` and `favourites`. A missing, unknown, or extra section produces `Invalid command format!` followed by the `tab` usage, without switching sections.
 
@@ -102,12 +103,13 @@ Format: `favourite INDEX`
 * Run this command in Contacts. `INDEX` refers to the currently displayed list, including search results.
 * Supply exactly one positive ASCII integer without leading zeros, such as `1` or `12`. Signs, decimals, names, and extra arguments are rejected. Surrounding spaces and tabs are allowed.
 * Success appends the linked contact to Favourites and shows `Added to Favourites: NAME (index INDEX).` Contacts remains selected, its search stays active, and the input clears.
+* A yellow star appears beside a contact in Contacts when a favourite shares its phone number or email address, including a contact added directly in Favourites. Stars are hidden in the Favourites section and refresh after successful commands.
 * Editing either linked contact updates its details in both sections. Deleting the original from Contacts also removes its favourite. Clearing Contacts removes favourites linked to the cleared contacts.
 * Deleting or clearing Favourites leaves Contacts unchanged. Groups remain specific to each section; renaming or deleting a linked contact updates its existing group memberships in each affected section.
 * A contact with the same phone number or email address cannot appear twice in Favourites. Contacts may share the same name. Repeating the command does not update or overwrite the existing favourite.
 * To remove a favourite, run `tab favourites` and then `delete INDEX`. You can run `favourite` on the original again after removal.
 
-For example, run `tab contacts`, then `find Betsy`, then `favourite 1` to favourite the first matching contact. Run `tab favourites`, then use Betsy's displayed index in `edit INDEX note/Met in class`. The new note also appears on the original contact in Contacts.
+For example, run `tab contacts`, then `find Betsy`, then `favourite 1` to favourite the first matching contact. Run `tab favourites`; if a retained search hides Betsy, run `list`. Then use Betsy's displayed index in `edit INDEX note/Met in class`. The new note also appears on the original contact in Contacts.
 
 Validation follows the table order. `N` is the number of displayed contacts. Failures retain the entered command and leave both collections unchanged.
 
@@ -268,7 +270,7 @@ Format: `filter t/TAG [t/TAG]…​`
 * Tag matching is case-insensitive; for example, `t/friends` matches `Friends`.
 * Only whole tags match; for example, `t/friend` does not match `friends`.
 * If more than one tag is given, a person must have every listed tag.
-* While a filter is active, the heading above the contact list shows `Active filter: TAG`. It remains visible after commands such as `view`. `list`, `find`, `recent`, and switching sections remove it.
+* While a filter is active, the heading above the contact list shows `Active filter: TAG`. It remains visible after commands such as `view`. `list`, `find`, and `recent` remove it in the active section. Switching sections shows the destination section's filter; switching back restores the previous filter and its heading.
 * A filter that matches nobody shows `No contacts match the specified tag(s).` The contacts remain saved. Use `list` to show them again.
 * The index numbers in the result list can be used by commands such as `view`, `edit`, and `delete`.
 * Use `list` to show all persons again.
@@ -327,11 +329,11 @@ Reverses the most recent successful `add`, `delete`, `edit`, `clear`, `favourite
 Format: `undo`
 
 * Use lowercase `undo` with no arguments. Surrounding spaces and tabs are accepted.
-* Undo restores both sections to their states before the operation, including contact details, tags, notes, contact order, groups, and memberships. Mirrored changes are reversed together. The active section stays selected and shows all contacts; previous searches and sorting are not restored.
+* Undo restores both sections to their states before the operation, including contact details, tags, notes, contact order, groups, and memberships. Mirrored changes are reversed together. The active section stays selected. Both sections show all contacts in addition order; their previous searches, tag filters, and sorting are reset.
 * Up to five operations across both sections can be undone, most recent first. A sixth operation removes the oldest available undo entry. One operation that changes both sections uses one entry.
 * Failed commands, identical edits, and clearing a section with no contacts or groups do not consume history. Clearing a section that contains only groups does consume an entry. Commands such as `tab`, `find`, `list`, and `view` leave history unchanged.
 * Each successful undo consumes one history entry. Undo itself does not create an entry, and there is no redo command.
-* History persists across normal restarts. If either saved collection is changed outside the app, its existing shared undo history is ignored on the next launch.
+* History persists across normal restarts. If either saved collection is changed outside the app, its existing shared undo history is ignored on the next launch. If the saved history cannot be loaded at startup, the app starts without undo history.
 * Success clears the input box. Failures retain the command and leave the contact data, displayed list, saved file, and available history unchanged.
 
 For example, in Contacts with at least one contact displayed, execute `delete 1` and then `undo`. The deleted contact returns to its original position, and the full contact list is shown. If you next make another change, undo reverses that new change before reaching earlier history entries. For example, after editing a linked favourite, you can switch to Contacts and run `undo` to reverse that edit in both sections.
@@ -341,7 +343,7 @@ For example, in Contacts with at least one contact displayed, execute `delete 1`
 | Undo succeeds | Feedback identifies the operation, such as `Undid delete of Betsy Crowe.` or `Undid clear of Favourites.`; `Undo successful.` is the fallback |
 | No history is available | `No changes to undo.` |
 | Extra arguments, such as `undo 1` | `Invalid command format!` followed by the `undo` usage |
-| A backup is missing, unreadable, or corrupted | `Could not read undo history. Nothing was undone. Please try again.` |
+| The stored undo history is missing, unreadable, or corrupted when undo tries to read an available entry | `Could not read undo history. Nothing was undone. Please try again.` |
 | Saving the restored data fails | `Could not save changes. Nothing was undone. Please try again.` |
 
 For example, entering `undo 1` displays:
