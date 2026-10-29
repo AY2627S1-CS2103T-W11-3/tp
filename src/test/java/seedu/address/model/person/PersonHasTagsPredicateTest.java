@@ -79,6 +79,13 @@ public class PersonHasTagsPredicateTest {
     }
 
     @Test
+    public void getDisplayNames_sortsAndKeepsFirstSpelling() {
+        PersonHasTagsPredicate predicate = new PersonHasTagsPredicate(
+                List.of(new Tag("owesMoney"), new Tag("Friends"), new Tag("friends")));
+        assertEquals("Friends, owesMoney", predicate.getDisplayNames());
+    }
+
+    @Test
     public void toStringMethod() {
         Set<Tag> tags = Set.of(new Tag("friends"));
         PersonHasTagsPredicate predicate = new PersonHasTagsPredicate(tags);

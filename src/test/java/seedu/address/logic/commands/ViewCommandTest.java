@@ -11,6 +11,8 @@ import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
 import static seedu.address.testutil.TypicalIndexes.INDEX_THIRD_PERSON;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
+import java.math.BigInteger;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.core.index.Index;
@@ -145,6 +147,13 @@ public class ViewCommandTest {
     }
 
     @Test
+    public void execute_indexBeyondIntegerMax_throwsCommandException() {
+        ViewCommand viewCommand = new ViewCommand(new BigInteger("2147483648"));
+
+        assertCommandFailure(viewCommand, model, ViewCommand.MESSAGE_INDEX_OUT_OF_RANGE);
+    }
+
+    @Test
     public void execute_emptyList_throwsCommandException() {
         Model emptyModel = new ModelManager();
         ViewCommand viewCommand = new ViewCommand(INDEX_FIRST_PERSON);
@@ -178,7 +187,7 @@ public class ViewCommandTest {
     public void toStringMethod() {
         Index targetIndex = Index.fromOneBased(1);
         ViewCommand viewCommand = new ViewCommand(targetIndex);
-        String expected = ViewCommand.class.getCanonicalName() + "{targetIndex=" + targetIndex + "}";
+        String expected = ViewCommand.class.getCanonicalName() + "{targetIndex=" + targetIndex.getOneBased() + "}";
         assertEquals(expected, viewCommand.toString());
     }
 }

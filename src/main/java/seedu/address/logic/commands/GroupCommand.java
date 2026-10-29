@@ -7,13 +7,15 @@ import java.util.List;
 import java.util.Set;
 
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.ContactSection;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.group.Group;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 
 /** Creates, deletes, lists, or views groups and changes their memberships. */
-public class GroupCommand extends Command {
+public class GroupCommand extends UndoableCommand {
     public static final String COMMAND_WORD = "group";
     public static final String MESSAGE_USAGE = "Usage: group list | "
             + "group view g/<GROUP NAME> | "
@@ -126,5 +128,16 @@ public class GroupCommand extends Command {
             }
         }
         return members;
+    }
+
+    @Override
+    public String describeUndo(ReadOnlyAddressBook previous, ReadOnlyAddressBook candidate, ContactSection section) {
+        return switch (action) {
+            case LIST, VIEW -> throw new IllegalStateException("Read-only group operations cannot be undone.");
+            case CREATE -> "Undid creation of group " + groupName + ".";
+            case DELETE -> "Undid deletion of group " + groupName + ".";
+            case ADD_MEMBER -> "Undid addition of " + personName + " to group " + groupName + ".";
+            case REMOVE_MEMBER -> "Undid removal of " + personName + " from group " + groupName + ".";
+        };
     }
 }

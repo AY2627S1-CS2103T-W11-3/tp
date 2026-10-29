@@ -36,17 +36,21 @@ public class StagedModel implements Model {
         return changedSection != null;
     }
 
-    /** Returns the collection changed by this command, after a contact change has been recorded. */
+    /**
+     * Returns the initiating collection for command feedback after a change has been recorded.
+     * The candidate may also contain mirrored changes in the other collection.
+     */
     public ContactSection getChangedSection() {
         return requireNonNull(changedSection);
     }
 
-    /** Each command saves one collection, so reject changes spanning multiple files. */
+    /**
+     * Records the initiating section for feedback; the candidate may also mirror changes to its counterpart.
+     */
     private void recordContactChange(ContactSection section) {
-        if (changedSection != null && changedSection != section) {
-            throw new IllegalStateException("A command cannot change both contact collections");
+        if (changedSection == null) {
+            changedSection = section;
         }
-        changedSection = section;
     }
 
     @Override
@@ -170,6 +174,11 @@ public class StagedModel implements Model {
     @Override
     public ObservableList<Person> getFilteredPersonList() {
         return candidate.getFilteredPersonList();
+    }
+
+    @Override
+    public String getActiveFilter() {
+        return candidate.getActiveFilter();
     }
 
     @Override
