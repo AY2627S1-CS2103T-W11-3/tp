@@ -278,7 +278,7 @@ Integration with the other MVP features:
 
 ### Favourites and section switching
 
-[Favourite command sequence diagram](diagrams/FavouriteSequenceDiagram.puml)
+![Favourite command sequence diagram](images/FavouriteSequenceDiagram.png)
 
 `TabCommandParser` accepts exactly `contacts` or `favourites` after trimming surrounding whitespace. `TabCommand` calls `Model.setActiveSection` through staging. This changes the visible collection without marking contact data as changed, so navigation remains available when saving fails. Existing commands use the active collection through the `Model` interface; linked edits and deletions may also affect the other collection.
 
@@ -300,7 +300,7 @@ The `undo` command restores both collections to their state before the latest su
 
 #### Recording changes
 
-[Recording changes activity diagram](diagrams/CommitActivityDiagram.puml)
+![Recording changes activity diagram](images/CommitActivityDiagram.png)
 
 `AddCommand`, `DeleteCommand`, `EditCommand`, `ClearCommand`, `FavouriteCommand`, and `GroupCommand` extend the abstract `UndoableCommand`. Its `describeUndo` method supplies feedback identifying the operation and, where applicable, the contact. `LogicManager` creates `ContactSnapshot` objects containing both full address books, including IDs, order, fields, groups, and memberships. These copy model data rather than the existing file bytes, so history also works before the first data file has been created.
 
@@ -319,7 +319,9 @@ New commands that change data in either section should extend `UndoableCommand` 
 
 #### Restoring a snapshot
 
-[Undo logic sequence diagram](diagrams/UndoSequenceDiagram-Logic.puml) · [Undo persistence sequence diagram](diagrams/UndoSequenceDiagram-Model.puml)
+![Undo logic sequence diagram](images/UndoSequenceDiagram-Logic.png)
+
+![Undo persistence sequence diagram](images/UndoSequenceDiagram-Model.png)
 
 The model-level `UndoHistory` interface exposes snapshot reading, description, restoration saving, and consumption without depending on logic or storage classes. `Storage` extends that interface, and `StorageManager` owns one `UndoSnapshotStorage` shared by both collections. `LogicManager` supplies history to `AddressBookParser`, which passes the narrow interface through `UndoCommandParser` to `UndoCommand`. Parsing does not access history.
 
