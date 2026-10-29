@@ -1,5 +1,6 @@
 @startuml
 !include style.puml
+!pragma layout smetana
 skinparam arrowThickness 1.1
 skinparam arrowColor MODEL_COLOR
 skinparam classBackgroundColor MODEL_COLOR
@@ -12,6 +13,7 @@ Class "<<interface>>\nModel" as Model
 Class AddressBook
 Class ModelManager
 Class StagedModel
+Class ContactSnapshot
 enum ContactSection {
     CONTACTS
     FAVOURITES
@@ -20,10 +22,14 @@ show ContactSection members
 Class UserPrefs
 
 Class UniquePersonList
+Class "FilteredList<Person>" as FilteredPersonList
+Class "SortedList<Person>" as SortedPersonList
 Class Person
+Class Group
 Class Address
 Class Email
 Class Name
+Class Note
 Class Phone
 Class Tag
 
@@ -39,20 +45,24 @@ ModelManager .up.|> Model
 StagedModel .up.|> Model
 StagedModel *--> "1" ModelManager : candidate
 StagedModel --> "0..1" ContactSection : changedSection
-ModelManager --> "1" ContactSection : activeSection
 Model .right.> ReadOnlyUserPrefs
 Model .left.> ReadOnlyAddressBook
-ModelManager -left-> "2" AddressBook : addressBooks\nkeyed by ContactSection
+ModelManager *-left-> "2" AddressBook : addressBooks\nkeyed by ContactSection
 ModelManager -right-> "1" UserPrefs
+ModelManager --> "1" ContactSection : activeSection
+ContactSnapshot *--> "2" AddressBook : copied collections
 UserPrefs .up.|> ReadOnlyUserPrefs
 
 AddressBook *--> "1" UniquePersonList
+AddressBook *--> "*" Group : groups
 UniquePersonList --> "~* all" Person
 Person *--> Name
 Person *--> Phone
 Person *--> Email
 Person *--> Address
+Person *--> Note
 Person *--> "*" Tag
+Group *--> "* members" Name
 
 Person -[hidden]up--> I
 UniquePersonList -[hidden]right-> I
@@ -61,9 +71,11 @@ Name -[hidden]right-> Phone
 Phone -[hidden]right-> Address
 Address -[hidden]right-> Email
 
-ModelManager --> "~* filtered" Person
-note bottom of ModelManager
-Two independent collections;
-each retains its filter and display order.
+ModelManager --> "1..2" FilteredPersonList : filteredPersonLists\nkeyed by ContactSection
+ModelManager --> "1..2" SortedPersonList : displayedPersonLists\nkeyed by ContactSection
+FilteredPersonList --> "~* source" Person
+SortedPersonList --> "1 source" FilteredPersonList
+note bottom of Person
+Matching UUIDs link Contacts and Favourites records.
 end note
 @enduml

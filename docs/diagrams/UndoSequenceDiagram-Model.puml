@@ -10,25 +10,25 @@ end box
 
 box Storage STORAGE_COLOR_T1
 participant "history:StorageManager" as History STORAGE_COLOR
-participant "sectionHistory:UndoSnapshotStorage" as Snapshots STORAGE_COLOR
-participant "sectionFile:JsonAddressBookStorage" as File STORAGE_COLOR
+participant "sharedHistory:UndoSnapshotStorage" as Snapshots STORAGE_COLOR
+participant "transaction:CollectionSaveTransaction" as Transaction STORAGE_COLOR
 end box
 
 [-> PreparedChange : save(...)
 activate PreparedChange
-PreparedChange -> History : saveRestoredSnapshot(section, snapshot)
+PreparedChange -> History : saveRestoredSnapshot(snapshot)
 activate History
 History -> Snapshots : saveRestoredSnapshot(snapshot)
 activate Snapshots
 
-ref over Snapshots, File
-Publish before/after recovery metadata
+Snapshots -> Transaction : save(contacts, favourites, remainingHistory, ...)
+activate Transaction
+ref over Transaction
+Save selected collections and shared history
+with rollback and interrupted-save recovery
 end ref
-
-Snapshots -> File : saveAddressBook(snapshot)
-activate File
-File --> Snapshots
-deactivate File
+Transaction --> Snapshots
+deactivate Transaction
 Snapshots --> History
 deactivate Snapshots
 History --> PreparedChange

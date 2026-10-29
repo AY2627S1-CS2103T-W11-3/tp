@@ -16,7 +16,7 @@ ui -> logic : execute("delete 1")
 activate logic
 
 ref over logic, model
-Prepare deletion and capture undo snapshot
+Prepare both candidate collections and shared undo history
 end ref
 
 logic -> storage : saveUndoableChange(...)

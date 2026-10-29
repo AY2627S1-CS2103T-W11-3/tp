@@ -18,7 +18,7 @@ end box
 activate LogicManager
 
 ref over LogicManager, DeleteCommand
-Parse command and capture undo snapshot
+Parse command
 end ref
 
 LogicManager -> DeleteCommand : prepare(m)
@@ -48,7 +48,7 @@ deactivate DeleteCommand
 
 ' The ref hides PreparedChange.save(), its callback to LogicManager, and Storage calls.
 ref over LogicManager, PreparedChange
-Save candidate and undo snapshot
+Capture both collections and save shared undo history
 end ref
 
 LogicManager -> PreparedChange : apply()
@@ -57,6 +57,10 @@ PreparedChange -> Model : deletePerson(target)
 activate Model
 Model --> PreparedChange
 deactivate Model
+note over PreparedChange, Model
+Contacts deletion also removes its linked favourite.
+Favourites deletion leaves Contacts unchanged.
+end note
 PreparedChange --> LogicManager : result
 deactivate PreparedChange
 

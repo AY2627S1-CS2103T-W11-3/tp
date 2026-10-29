@@ -6,12 +6,12 @@ skinparam ArrowFontSize 12
 title Recording a validated undoable change
 
 start
-:Prepare the candidate and previous data
-for the changed section;
-:Save backup if data changed,
-recovery metadata, and candidate;
+:Prepare previous and candidate snapshots
+of both collections;
+:Save collections and shared history
+through a recoverable transaction;
 if (Persistence succeeds?) then (yes)
-    :Update the section's history
+    :Update the shared history
 with at most five snapshots;
     note right
     Unchanged data adds no history entry.

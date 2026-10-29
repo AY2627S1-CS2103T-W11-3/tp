@@ -107,6 +107,15 @@ public class UniquePersonListTest {
     }
 
     @Test
+    public void add_sameIdWithDifferentDetails_throwsDuplicatePersonException() {
+        uniquePersonList.add(ALICE);
+        Person sameId = new PersonBuilder(ALICE).withPhone(VALID_PHONE_BOB)
+                .withEmail(VALID_EMAIL_BOB).build();
+
+        assertThrows(DuplicatePersonException.class, () -> uniquePersonList.add(sameId));
+    }
+
+    @Test
     public void setPerson_nullTargetPerson_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> uniquePersonList.setPerson(null, ALICE));
     }

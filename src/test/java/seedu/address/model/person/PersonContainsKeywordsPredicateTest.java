@@ -40,6 +40,18 @@ public class PersonContainsKeywordsPredicateTest {
     }
 
     @Test
+    public void test_nameContainsPartialKeyword_returnsTrue() {
+        PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of("Ali"));
+        assertTrue(predicate.test(new PersonBuilder().withName("Alice Pauline").build()));
+    }
+
+    @Test
+    public void test_nameContainsMixedCasePartialKeyword_returnsTrue() {
+        PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of("aLI"));
+        assertTrue(predicate.test(new PersonBuilder().withName("Alice Pauline").build()));
+    }
+
+    @Test
     public void test_nameContainsKeywords_returnsTrue() {
         // One keyword
         PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of("Alice"));
@@ -56,6 +68,12 @@ public class PersonContainsKeywordsPredicateTest {
         // Mixed-case keywords
         predicate = new PersonContainsKeywordsPredicate(List.of("aLIce", "bOB"));
         assertTrue(predicate.test(new PersonBuilder().withName("Alice Bob").build()));
+    }
+
+    @Test
+    public void test_nameDoesNotContainUnrelatedKeyword_returnsFalse() {
+        PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of("Carol"));
+        assertFalse(predicate.test(new PersonBuilder().withName("Alice Bob").build()));
     }
 
     @Test
@@ -93,10 +111,6 @@ public class PersonContainsKeywordsPredicateTest {
         // Zero keywords
         PersonContainsKeywordsPredicate predicate = new PersonContainsKeywordsPredicate(List.of());
         assertFalse(predicate.test(new PersonBuilder().withName("Alice").build()));
-
-        // Non-matching keyword
-        predicate = new PersonContainsKeywordsPredicate(List.of("Carol"));
-        assertFalse(predicate.test(new PersonBuilder().withName("Alice Bob").build()));
 
         // Keywords match phone, email and address, but do not match name
         predicate = new PersonContainsKeywordsPredicate(List.of("12345", "alice@email.com", "Main", "Street"));

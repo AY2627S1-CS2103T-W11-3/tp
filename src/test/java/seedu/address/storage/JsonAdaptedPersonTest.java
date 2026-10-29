@@ -1,6 +1,7 @@
 package seedu.address.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static seedu.address.storage.JsonAdaptedPerson.MISSING_FIELD_MESSAGE_FORMAT;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.BENSON;
@@ -40,6 +41,7 @@ public class JsonAdaptedPersonTest {
     public void toModelType_validPersonDetails_returnsPerson() throws Exception {
         JsonAdaptedPerson person = new JsonAdaptedPerson(BENSON);
         assertEquals(BENSON, person.toModelType());
+        assertEquals(BENSON.getId(), person.toModelType().getId());
     }
 
     @Test
@@ -54,6 +56,16 @@ public class JsonAdaptedPersonTest {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS, null, VALID_TAGS);
         assertEquals(Note.empty(), person.toModelType().getNote());
+        assertNotNull(person.toModelType().getId());
+    }
+
+    @Test
+    public void toModelType_invalidId_throwsIllegalValueException() {
+        for (String id : List.of("", "not-a-uuid", "1-1-1-1-1")) {
+            JsonAdaptedPerson person = new JsonAdaptedPerson(id, VALID_NAME, VALID_PHONE,
+                    VALID_EMAIL, VALID_ADDRESS, VALID_NOTE, VALID_TAGS);
+            assertThrows(IllegalValueException.class, JsonAdaptedPerson.INVALID_ID_MESSAGE, person::toModelType);
+        }
     }
 
     @Test

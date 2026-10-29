@@ -1,5 +1,6 @@
 @startuml
 !include style.puml
+!pragma layout smetana
 skinparam arrowThickness 1.1
 skinparam arrowColor STORAGE_COLOR
 skinparam classBackgroundColor STORAGE_COLOR
@@ -18,39 +19,41 @@ Class JsonAddressBookStorage
 Class JsonSerializableAddressBook
 Class JsonAdaptedPerson
 Class JsonAdaptedTag
+Class JsonAdaptedGroup
 }
 
 package "Undo Storage" #F4F6F6{
 Class UndoSnapshotStorage
-Class JsonUndoHistory
+Class CollectionSaveTransaction
 }
 
 }
 
 package Model {
 Class "<<interface>>\nUndoHistory" as UndoHistory MODEL_COLOR
-Class "<<enum>>\nContactSection" as ContactSection MODEL_COLOR
+Class ContactSnapshot MODEL_COLOR
 }
 
 Class HiddenOutside #FFFFFF
 HiddenOutside ..> Storage
 
+UndoHistory ..> ContactSnapshot
 StorageManager .up.|> Storage
 Storage -up-|> UndoHistory
 StorageManager -down-> "1" JsonUserPrefsStorage
 StorageManager -down-> "2" JsonAddressBookStorage : Contacts and Favourites
-StorageManager *-down-> "2" UndoSnapshotStorage : undoHistories\nkeyed by ContactSection
-StorageManager ..> ContactSection : history keys
-UndoSnapshotStorage --> "1" JsonAddressBookStorage : section data and snapshots
-UndoSnapshotStorage ..> JsonUndoHistory : <<create/read>>
-JsonUndoHistory --> "0..1" JsonUndoHistory : previous
+StorageManager *-down-> "1" UndoSnapshotStorage : shared history
+UndoSnapshotStorage --> "2" JsonAddressBookStorage : collections
+UndoSnapshotStorage *--> "1" CollectionSaveTransaction
+CollectionSaveTransaction --> "2" JsonAddressBookStorage : coordinated saves
 
 JsonAddressBookStorage ..> JsonSerializableAddressBook
-JsonSerializableAddressBook --> "*" JsonAdaptedPerson
+JsonSerializableAddressBook *--> "* persons" JsonAdaptedPerson
+JsonSerializableAddressBook *--> "* groups" JsonAdaptedGroup
 JsonAdaptedPerson --> "*" JsonAdaptedTag
 
 note bottom of UndoSnapshotStorage
-Up to five snapshots per section.
+Up to five shared snapshots of both collections.
 Validated history survives restarts.
 end note
 

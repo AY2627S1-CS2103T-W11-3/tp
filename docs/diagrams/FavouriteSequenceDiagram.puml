@@ -41,7 +41,7 @@ FavouriteCommand --> LogicManager : result
 deactivate FavouriteCommand
 
 ref over LogicManager, StagedModel
-Save Favourites candidate and undo snapshot
+Save both collections and shared undo history
 end ref
 
 LogicManager -> StagedModel : commitTo(m)
@@ -54,6 +54,7 @@ StagedModel --> LogicManager
 deactivate StagedModel
 
 note over StagedModel, Model
+The favourite retains the contact's UUID.
 Contacts remains active with its view unchanged.
 end note
 

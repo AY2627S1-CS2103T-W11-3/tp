@@ -1,18 +1,25 @@
 package seedu.address.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
+import static seedu.address.testutil.TypicalPersons.ALICE;
+import static seedu.address.testutil.TypicalPersons.BOB;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.AddressBook;
+import seedu.address.model.person.Person;
+import seedu.address.testutil.PersonBuilder;
 import seedu.address.testutil.TypicalPersons;
 
 public class JsonSerializableAddressBookTest {
@@ -47,6 +54,16 @@ public class JsonSerializableAddressBookTest {
     }
 
     @Test
+    public void toModelType_duplicateIds_throwsIllegalValueException() {
+        JsonSerializableAddressBook data = new JsonSerializableAddressBook(List.of(
+                new JsonAdaptedPerson(ALICE),
+                new JsonAdaptedPerson(new PersonBuilder(ALICE).withName(BOB.getName().fullName)
+                        .withPhone(BOB.getPhone().value).withEmail(BOB.getEmail().value).build())));
+
+        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_DUPLICATE_ID, data::toModelType);
+    }
+
+    @Test
     public void toModelType_invalidGroups_throwsIllegalValueException() {
         JsonAdaptedGroup group = new JsonAdaptedGroup("Team", List.of());
         JsonSerializableAddressBook nullGroup = new JsonSerializableAddressBook(
@@ -70,10 +87,36 @@ public class JsonSerializableAddressBookTest {
         JsonAdaptedGroup duplicateMembers = new JsonAdaptedGroup("Team", List.of("Alice Pauline", "Alice Pauline"));
         JsonAdaptedGroup invalidMember = new JsonAdaptedGroup("Team", List.of("invalid/name"));
 
-        assertThrows(IllegalValueException.class, nullMembers::toModelType);
-        assertThrows(IllegalValueException.class, nullMember::toModelType);
-        assertThrows(IllegalValueException.class, duplicateMembers::toModelType);
-        assertThrows(IllegalValueException.class, invalidMember::toModelType);
+        assertThrows(IllegalValueException.class, () -> nullMembers.toModelType(List.of(ALICE)));
+        assertThrows(IllegalValueException.class, () -> nullMember.toModelType(List.of(ALICE)));
+        assertThrows(IllegalValueException.class, () -> duplicateMembers.toModelType(List.of(ALICE)));
+        assertThrows(IllegalValueException.class, () -> invalidMember.toModelType(List.of(ALICE)));
+    }
+
+    @Test
+    public void toModelType_legacyNameMembership_migratesSameNameContactsToIds() throws Exception {
+        Person otherAlice = new PersonBuilder().withName("Alice Pauline").withPhone("91234567")
+                .withEmail("second-alice@example.com").build();
+        JsonSerializableAddressBook legacy = new JsonSerializableAddressBook(
+                List.of(new JsonAdaptedPerson(ALICE), new JsonAdaptedPerson(otherAlice)),
+                List.of(new JsonAdaptedGroup("Team", List.of("Alice Pauline"))));
+
+        AddressBook migrated = legacy.toModelType();
+        assertEquals(Set.of(ALICE.getId(), otherAlice.getId()), migrated.getGroup("Team").getMembers());
+
+        String savedJson = JsonUtil.toJsonString(new JsonSerializableAddressBook(migrated));
+        assertTrue(savedJson.contains(ALICE.getId().toString()));
+        assertTrue(savedJson.contains(otherAlice.getId().toString()));
+        assertEquals(migrated, JsonUtil.fromJsonString(savedJson, JsonSerializableAddressBook.class).toModelType());
+    }
+
+    @Test
+    public void toModelType_unknownMemberId_rejectsGroup() {
+        JsonSerializableAddressBook data = new JsonSerializableAddressBook(
+                List.of(new JsonAdaptedPerson(ALICE)),
+                List.of(new JsonAdaptedGroup("Team", List.of(UUID.randomUUID().toString()))));
+
+        assertThrows(IllegalValueException.class, data::toModelType);
     }
 
     @Test

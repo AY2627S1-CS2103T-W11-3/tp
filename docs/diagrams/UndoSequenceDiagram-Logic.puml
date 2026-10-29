@@ -28,13 +28,13 @@ UndoCommand -> Model : getActiveSection()
 activate Model
 Model --> UndoCommand : section
 deactivate Model
-UndoCommand -> UndoHistory : readLatestSnapshot(section)
+UndoCommand -> UndoHistory : readLatestSnapshot()
 activate UndoHistory
-UndoHistory --> UndoCommand : snapshot
+UndoHistory --> UndoCommand : snapshot:ContactSnapshot
 deactivate UndoHistory
 
 create PreparedChange
-UndoCommand -> PreparedChange : PreparedChange(snapshot, ...)
+UndoCommand -> PreparedChange : PreparedChange(activeCollection, ...)
 activate PreparedChange
 PreparedChange --> UndoCommand
 deactivate PreparedChange
@@ -47,7 +47,12 @@ end ref
 
 LogicManager -> PreparedChange : apply()
 activate PreparedChange
-PreparedChange -> Model : setAddressBook(snapshot)
+loop each section in snapshot (Contacts, Favourites)
+PreparedChange -> Model : setActiveSection(restoredSection)
+activate Model
+Model --> PreparedChange
+deactivate Model
+PreparedChange -> Model : setAddressBook(restoredCollection)
 activate Model
 Model --> PreparedChange
 deactivate Model
@@ -55,7 +60,12 @@ PreparedChange -> Model : updateFilteredPersonList(...)\n(show all contacts)
 activate Model
 Model --> PreparedChange
 deactivate Model
-PreparedChange -> UndoHistory : discardLatestSnapshot(section)
+end
+PreparedChange -> Model : setActiveSection(section)
+activate Model
+Model --> PreparedChange
+deactivate Model
+PreparedChange -> UndoHistory : discardLatestSnapshot()
 activate UndoHistory
 UndoHistory --> PreparedChange
 deactivate UndoHistory

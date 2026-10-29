@@ -6,7 +6,10 @@ import seedu.address.logic.commands.TabCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.ContactSection;
 
-/** Parses a collection name for the tab command. */
+/**
+ * Parses the contact section for the tab command.
+ * Accepts exactly the lowercase name {@code contacts} or {@code favourites}, ignoring surrounding whitespace.
+ */
 public class TabCommandParser implements Parser<TabCommand> {
     @Override
     public TabCommand parse(String args) throws ParseException {
