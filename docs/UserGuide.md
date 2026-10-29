@@ -103,6 +103,7 @@ Format: `favourite INDEX`
 * Run this command in Contacts. `INDEX` refers to the currently displayed list, including search results.
 * Supply exactly one positive ASCII integer without leading zeros, such as `1` or `12`. Signs, decimals, names, and extra arguments are rejected. Surrounding spaces and tabs are allowed.
 * Success appends the linked contact to Favourites and shows `Added to Favourites: NAME (index INDEX).` Contacts remains selected, its search stays active, and the input clears.
+* A yellow star appears beside a contact in Contacts when a favourite shares its phone number or email address, including a contact added directly in Favourites. Stars are hidden in the Favourites section and refresh after successful commands.
 * Editing either linked contact updates its details in both sections. Deleting the original from Contacts also removes its favourite. Clearing Contacts removes favourites linked to the cleared contacts.
 * Deleting or clearing Favourites leaves Contacts unchanged. Groups remain specific to each section; renaming or deleting a linked contact updates its existing group memberships in each affected section.
 * A contact with the same phone number or email address cannot appear twice in Favourites. Contacts may share the same name. Repeating the command does not update or overwrite the existing favourite.
@@ -316,7 +317,7 @@ Format: `undo`
 * Up to five operations across both sections can be undone, most recent first. A sixth operation removes the oldest available undo entry. One operation that changes both sections uses one entry.
 * Failed commands, identical edits, and clearing a section with no contacts or groups do not consume history. Clearing a section that contains only groups does consume an entry. Commands such as `tab`, `find`, `list`, and `view` leave history unchanged.
 * Each successful undo consumes one history entry. Undo itself does not create an entry, and there is no redo command.
-* History persists across normal restarts. If either saved collection is changed outside the app, its existing shared undo history is ignored on the next launch.
+* History persists across normal restarts. If either saved collection is changed outside the app, its existing shared undo history is ignored on the next launch. If the saved history cannot be loaded at startup, the app starts without undo history.
 * Success clears the input box. Failures retain the command and leave the contact data, displayed list, saved file, and available history unchanged.
 
 For example, in Contacts with at least one contact displayed, execute `delete 1` and then `undo`. The deleted contact returns to its original position, and the full contact list is shown. If you next make another change, undo reverses that new change before reaching earlier history entries. For example, after editing a linked favourite, you can switch to Contacts and run `undo` to reverse that edit in both sections.
@@ -326,7 +327,7 @@ For example, in Contacts with at least one contact displayed, execute `delete 1`
 | Undo succeeds | Feedback identifies the operation, such as `Undid delete of Betsy Crowe.` or `Undid clear of Favourites.`; `Undo successful.` is the fallback |
 | No history is available | `No changes to undo.` |
 | Extra arguments, such as `undo 1` | `Invalid command format!` followed by the `undo` usage |
-| A backup is missing, unreadable, or corrupted | `Could not read undo history. Nothing was undone. Please try again.` |
+| The stored undo history is missing, unreadable, or corrupted when undo tries to read an available entry | `Could not read undo history. Nothing was undone. Please try again.` |
 | Saving the restored data fails | `Could not save changes. Nothing was undone. Please try again.` |
 
 For example, entering `undo 1` displays:
