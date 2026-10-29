@@ -9,47 +9,56 @@ participant "command:GroupCommand" as command LOGIC_COLOR
 participant "staged:StagedModel" as staged MODEL_COLOR
 participant "live:Model" as live MODEL_COLOR
 participant ":StorageManager" as storage STORAGE_COLOR
-participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+participant ":UndoSnapshotStorage" as undo STORAGE_COLOR
+participant ":CollectionSaveTransaction" as transaction STORAGE_COLOR
 
-loop each group command
-    [-> logic : execute(group command)
-    logic -> parser : parseCommand(text)
-    parser -> groupParser : parse(arguments)
-    groupParser -> command : new GroupCommand(action, groupName, personName)
-    command --> groupParser : command
-    groupParser --> parser : command
-    parser --> logic : command
-    logic -> staged : new StagedModel(live)
-    staged -> live : copy current collections
-    live --> staged
-    logic -> command : execute(staged)
-    alt create: group add n/...
-        command -> staged : addGroup(new Group(name, empty members))
-    else add/remove member: group member g/... add|remove/...
-        command -> staged : getGroup(name), getAddressBook()
+[-> logic : execute(group command)
+logic -> parser : parseCommand(text)
+parser -> groupParser : parse(arguments)
+groupParser -> command : create GroupCommand(action, group, name or index)
+command --> groupParser : command
+groupParser --> parser : command
+parser --> logic : command
+logic -> staged : new StagedModel(live)
+staged -> live : copy collections and displayed list
+live --> staged
+logic -> command : execute(staged)
+alt list or view
+    command -> staged : getGroupList() / getGroup(name)
+    staged --> command : groups and contacts
+    command --> logic : CommandResult with counts or member details
+    note over storage : No contact save for read-only commands
+    [<-- logic : CommandResult
+else create, change membership, or delete
+    alt create: group add n/NAME
+        command -> staged : addGroup(new Group(name, empty ID set))
+    else membership change by name or displayed index
+        command -> staged : getGroup(name), getAddressBook(), getFilteredPersonList()
         staged --> command : group and contacts
-        command -> command : check contact and membership
-        command -> staged : setGroup(group.withMember/withoutMember(name))
-    else delete: group delete g/...
+        command -> command : resolve unique name or displayed index to Person.id
+        command -> staged : setGroup(group.withMember/withoutMember(personId))
+    else delete: group delete g/NAME
         command -> staged : deleteGroup(name)
     end
     staged --> command
     command --> logic : CommandResult
-    logic -> staged : getAddressBook(changedSection)
-    staged --> logic : candidate with groups
-    logic -> storage : saveAddressBook(candidate)
-    note right of storage : Favourites section uses saveFavourites(candidate)
-    storage -> json : saveAddressBook(candidate)
-    json -> json : write temporary JSON; atomically replace file
+    logic -> logic : capture previous and candidate ContactSnapshots
+    logic -> storage : saveUndoableChange(previous, candidate, description, section)
+    storage -> undo : saveChange(...)
+    undo -> transaction : save selected collections and undo history
+    transaction -> transaction : write temporary JSON; journal originals; atomically replace
     alt save succeeds
-        json --> storage
+        transaction --> undo
+        undo --> storage
         storage --> logic
         logic -> staged : commitTo(live)
         staged -> live : replay addGroup / setGroup / deleteGroup
         live --> staged
         [<-- logic : CommandResult
     else save fails
-        json --> storage : IOException
+        transaction -> transaction : recover published files if needed
+        transaction --> undo : IOException
+        undo --> storage : IOException
         storage --> logic : IOException
         note over live : Live groups remain unchanged
         [<-- logic : CommandException

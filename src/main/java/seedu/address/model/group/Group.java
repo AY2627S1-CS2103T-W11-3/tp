@@ -6,16 +6,15 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
-import seedu.address.model.person.Name;
-
-/** Represents a named group of contacts. */
+/** Represents a named group of contacts identified by persistent IDs. */
 public class Group {
     private final String name;
-    private final Set<Name> members;
+    private final Set<UUID> members;
 
-    /** Creates a group with the given name and members. */
-    public Group(String name, Set<Name> members) {
+    /** Creates a group with the given name and member IDs. */
+    public Group(String name, Set<UUID> members) {
         requireNonNull(name);
         requireNonNull(members);
         if (!isValidName(name)) {
@@ -35,20 +34,21 @@ public class Group {
         return name;
     }
 
-    public Set<Name> getMembers() {
+    /** Returns the IDs of this group's members. */
+    public Set<UUID> getMembers() {
         return members;
     }
 
-    /** Returns a group with the given contact added. */
-    public Group withMember(Name member) {
-        Set<Name> updatedMembers = new LinkedHashSet<>(members);
+    /** Returns a group with the given contact ID added. */
+    public Group withMember(UUID member) {
+        Set<UUID> updatedMembers = new LinkedHashSet<>(members);
         updatedMembers.add(member);
         return new Group(name, updatedMembers);
     }
 
-    /** Returns a group with the given contact removed. */
-    public Group withoutMember(Name member) {
-        Set<Name> updatedMembers = new LinkedHashSet<>(members);
+    /** Returns a group with the given contact ID removed. */
+    public Group withoutMember(UUID member) {
+        Set<UUID> updatedMembers = new LinkedHashSet<>(members);
         updatedMembers.remove(member);
         return new Group(name, updatedMembers);
     }

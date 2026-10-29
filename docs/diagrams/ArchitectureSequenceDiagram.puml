@@ -8,32 +8,32 @@ participant ":LogicManager" as logic LOGIC_COLOR
 participant "d:DeleteCommand" as delete LOGIC_COLOR
 participant "m:Model" as model MODEL_COLOR
 participant ":StorageManager" as storage STORAGE_COLOR
-participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+participant ":UndoSnapshotStorage" as undo STORAGE_COLOR
+participant ":CollectionSaveTransaction" as transaction STORAGE_COLOR
 
 user -> ui : "delete 1"
 ui -> logic : execute("delete 1")
-logic -> delete : prepare(m)
+logic -> delete : prepare(model)
 delete -> model : get displayed contact and address book
 model --> delete : contact and current data
 delete --> logic : PreparedChange(candidate, apply)
-logic -> storage : saveUndoableChange(previous, candidate)
-note over storage, json
-Contacts deletion also records an undo snapshot.
-Favourites deletion uses saveFavourites(candidate).
-end note
-storage -> json : saveAddressBook(candidate)
-json -> json : write candidate to temporary file
-json -> json : atomically replace destination
+logic -> logic : capture previous and candidate ContactSnapshots
+logic -> storage : saveUndoableChange(previous, candidate, description, section)
+storage -> undo : saveChange(...)
+undo -> transaction : save selected collections and undo history
+transaction -> transaction : prepare temporary files; journal originals; publish
 alt save succeeds
-    json --> storage
+    transaction --> undo
+    undo --> storage
     storage --> logic
     logic -> model : PreparedChange.apply()
     model --> logic
     logic --> ui : CommandResult
     ui --> user : success
-else save fails (IOException)
-    json -> json : delete temporary file if present
-    json --> storage : IOException
+else save fails
+    transaction -> transaction : recover published files if needed
+    transaction --> undo : IOException
+    undo --> storage : IOException
     storage --> logic : IOException
     note over model : Live model remains unchanged
     logic --> ui : CommandException

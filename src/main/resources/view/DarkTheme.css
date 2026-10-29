@@ -22,6 +22,12 @@
     -fx-text-fill: white;
 }
 
+.active-filter-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #d4d4d4;
+    -fx-padding: 2 0 6 0;
+}
+
 .label-header {
     -fx-font-size: 32pt;
     -fx-font-family: "Segoe UI Light";

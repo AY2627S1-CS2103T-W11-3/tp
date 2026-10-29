@@ -1,5 +1,6 @@
 @startuml
 !include style.puml
+!pragma layout smetana
 skinparam arrowThickness 1.1
 skinparam arrowColor STORAGE_COLOR
 skinparam classBackgroundColor STORAGE_COLOR
@@ -7,6 +8,7 @@ skinparam classBackgroundColor STORAGE_COLOR
 package Storage as StoragePackage {
 
 Class "<<interface>>\nStorage" as Storage
+Class "<<interface>>\nUndoHistory" as UndoHistory
 Class StorageManager
 
 package "UserPrefs Storage" #F4F6F6{
@@ -14,6 +16,8 @@ Class JsonUserPrefsStorage
 }
 
 package "AddressBook Storage" #F4F6F6{
+Class UndoSnapshotStorage
+Class CollectionSaveTransaction
 Class JsonAddressBookStorage
 Class JsonSerializableAddressBook
 Class JsonAdaptedPerson
@@ -27,12 +31,16 @@ Class HiddenOutside #FFFFFF
 HiddenOutside ..> Storage
 
 StorageManager .up.|> Storage
+Storage .up.|> UndoHistory
 StorageManager -down-> "1" JsonUserPrefsStorage
-StorageManager -down-> "2" JsonAddressBookStorage : Contacts / Favourites
+StorageManager -down-> "2\nContacts, Favourites" JsonAddressBookStorage
+StorageManager *-down-> "1" UndoSnapshotStorage
+UndoSnapshotStorage *-down-> "1" CollectionSaveTransaction
+CollectionSaveTransaction -down-> "2" JsonAddressBookStorage
 
 JsonAddressBookStorage ..> JsonSerializableAddressBook
-JsonSerializableAddressBook --> "*" JsonAdaptedPerson
-JsonSerializableAddressBook --> "*" JsonAdaptedGroup
+JsonSerializableAddressBook *--> "* persons" JsonAdaptedPerson
+JsonSerializableAddressBook *--> "* groups" JsonAdaptedGroup
 JsonAdaptedPerson --> "*" JsonAdaptedTag
 JsonAdaptedGroup ..> Group : <<convert and validate>>
 

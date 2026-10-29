@@ -52,6 +52,7 @@
             <Insets top="10" right="10" bottom="10" left="10" />
           </padding>
           <Label fx:id="activeSectionLabel" text="Contacts" styleClass="active-section-label" />
+          <Label fx:id="activeFilterLabel" text="" styleClass="active-filter-label" visible="false" managed="false" />
           <StackPane fx:id="personListPanelPlaceholder" VBox.vgrow="ALWAYS"/>
         </VBox>
 

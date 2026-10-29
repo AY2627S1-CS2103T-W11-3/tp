@@ -12,6 +12,7 @@ Class XYZCommand
 Class GroupCommand
 Class CommandResult
 Class "{abstract}\nCommand" as Command
+Class "{abstract}\nUndoableCommand" as UndoableCommand
 Class "<<interface>>\nStagedCommand" as StagedCommand
 Class PreparedChange
 
@@ -37,7 +38,8 @@ ParserClasses ..> XYZCommand : <<create>>
 ParserClasses ..> GroupCommand : <<create>>
 
 XYZCommand -up-|> Command
-GroupCommand -up-|> Command
+UndoableCommand -up-|> Command
+GroupCommand -up-|> UndoableCommand
 LogicManager .left.> Command : <<call>>
 LogicManager ..> StagedModel : <<create and commit>>
 StagedModel ..|> Model

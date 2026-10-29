@@ -14,7 +14,12 @@ import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
 import static seedu.address.logic.commands.CommandTestUtil.showPersonAtIndex;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
+import static seedu.address.testutil.TypicalPersons.BENSON;
+import static seedu.address.testutil.TypicalPersons.DANIEL;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+
+import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +31,9 @@ import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonContainsKeywordsPredicate;
+import seedu.address.model.person.PersonHasTagsPredicate;
+import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 import seedu.address.testutil.PersonBuilder;
 
@@ -112,9 +120,48 @@ public class EditCommandTest {
         String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-        expectedModel.setPerson(model.getFilteredPersonList().get(0), editedPerson);
+        expectedModel.setPerson(personInFilteredList, editedPerson);
+        String keyword = personInFilteredList.getName().fullName.split("\\s+")[0];
+        expectedModel.updateFilteredPersonList(new PersonContainsKeywordsPredicate(List.of(keyword)));
 
         assertCommandSuccess(editCommand, model, expectedMessage, expectedModel);
+    }
+
+    @Test
+    public void execute_tagFilter_keepsMatchingContacts() {
+        PersonHasTagsPredicate predicate = new PersonHasTagsPredicate(Set.of(new Tag("friends")));
+        model.updateFilteredPersonList(predicate);
+
+        Person personToEdit = model.getFilteredPersonList().get(0);
+        Person editedPerson = new PersonBuilder(personToEdit).withPhone("80001111").build();
+        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone("80001111").build());
+
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
+        expectedModel.setPerson(personToEdit, editedPerson);
+        expectedModel.updateFilteredPersonList(predicate);
+
+        assertCommandSuccess(editCommand, model, expectedMessage, expectedModel);
+    }
+
+    @Test
+    public void execute_tagFilter_removesContactThatNoLongerMatches() {
+        PersonHasTagsPredicate predicate = new PersonHasTagsPredicate(Set.of(new Tag("friends")));
+        model.updateFilteredPersonList(predicate);
+
+        Person personToEdit = model.getFilteredPersonList().get(0);
+        Person editedPerson = new PersonBuilder(personToEdit).withTags(VALID_TAG_HUSBAND).build();
+        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withTags(VALID_TAG_HUSBAND).build());
+
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
+        expectedModel.setPerson(personToEdit, editedPerson);
+        expectedModel.updateFilteredPersonList(predicate);
+
+        assertCommandSuccess(editCommand, model, expectedMessage, expectedModel);
+        assertEquals(List.of(BENSON, DANIEL), model.getFilteredPersonList());
     }
 
     @Test
@@ -152,6 +199,19 @@ public class EditCommandTest {
         Person secondPerson = model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased());
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
                 new EditPersonDescriptorBuilder().withEmail(secondPerson.getEmail().value).build());
+
+        assertCommandFailure(editCommand, model, EditCommand.MESSAGE_DUPLICATE_PERSON);
+    }
+
+    @Test
+    public void execute_phoneAndEmailChangedToConflictWithDifferentPersons_failure() {
+        Person firstPerson = model.getFilteredPersonList().get(0);
+        Person secondPerson = model.getFilteredPersonList().get(1);
+        Index thirdPersonIndex = Index.fromOneBased(3);
+        EditCommand editCommand = new EditCommand(thirdPersonIndex, new EditPersonDescriptorBuilder()
+                .withPhone(firstPerson.getPhone().value)
+                .withEmail(secondPerson.getEmail().value)
+                .build());
 
         assertCommandFailure(editCommand, model, EditCommand.MESSAGE_DUPLICATE_PERSON);
     }

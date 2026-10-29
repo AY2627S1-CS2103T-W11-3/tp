@@ -11,6 +11,7 @@ import static seedu.address.testutil.TypicalPersons.GEORGE;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +23,8 @@ import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.PersonContainsKeywordsPredicate;
+import seedu.address.model.person.PersonHasTagsPredicate;
+import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 import seedu.address.testutil.PersonBuilder;
 
@@ -57,14 +60,13 @@ public class RecentCommandTest {
     }
 
     @Test
-    public void execute_afterEditingContact_doesNotMoveEditedContactToTop() throws Exception {
+    public void execute_editAfterRecent_keepsRecentOrderAndOriginalInsertionPosition() throws Exception {
         Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
         Person editedAlice = new PersonBuilder(ALICE).withPhone("91234567").build();
         EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder().withPhone("91234567").build();
         recentCommand.execute(model);
-        new EditCommand(Index.fromOneBased(7), descriptor).execute(model);
 
-        recentCommand.execute(model);
+        new EditCommand(Index.fromOneBased(7), descriptor).execute(model);
 
         assertEquals(List.of(GEORGE, FIONA, ELLE, DANIEL, CARL, BENSON, editedAlice),
                 model.getFilteredPersonList());
@@ -74,9 +76,8 @@ public class RecentCommandTest {
     public void execute_afterDeletingContact_omitsDeletedContact() throws Exception {
         Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
         recentCommand.execute(model);
-        new DeleteCommand(Index.fromOneBased(1)).execute(model);
 
-        recentCommand.execute(model);
+        new DeleteCommand(Index.fromOneBased(1)).execute(model);
 
         assertEquals(List.of(FIONA, ELLE, DANIEL, CARL, BENSON, ALICE), model.getFilteredPersonList());
     }
@@ -110,5 +111,15 @@ public class RecentCommandTest {
         new FindCommand(new PersonContainsKeywordsPredicate(List.of("Meier"))).execute(model);
 
         assertEquals(List.of(BENSON, DANIEL), model.getFilteredPersonList());
+    }
+
+    @Test
+    public void execute_filterAfterRecent_showsMatchesInAdditionOrder() throws Exception {
+        Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+        recentCommand.execute(model);
+
+        new FilterCommand(new PersonHasTagsPredicate(Set.of(new Tag("friends")))).execute(model);
+
+        assertEquals(List.of(ALICE, BENSON, DANIEL), model.getFilteredPersonList());
     }
 }

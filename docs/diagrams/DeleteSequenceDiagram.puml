@@ -29,16 +29,21 @@ DeleteCommand -> Model : getAddressBook()
 Model --> DeleteCommand : current collection
 DeleteCommand -> PreparedChange : new PreparedChange(candidate, apply)
 PreparedChange --> LogicManager : change
-LogicManager -> Storage : save candidate collection
+LogicManager -> LogicManager : capture previous and candidate ContactSnapshots
+LogicManager -> PreparedChange : save(defaultSave)
+PreparedChange -> Storage : saveUndoableChange(previous, candidate, description, section)
+note over Storage : Journaled transaction saves collections and shared undo history
 alt save succeeds
-    Storage --> LogicManager
+    Storage --> PreparedChange
+    PreparedChange --> LogicManager
     LogicManager -> PreparedChange : apply()
     PreparedChange -> Model : deletePerson(target)
     Model --> PreparedChange
     PreparedChange --> LogicManager : CommandResult
     [<-- LogicManager : success
 else save fails
-    Storage --> LogicManager : IOException
+    Storage --> PreparedChange : IOException
+    PreparedChange --> LogicManager : IOException
     note over Model : No live-model mutation
     [<-- LogicManager : CommandException
 end

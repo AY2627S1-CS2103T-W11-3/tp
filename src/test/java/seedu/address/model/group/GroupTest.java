@@ -7,10 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import seedu.address.model.person.Name;
 
 /** Tests the value and membership rules of a group. */
 public class GroupTest {
@@ -26,7 +26,7 @@ public class GroupTest {
 
     @Test
     public void membershipChanges_returnIndependentGroups() {
-        Name alice = new Name("Alice Pauline");
+        UUID alice = UUID.randomUUID();
         Group emptyGroup = new Group("Team", Set.of());
         Group withAlice = emptyGroup.withMember(alice);
 
@@ -38,8 +38,9 @@ public class GroupTest {
 
     @Test
     public void equality_usesNameAndMembers() {
-        Group group = new Group("Team", Set.of(new Name("Alice Pauline")));
-        Group sameGroup = new Group("Team", Set.of(new Name("Alice Pauline")));
+        UUID alice = UUID.randomUUID();
+        Group group = new Group("Team", Set.of(alice));
+        Group sameGroup = new Group("Team", Set.of(alice));
         Group otherGroup = new Group("Other", group.getMembers());
         Group otherMembers = new Group("Team", Set.of());
 
