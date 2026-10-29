@@ -17,7 +17,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 public class CommandHistoryTest {
 
-    private static final int ABNORMAL_EXIT_CODE = 1;
     private static final int PROCESS_TIMEOUT_SECONDS = 10;
     private static final String HISTORY_FILE_PREFIX = "addressbook-command-history-";
     private static final String SENSITIVE_COMMAND = "add n/Alice p/91234567 e/alice@example.com a/NUS";
@@ -106,11 +105,11 @@ public class CommandHistoryTest {
         Path isolatedTemporaryFolder = Files.createDirectory(temporaryFolder.resolve("process-temp"));
         Process process = startAbnormallyExitingHistoryProcess(isolatedTemporaryFolder);
 
-        assertProcessExitedAbnormally(process);
+        assertProcessCompletedHistoryAddAndHalted(process);
         assertNoReadableCommandHistory(isolatedTemporaryFolder);
     }
 
-    private static void assertProcessExitedAbnormally(Process process) throws Exception {
+    private static void assertProcessCompletedHistoryAddAndHalted(Process process) throws Exception {
         boolean didTerminate = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         if (!didTerminate) {
             process.destroyForcibly();
@@ -118,7 +117,12 @@ public class CommandHistoryTest {
         assertTrue(didTerminate, "Command history test process did not terminate");
 
         String processOutput = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(ABNORMAL_EXIT_CODE, process.exitValue(), processOutput);
+        assertEquals(CommandHistoryAbnormalExitTestApp.HALT_EXIT_CODE, process.exitValue(), processOutput);
+        boolean didAddCommand = processOutput.lines()
+                .anyMatch(CommandHistoryAbnormalExitTestApp.COMMAND_ADDED_MARKER::equals);
+        String missingMarkerMessage = "Subprocess did not confirm that the command was added. Output:"
+                + System.lineSeparator() + processOutput;
+        assertTrue(didAddCommand, missingMarkerMessage);
     }
 
     private static void assertNoReadableCommandHistory(Path temporaryFolder) throws Exception {

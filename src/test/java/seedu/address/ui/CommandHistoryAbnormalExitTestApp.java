@@ -5,7 +5,8 @@ package seedu.address.ui;
  */
 public final class CommandHistoryAbnormalExitTestApp {
 
-    private static final int ABNORMAL_EXIT_CODE = 1;
+    static final int HALT_EXIT_CODE = 73;
+    static final String COMMAND_ADDED_MARKER = "COMMAND_ADDED_TO_HISTORY";
 
     private CommandHistoryAbnormalExitTestApp() {
     }
@@ -18,6 +19,8 @@ public final class CommandHistoryAbnormalExitTestApp {
 
         CommandHistory commandHistory = new CommandHistory();
         commandHistory.add(args[0]);
-        Runtime.getRuntime().halt(ABNORMAL_EXIT_CODE);
+        System.out.println(COMMAND_ADDED_MARKER);
+        System.out.flush();
+        Runtime.getRuntime().halt(HALT_EXIT_CODE);
     }
 }
