@@ -18,8 +18,8 @@ package "AddressBook Storage" #F4F6F6{
 Class JsonAddressBookStorage
 Class JsonSerializableAddressBook
 Class JsonAdaptedPerson
-Class JsonAdaptedTag
 Class JsonAdaptedGroup
+Class JsonAdaptedTag
 }
 
 package "Undo Storage" #F4F6F6{
@@ -32,6 +32,7 @@ Class CollectionSaveTransaction
 package Model {
 Class "<<interface>>\nUndoHistory" as UndoHistory MODEL_COLOR
 Class ContactSnapshot MODEL_COLOR
+Class "Group" as ModelGroup MODEL_COLOR
 }
 
 Class HiddenOutside #FFFFFF
@@ -51,6 +52,7 @@ JsonAddressBookStorage ..> JsonSerializableAddressBook
 JsonSerializableAddressBook *--> "* persons" JsonAdaptedPerson
 JsonSerializableAddressBook *--> "* groups" JsonAdaptedGroup
 JsonAdaptedPerson --> "*" JsonAdaptedTag
+JsonAdaptedGroup ..> ModelGroup : <<convert and validate>>
 
 note bottom of UndoSnapshotStorage
 Up to five shared snapshots of both collections.

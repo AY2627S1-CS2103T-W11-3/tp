@@ -62,7 +62,8 @@ Person *--> Email
 Person *--> Address
 Person *--> Note
 Person *--> "*" Tag
-Group *--> "* members" Name
+Group ..> Person : member IDs match Person.id
+note on link : Group.members is Set<UUID>; Person.id is UUID
 
 Person -[hidden]up--> I
 UniquePersonList -[hidden]right-> I

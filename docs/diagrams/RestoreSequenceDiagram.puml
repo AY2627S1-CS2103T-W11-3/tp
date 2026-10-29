@@ -1,0 +1,60 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+participant ":MainApp" as app LOGIC_COLOR
+participant ":StorageManager" as storage STORAGE_COLOR
+participant ":UndoSnapshotStorage" as undo STORAGE_COLOR
+participant ":CollectionSaveTransaction" as transaction STORAGE_COLOR
+participant ":JsonAddressBookStorage" as json STORAGE_COLOR
+participant ":JsonSerializableAddressBook" as adapted STORAGE_COLOR
+participant ":JsonAdaptedPerson / JsonAdaptedGroup" as entries STORAGE_COLOR
+participant "m:ModelManager" as model MODEL_COLOR
+
+[-> app : init()
+app -> storage : new StorageManager(...)
+storage -> undo : new UndoSnapshotStorage(contacts, favourites)
+undo -> transaction : recover()
+alt pending save recovered, or none exists
+    transaction -> transaction : restore originals if journal exists
+    transaction --> undo
+else recovery fails
+    transaction --> undo : IOException
+    undo -> undo : record recovery failure
+end
+undo --> storage
+storage --> app
+loop Contacts, then Favourites
+    app -> storage : readAddressBook() / readFavourites()
+    storage -> undo : requireAvailable()
+    alt recovery failed
+        undo --> storage : IOException
+        storage --> app : DataLoadingException
+        app -> app : use empty collection; record section error
+    else storage available
+        undo --> storage
+        storage -> json : readAddressBook()
+        json -> json : read file and parse JSON
+        alt file exists and is valid
+            json -> adapted : toModelType()
+            adapted -> entries : convert contacts, then groups
+            entries --> adapted : model objects
+            adapted -> adapted : validate IDs, duplicate contacts and groups,
+            adapted -> adapted : and membership references; migrate legacy names
+            adapted --> json : AddressBook
+            json --> storage : AddressBook
+            storage --> app : validated collection
+        else missing file
+            json --> storage : Optional.empty()
+            storage --> app : Optional.empty()
+            app -> app : use sample Contacts or empty Favourites
+        else unreadable, malformed, or invalid data
+            json --> storage : DataLoadingException
+            storage --> app : DataLoadingException
+            app -> app : use empty collection; record section error
+        end
+    end
+end
+app -> model : new ModelManager(contacts, favourites, userPrefs)
+note over model : Only validated collections enter the live model
+@enduml
