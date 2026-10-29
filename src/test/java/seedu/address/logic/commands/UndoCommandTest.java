@@ -14,9 +14,9 @@ import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ContactSection;
+import seedu.address.model.ContactSnapshot;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
-import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UndoHistory;
 
 public class UndoCommandTest {
@@ -29,7 +29,8 @@ public class UndoCommandTest {
         model.updateFilteredPersonList(unused -> false);
         AddressBook before = new AddressBook(model.getAddressBook());
         AddressBook snapshot = getTypicalAddressBook();
-        history.snapshot = Optional.of(snapshot);
+        history.snapshot = Optional.of(new ContactSnapshot(snapshot, new AddressBook()));
+        history.description = "Undid clear of Contacts.";
 
         PreparedChange change = new UndoCommand(history).prepare(model);
         assertEquals(snapshot, change.getCandidate());
@@ -38,7 +39,12 @@ public class UndoCommandTest {
         assertEquals(0, model.getFilteredPersonList().size());
         assertEquals(0, history.discardCount);
 
-        assertEquals(new CommandResult(UndoCommand.MESSAGE_SUCCESS), change.apply());
+        change.save(() -> {
+            throw new AssertionError("Undo must use its recovery-aware save");
+        });
+        assertEquals(1, history.saveCount);
+        assertEquals(before, model.getAddressBook());
+        assertEquals(new CommandResult(history.description), change.apply());
         assertEquals(snapshot, model.getAddressBook());
         assertEquals(snapshot.getPersonList(), model.getFilteredPersonList());
         assertEquals(1, history.discardCount);
@@ -56,10 +62,22 @@ public class UndoCommandTest {
     }
 
     @Test
-    public void prepare_favourites_throwsBeforeReadingContactsHistory() {
+    public void prepare_favourites_restoresBothCollectionsAndKeepsActiveSection() throws Exception {
+        model.addPerson(BOB);
         model.setActiveSection(ContactSection.FAVOURITES);
-        history.failure = new DataLoadingException(new IOException("History must not be read"));
-        assertPreparationFailure(UndoCommand.MESSAGE_WRONG_SECTION);
+        AddressBook favourites = getTypicalAddressBook();
+        history.snapshot = Optional.of(new ContactSnapshot(new AddressBook(), favourites));
+        PreparedChange change = new UndoCommand(history).prepare(model);
+        assertEquals(new AddressBook(), model.getAddressBook());
+        assertEquals(0, history.discardCount);
+
+        change.apply();
+
+        assertEquals(favourites, model.getAddressBook());
+        assertEquals(favourites.getPersonList(), model.getFilteredPersonList());
+        assertEquals(new AddressBook(), model.getAddressBook(ContactSection.CONTACTS));
+        assertEquals(ContactSection.FAVOURITES, model.getActiveSection());
+        assertEquals(1, history.discardCount);
     }
 
     private void assertPreparationFailure(String message) {
@@ -73,16 +91,29 @@ public class UndoCommandTest {
     }
 
     private static class UndoHistoryStub implements UndoHistory {
-        private Optional<ReadOnlyAddressBook> snapshot = Optional.empty();
+        private Optional<ContactSnapshot> snapshot = Optional.empty();
         private DataLoadingException failure;
         private int discardCount;
+        private int saveCount;
+        private String description = UndoCommand.MESSAGE_SUCCESS;
 
         @Override
-        public Optional<ReadOnlyAddressBook> readLatestSnapshot() throws DataLoadingException {
+        public Optional<ContactSnapshot> readLatestSnapshot() throws DataLoadingException {
             if (failure != null) {
                 throw failure;
             }
             return snapshot;
+        }
+
+        @Override
+        public String getLatestUndoDescription() {
+            return description;
+        }
+
+        @Override
+        public void saveRestoredSnapshot(ContactSnapshot snapshot) {
+            assertEquals(this.snapshot.orElseThrow(), snapshot);
+            saveCount++;
         }
 
         @Override

@@ -53,6 +53,11 @@ public interface Logic {
     boolean isFavourite(Person person);
 
     /**
+     * Returns the tag names of the active tag filter, or an empty string when the list is not filtered by tag.
+     */
+    String getActiveFilter();
+
+    /**
      * Returns the user prefs' GUI settings.
      */
     GuiSettings getGuiSettings();

@@ -44,6 +44,9 @@ public class MainWindow extends UiPart<Stage> {
     private Label activeSectionLabel;
 
     @FXML
+    private Label activeFilterLabel;
+
+    @FXML
     private StackPane commandBoxPlaceholder;
 
     @FXML
@@ -135,11 +138,18 @@ public class MainWindow extends UiPart<Stage> {
     }
 
     /**
-     * Updates the section label, displayed contacts, favorite indicators, and save path after a successful command.
+     * Updates the section label, active filter, displayed contacts, favorite indicators, and save path.
      * Shows favorite indicators only in Contacts, using the same identity rule as the favorite command.
      */
     private void refreshActiveSection() {
         activeSectionLabel.setText(logic.getActiveSection().getDisplayName());
+        String activeFilter = logic.getActiveFilter();
+        boolean hasFilter = !activeFilter.isEmpty();
+        activeFilterLabel.setVisible(hasFilter);
+        activeFilterLabel.setManaged(hasFilter);
+        if (hasFilter) {
+            activeFilterLabel.setText("Active filter: " + activeFilter);
+        }
         personListPanel.setPersonList(logic.getFilteredPersonList(),
                 person -> logic.getActiveSection() == ContactSection.CONTACTS && logic.isFavourite(person));
         statusBarFooter.setSaveLocation(logic.getActiveDataFilePath());

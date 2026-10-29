@@ -25,12 +25,21 @@ public class FilterCommandParser implements Parser<FilterCommand> {
         ArgumentMultimap argMultimap = ArgumentTokenizer.tokenize(args, PREFIX_TAG);
         List<String> tagValues = argMultimap.getAllValues(PREFIX_TAG);
 
-        if (!argMultimap.getPreamble().isEmpty() || tagValues.isEmpty()) {
+        if (!argMultimap.getPreamble().isEmpty() || tagValues.isEmpty() || hasUnexpectedText(tagValues)) {
             throw new ParseException(
                     String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE));
         }
 
         Set<Tag> tags = ParserUtil.parseTags(tagValues);
         return new FilterCommand(new PersonHasTagsPredicate(tags));
+    }
+
+    /**
+     * Returns true if a tag value contains text outside a single tag name.
+     * The tokenizer keeps that text inside the preceding {@code t/} value, so a name such as
+     * {@code friends junk} is an unexpected argument rather than an invalid tag.
+     */
+    private static boolean hasUnexpectedText(List<String> tagValues) {
+        return tagValues.stream().anyMatch(value -> value.chars().anyMatch(Character::isWhitespace));
     }
 }

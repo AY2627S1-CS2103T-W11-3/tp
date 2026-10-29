@@ -78,7 +78,7 @@ public class FilterCommandTest {
 
     @Test
     public void execute_noMatchingTag_noPersonFound() {
-        String expectedMessage = String.format(MESSAGE_PERSONS_LISTED_OVERVIEW, 0);
+        String expectedMessage = FilterCommand.MESSAGE_NO_MATCH;
         PersonHasTagsPredicate predicate = new PersonHasTagsPredicate(Set.of(new Tag("colleagues")));
         FilterCommand command = new FilterCommand(predicate);
         expectedModel.updateFilteredPersonList(predicate);
