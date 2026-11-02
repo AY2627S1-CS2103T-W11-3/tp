@@ -206,8 +206,10 @@ Format: `view INDEX`
 * The index refers to the index number shown in the displayed person list. The index **must be a positive integer** 1, 2, 3, …​
 * After `find`, the index refers to the filtered list on screen.
 * Leading and trailing spaces are ignored, so `view 1` and `view    1` show the same person.
-* The result lists name, phone, email, and address. A stored note is included as `Note: NOTE`. A person with no note omits that line. Tags are listed in alphabetical order, separated by commas. A person with no tags shows `Tags: Not specified`.
-* The result ends with `Showing details for NAME.`
+* The right-hand details panel shows name, phone, email, address, note, and tags. Empty values show `Not specified`; tags appear alphabetically.
+* The feedback box shows `Viewed person: NAME`. Other commands continue to use the same feedback box.
+* Drag the divider to resize the list and details panel. Long details wrap and the panel scrolls vertically.
+* Details stay visible until another `view` command, or until the contact changes or leaves the displayed list. Use `view` again after editing a contact.
 
 Examples:
 
