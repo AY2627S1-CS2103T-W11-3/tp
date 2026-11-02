@@ -9,8 +9,10 @@ title: Developer Guide
 
 ## **Acknowledgements**
 
-* _{List the sources of reused or adapted ideas, code, documentation, and third-party libraries here, with links to the originals.}_
+Notable uses of AI:
 
+* @d0pb used OpenAI Codex to assist with implementing, testing, and reviewing the contact notes feature.
+* @d0pb used OpenAI Codex o assist with implementing, testing, and reviewing the command history feature.
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Setting up, getting started**
