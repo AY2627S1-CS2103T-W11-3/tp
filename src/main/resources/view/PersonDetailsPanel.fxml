@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fitToWidth="true" hbarPolicy="NEVER" minWidth="0" minHeight="0" styleClass="details-panel">
+  <content>
+    <VBox spacing="16" minWidth="0">
+      <padding>
+        <Insets top="16" right="16" bottom="16" left="16" />
+      </padding>
+      <Label fx:id="name" text="Use view INDEX to show contact details." wrapText="true"
+             minWidth="0" minHeight="-Infinity" maxWidth="Infinity" styleClass="label-bright" />
+      <GridPane fx:id="fields" hgap="12" vgap="14" minWidth="0">
+        <columnConstraints>
+          <ColumnConstraints minWidth="55" prefWidth="55" />
+          <ColumnConstraints minWidth="0" hgrow="ALWAYS" />
+        </columnConstraints>
+      </GridPane>
+    </VBox>
+  </content>
+</ScrollPane>

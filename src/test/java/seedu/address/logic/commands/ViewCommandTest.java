@@ -36,17 +36,12 @@ public class ViewCommandTest {
         Person personToView = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         ViewCommand viewCommand = new ViewCommand(INDEX_FIRST_PERSON);
 
-        String expectedMessage = "Name: Alice Pauline\n"
-                + "Phone: 94351253\n"
-                + "Email: alice@example.com\n"
-                + "Address: 123, Jurong West Ave 6, #08-111\n"
-                + "Tags: friends\n"
-                + "\n"
-                + "Showing details for Alice Pauline.";
+        String expectedMessage = "Viewed person: Alice Pauline";
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
+                model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
     }
 
@@ -55,17 +50,12 @@ public class ViewCommandTest {
         Person personToView = model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased());
         ViewCommand viewCommand = new ViewCommand(INDEX_SECOND_PERSON);
 
-        String expectedMessage = "Name: Benson Meier\n"
-                + "Phone: 98765432\n"
-                + "Email: johnd@example.com\n"
-                + "Address: 311, Clementi Ave 2, #02-25\n"
-                + "Tags: friends, owesMoney\n"
-                + "\n"
-                + "Showing details for Benson Meier.";
+        String expectedMessage = "Viewed person: Benson Meier";
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
+                model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased()));
     }
 
@@ -73,17 +63,12 @@ public class ViewCommandTest {
     public void execute_personWithNoTags_success() {
         ViewCommand viewCommand = new ViewCommand(INDEX_THIRD_PERSON);
 
-        String expectedMessage = "Name: Carl Kurz\n"
-                + "Phone: 95352563\n"
-                + "Email: heinz@example.com\n"
-                + "Address: wall street\n"
-                + "Tags: Not specified\n"
-                + "\n"
-                + "Showing details for Carl Kurz.";
+        String expectedMessage = "Viewed person: Carl Kurz";
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
+                model.getFilteredPersonList().get(INDEX_THIRD_PERSON.getZeroBased())), expectedModel);
     }
 
     @Test
@@ -93,16 +78,10 @@ public class ViewCommandTest {
         addressBook.addPerson(personWithNote);
         Model modelWithNote = new ModelManager(addressBook, new UserPrefs());
 
-        String expectedMessage = "Name: Amy Bee\n"
-                + "Phone: 85355255\n"
-                + "Email: amy@gmail.com\n"
-                + "Address: 123, Jurong West Ave 6, #08-111\n"
-                + "Note: Known through a dating app\n"
-                + "Tags: Not specified\n"
-                + "\n"
-                + "Showing details for Amy Bee.";
+        String expectedMessage = "Viewed person: Amy Bee";
 
-        assertCommandSuccess(new ViewCommand(INDEX_FIRST_PERSON), modelWithNote, expectedMessage, modelWithNote);
+        assertCommandSuccess(new ViewCommand(INDEX_FIRST_PERSON), modelWithNote,
+                new CommandResult(expectedMessage, personWithNote), modelWithNote);
     }
 
     @Test
@@ -119,18 +98,13 @@ public class ViewCommandTest {
 
         ViewCommand viewCommand = new ViewCommand(INDEX_FIRST_PERSON);
 
-        String expectedMessage = "Name: Alice Pauline\n"
-                + "Phone: 94351253\n"
-                + "Email: alice@example.com\n"
-                + "Address: 123, Jurong West Ave 6, #08-111\n"
-                + "Tags: friends\n"
-                + "\n"
-                + "Showing details for Alice Pauline.";
+        String expectedMessage = "Viewed person: Alice Pauline";
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
         showPersonAtIndex(expectedModel, INDEX_FIRST_PERSON);
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
+                model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
     }
 
     @Test
