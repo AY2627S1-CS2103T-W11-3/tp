@@ -46,7 +46,7 @@ public class ViewCommandTest {
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage, 0), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
     }
 
@@ -65,7 +65,7 @@ public class ViewCommandTest {
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage, 1), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased()));
     }
 
@@ -83,7 +83,7 @@ public class ViewCommandTest {
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage, 2), expectedModel);
     }
 
     @Test
@@ -102,7 +102,8 @@ public class ViewCommandTest {
                 + "\n"
                 + "Showing details for Amy Bee.";
 
-        assertCommandSuccess(new ViewCommand(INDEX_FIRST_PERSON), modelWithNote, expectedMessage, modelWithNote);
+        assertCommandSuccess(new ViewCommand(INDEX_FIRST_PERSON), modelWithNote,
+                CommandResult.withHighlight(expectedMessage, 0), modelWithNote);
     }
 
     @Test
@@ -130,7 +131,14 @@ public class ViewCommandTest {
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
         showPersonAtIndex(expectedModel, INDEX_FIRST_PERSON);
 
-        assertCommandSuccess(viewCommand, model, expectedMessage, expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage, 0), expectedModel);
+    }
+
+    @Test
+    public void execute_validIndex_requestsHighlightOfThatRow() throws Exception {
+        CommandResult result = new ViewCommand(INDEX_SECOND_PERSON).execute(model);
+
+        assertEquals(1, result.getHighlightedIndex().getAsInt());
     }
 
     @Test

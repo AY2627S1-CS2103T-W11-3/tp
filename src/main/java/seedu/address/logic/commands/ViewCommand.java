@@ -62,8 +62,8 @@ public class ViewCommand extends Command {
             throw new CommandException(MESSAGE_INDEX_OUT_OF_RANGE);
         }
 
-        Person personToView = lastShownList.get(targetIndex.intValueExact() - 1);
-        return new CommandResult(formatDetails(personToView));
+        int zeroBasedIndex = targetIndex.intValueExact() - 1;
+        return CommandResult.withHighlight(formatDetails(lastShownList.get(zeroBasedIndex)), zeroBasedIndex);
     }
 
     /**

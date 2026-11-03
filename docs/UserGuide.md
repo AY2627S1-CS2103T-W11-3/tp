@@ -187,6 +187,7 @@ Format: `view INDEX`
 * Leading and trailing spaces are ignored, so `view 1` and `view    1` show the same person.
 * The result lists name, phone, email, and address. A stored note is included as `Note: NOTE`. A person with no note omits that line. Tags are listed in alphabetical order, separated by commas. A person with no tags shows `Tags: Not specified`.
 * The result ends with `Showing details for NAME.`
+* The contact you viewed is highlighted in the contact list, and the list scrolls to it if it was off screen. The highlight stays until your next successful command. A failed `view` keeps the existing highlight.
 
 Examples:
 

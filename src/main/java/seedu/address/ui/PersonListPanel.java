@@ -36,6 +36,17 @@ public class PersonListPanel extends UiPart<Region> {
         personListView.setItems(persons);
     }
 
+    /** Removes any highlighted contact, so a stale highlight never points at a different person. */
+    public void clearHighlight() {
+        personListView.getSelectionModel().clearSelection();
+    }
+
+    /** Highlights the contact at the zero-based {@code index} and scrolls it into view. */
+    public void highlight(int index) {
+        personListView.getSelectionModel().select(index);
+        personListView.scrollTo(index);
+    }
+
     /**
      * Custom {@code ListCell} that displays the graphics of a {@code Person} using a {@code PersonCard}.
      */

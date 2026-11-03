@@ -177,7 +177,9 @@ The existing duplicate rules remain owned by contact creation. Deletion removes 
 
 `DeleteUiTest` checks the empty-list label, renumbered cells, and command-input behavior on the JavaFX application thread. Run it with `./gradlew test --tests '*DeleteUiTest'` on a machine with a graphical display. It is skipped on Linux when `DISPLAY` is absent; logic/storage tests remain independent of the display.
 
-The persistent contact-details panel is owned by the view feature and is not yet implemented: `view` currently writes details into the feedback box. Clearing details for the deleted contact, preserving another contact's details, and retaining details on failure remain integration acceptance criteria for that owner. F4 does not add a competing panel.
+`view` writes the contact's details into the feedback box and also asks the UI to highlight that contact's row. `ViewCommand` returns `CommandResult.withHighlight(...)`, which carries the zero-based list index. `MainWindow.executeCommand` clears any earlier highlight after every successful command and then calls `PersonListPanel.highlight(index)` if the result carries an index, so a stale index can never mark a different contact after the list changes. A failed command does not touch the highlight. `HighlightUiTest` covers the list panel part and is skipped on Linux when `DISPLAY` is absent.
+
+The persistent contact-details panel is owned by the view feature and is not yet implemented. Clearing details for the deleted contact, preserving another contact's details, and retaining details on failure remain integration acceptance criteria for that owner. F4 does not add a competing panel.
 
 ### Command history
 
