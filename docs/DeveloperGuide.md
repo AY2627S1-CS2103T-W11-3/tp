@@ -19,6 +19,8 @@ Notable uses of AI:
 * @DhruvBawa used OpenAI Codex to assist with implementing, testing, and reviewing the save and restore and complete Groups feature.
 * @jit1604 used OpenAI Codex to assist with implementing, enhancing, testing, and reviewing the Find, Duplicate handling and recent contacts management feature.
 
+
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Setting up, getting started**
