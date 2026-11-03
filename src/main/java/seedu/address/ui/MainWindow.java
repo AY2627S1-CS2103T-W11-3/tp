@@ -208,6 +208,8 @@ public class MainWindow extends UiPart<Stage> {
         try {
             CommandResult commandResult = logic.execute(commandText);
             refreshActiveSection();
+            personListPanel.clearHighlight();
+            commandResult.getHighlightedIndex().ifPresent(personListPanel::highlight);
             logger.info("Result: " + commandResult.getFeedbackToUser());
             resultDisplay.setFeedbackToUser(commandResult.getFeedbackToUser());
 
