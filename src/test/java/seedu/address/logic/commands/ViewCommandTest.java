@@ -41,7 +41,8 @@ public class ViewCommandTest {
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
         assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
-                INDEX_FIRST_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
+                INDEX_FIRST_PERSON.getZeroBased(),
+                model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
     }
 
@@ -55,7 +56,8 @@ public class ViewCommandTest {
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
         assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
-                INDEX_SECOND_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())), expectedModel);
+                INDEX_SECOND_PERSON.getZeroBased(),
+                model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased()));
     }
 
@@ -68,7 +70,8 @@ public class ViewCommandTest {
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
         assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
-                INDEX_THIRD_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_THIRD_PERSON.getZeroBased())), expectedModel);
+                INDEX_THIRD_PERSON.getZeroBased(),
+                model.getFilteredPersonList().get(INDEX_THIRD_PERSON.getZeroBased())), expectedModel);
     }
 
     @Test
@@ -104,7 +107,8 @@ public class ViewCommandTest {
         showPersonAtIndex(expectedModel, INDEX_FIRST_PERSON);
 
         assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
-                INDEX_FIRST_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
+                INDEX_FIRST_PERSON.getZeroBased(),
+                model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
     }
 
     @Test
