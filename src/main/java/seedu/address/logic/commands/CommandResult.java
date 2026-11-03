@@ -3,9 +3,11 @@ package seedu.address.logic.commands;
 import static java.util.Objects.requireNonNull;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import seedu.address.commons.util.ToStringBuilder;
+import seedu.address.model.person.Person;
 
 /**
  * Represents the result of a command execution.
@@ -22,20 +24,22 @@ public class CommandResult {
     /** The application should exit. */
     private final boolean exit;
 
-    /** Zero-based index of the displayed contact to highlight, or {@code NO_HIGHLIGHT}. */
+    private final Person personToView;
     private final int highlightedIndex;
 
     /**
      * Constructs a {@code CommandResult} with the specified fields.
      */
     public CommandResult(String feedbackToUser, boolean showHelp, boolean exit) {
-        this(feedbackToUser, showHelp, exit, NO_HIGHLIGHT);
+        this(feedbackToUser, showHelp, exit, null, NO_HIGHLIGHT);
     }
 
-    private CommandResult(String feedbackToUser, boolean showHelp, boolean exit, int highlightedIndex) {
+    private CommandResult(String feedbackToUser, boolean showHelp, boolean exit,
+            Person personToView, int highlightedIndex) {
         this.feedbackToUser = requireNonNull(feedbackToUser);
         this.showHelp = showHelp;
         this.exit = exit;
+        this.personToView = personToView;
         this.highlightedIndex = highlightedIndex;
     }
 
@@ -48,14 +52,27 @@ public class CommandResult {
     }
 
     /**
-     * Constructs a {@code CommandResult} that asks the list to highlight the displayed contact at
-     * {@code highlightedIndex} (zero-based).
+     * Constructs feedback with a contact to display in the details panel.
      */
+    public CommandResult(String feedbackToUser, Person personToView) {
+        this(feedbackToUser, false, false, requireNonNull(personToView), NO_HIGHLIGHT);
+    }
+
+    public Optional<Person> getPersonToView() {
+        return Optional.ofNullable(personToView);
+    }
+
+    /** Constructs feedback requesting a highlight at the given zero-based index. */
     public static CommandResult withHighlight(String feedbackToUser, int highlightedIndex) {
+        return withHighlight(feedbackToUser, highlightedIndex, null);
+    }
+
+    /** Constructs feedback with a highlighted row and optional contact details. */
+    public static CommandResult withHighlight(String feedbackToUser, int highlightedIndex, Person personToView) {
         if (highlightedIndex < 0) {
             throw new IllegalArgumentException("Highlighted index must not be negative");
         }
-        return new CommandResult(feedbackToUser, false, false, highlightedIndex);
+        return new CommandResult(feedbackToUser, false, false, personToView, highlightedIndex);
     }
 
     public String getFeedbackToUser() {
@@ -89,12 +106,13 @@ public class CommandResult {
         return feedbackToUser.equals(otherCommandResult.feedbackToUser)
                 && showHelp == otherCommandResult.showHelp
                 && exit == otherCommandResult.exit
+                && Objects.equals(personToView, otherCommandResult.personToView)
                 && highlightedIndex == otherCommandResult.highlightedIndex;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(feedbackToUser, showHelp, exit, highlightedIndex);
+        return Objects.hash(feedbackToUser, showHelp, exit, personToView, highlightedIndex);
     }
 
     @Override

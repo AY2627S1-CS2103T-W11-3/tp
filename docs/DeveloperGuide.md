@@ -208,15 +208,15 @@ The existing duplicate rules remain owned by contact creation. Deletion removes 
 
 `DeleteUiTest` checks the empty-list label, renumbered cells, and command-input behavior on the JavaFX application thread. Run it with `./gradlew test --tests '*DeleteUiTest'` on a machine with a graphical display. It is skipped on Linux when `DISPLAY` is absent; logic/storage tests remain independent of the display.
 
-`view` writes the contact's details into the feedback box and also asks the UI to highlight that contact's row. `ViewCommand` returns `CommandResult.withHighlight(...)`, which carries the zero-based list index. `MainWindow.executeCommand` clears any earlier highlight after every successful command and then calls `PersonListPanel.highlight(index)` if the result carries an index, so a stale index can never mark a different contact after the list changes. A failed command does not touch the highlight. `HighlightUiTest` covers the list panel part and is skipped on Linux when `DISPLAY` is absent.
+The contact-details panel is owned by the view feature. After a successful command, `MainWindow` clears details if the displayed contact is no longer in the current list, including after deletion or editing. Deleting another contact preserves the details; failed commands leave them unchanged.
 
-The persistent contact-details panel is owned by the view feature and is not yet implemented. Clearing details for the deleted contact, preserving another contact's details, and retaining details on failure remain integration acceptance criteria for that owner. F4 does not add a competing panel.
+`view` also highlights the contact's row. `ViewCommand` returns `CommandResult.withHighlight(...)`, which carries the zero-based list index. `MainWindow.executeCommand` clears any earlier highlight after every successful command and then calls `PersonListPanel.highlight(index)` if the result carries an index, so a stale index can never mark a different contact after the list changes. A failed command does not touch the highlight. `HighlightUiTest` covers the list panel part and is skipped on Linux when `DISPLAY` is absent.
 
 ### Viewing a contact
 
 `ViewCommandParser` requires exactly one argument and parses it as a positive index via `ParserUtil.parseIndex`. Invalid formats surface as `ParseException` with the `view` usage message.
 
-`ViewCommand` does not mutate contacts or trigger a save. It reads `Model#getFilteredPersonList()`, so the index refers to the currently displayed list (including results after `find` or `filter`). An empty displayed list or an out-of-range index raises `CommandException`. On success, it formats the selected contact's fields, tags, and optional note into a `CommandResult` shown in the result box.
+`ViewCommand` does not mutate contacts or trigger a save. It reads `Model#getFilteredPersonList()`, so the index refers to the currently displayed list (including results after `find` or `filter`). An empty displayed list or an out-of-range index raises `CommandException`. On success, it returns short feedback and the selected `Person` in `CommandResult`. `MainWindow` passes the contact to `PersonDetailsPanel`, which renders wrapping fields in a scrollable panel alongside the list. The feedback box remains 100px high. The horizontal divider is resizable, and the window can shrink to 400px high for scaled screens.
 
 The sequence diagram below shows the interactions within the `Logic` component for `execute("view 1")`.
 

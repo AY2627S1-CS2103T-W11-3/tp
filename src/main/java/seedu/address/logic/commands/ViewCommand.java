@@ -4,7 +4,6 @@ import static java.util.Objects.requireNonNull;
 
 import java.math.BigInteger;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.ToStringBuilder;
@@ -62,30 +61,9 @@ public class ViewCommand extends Command {
             throw new CommandException(MESSAGE_INDEX_OUT_OF_RANGE);
         }
 
-        int zeroBasedIndex = targetIndex.intValueExact() - 1;
-        return CommandResult.withHighlight(formatDetails(lastShownList.get(zeroBasedIndex)), zeroBasedIndex);
-    }
-
-    /**
-     * Returns the full details of {@code person} for display in the result box.
-     */
-    private String formatDetails(Person person) {
-        String tags = person.getTags().isEmpty()
-                ? "Not specified"
-                : person.getTags().stream()
-                .map(tag -> tag.tagName)
-                .sorted()
-                .collect(Collectors.joining(", "));
-        String note = person.getNote().isEmpty() ? "" : "Note: " + person.getNote() + "\n";
-
-        return "Name: " + person.getName() + "\n"
-                + "Phone: " + person.getPhone() + "\n"
-                + "Email: " + person.getEmail() + "\n"
-                + "Address: " + person.getAddress() + "\n"
-                + note
-                + "Tags: " + tags + "\n"
-                + "\n"
-                + "Showing details for " + person.getName() + ".";
+        Person personToView = lastShownList.get(targetIndex.intValueExact() - 1);
+        return CommandResult.withHighlight(String.format(MESSAGE_VIEW_PERSON_SUCCESS, personToView.getName()),
+                targetIndex.intValueExact() - 1, personToView);
     }
 
     @Override

@@ -8,7 +8,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.testutil.TypicalPersons;
+
 public class CommandResultTest {
+    @Test
+    public void personToView_optionalPayload() {
+        CommandResult result = new CommandResult("Viewed person", TypicalPersons.ALICE);
+        assertEquals(TypicalPersons.ALICE, result.getPersonToView().orElseThrow());
+        assertTrue(new CommandResult("feedback").getPersonToView().isEmpty());
+        assertEquals(result, new CommandResult("Viewed person", TypicalPersons.ALICE));
+        assertEquals(result.hashCode(), new CommandResult("Viewed person", TypicalPersons.ALICE).hashCode());
+        assertNotEquals(result, new CommandResult("Viewed person"));
+        assertNotEquals(result, new CommandResult("Viewed person", TypicalPersons.BOB));
+    }
+
     @Test
     public void equals() {
         CommandResult commandResult = new CommandResult("feedback");
