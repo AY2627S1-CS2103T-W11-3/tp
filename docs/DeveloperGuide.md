@@ -12,7 +12,9 @@ title: Developer Guide
 Notable uses of AI:
 
 * @d0pb used OpenAI Codex to assist with implementing, testing, and reviewing the contact notes feature.
-* @d0pb used OpenAI Codex o assist with implementing, testing, and reviewing the command history feature.
+* @d0pb used OpenAI Codex to assist with implementing, testing, and reviewing the command history feature.
+* @AndreLiu1225 used Cursor's AI agent (Anthropic Claude) to assist with implementing and testing the fixes to the `filter`, `edit` and `view` commands, the active filter label, and the highlighting of the contact opened by `view`.
+* @AndreLiu1225 used Cursor's AI agent (Anthropic Claude) to assist with implementing and testing the autocomplete feature.
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Setting up, getting started**
