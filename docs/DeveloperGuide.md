@@ -9,8 +9,12 @@ title: Developer Guide
 
 ## **Acknowledgements**
 
-* _{List the sources of reused or adapted ideas, code, documentation, and third-party libraries here, with links to the originals.}_
+Notable uses of AI:
 
+* @d0pb used OpenAI Codex to assist with implementing, testing, and reviewing the contact notes feature.
+* @d0pb used OpenAI Codex to assist with implementing, testing, and reviewing the command history feature.
+* @AndreLiu1225 used Cursor's AI agent (Anthropic Claude) to assist with implementing and testing the fixes to the `filter`, `edit` and `view` commands, the active filter label, and the highlighting of the contact opened by `view`.
+* @AndreLiu1225 used Cursor's AI agent (Anthropic Claude) to assist with implementing and testing the autocomplete feature.
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Setting up, getting started**
@@ -36,7 +40,7 @@ The following provides a quick overview of the main components and their interac
 
 **Main components of the architecture**
 
-**`Main`** (consisting of classes [`Main`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/Main.java) and [`MainApp`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/MainApp.java)) is in charge of the app launch and shut down.
+**`Main`** (consisting of classes [`Main`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/Main.java) and [`MainApp`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/MainApp.java)) is in charge of the app launch and shut down.
 * At app launch, it initializes the other components in the correct sequence, and connects them up with each other.
 * At shut down, it shuts down the other components and invokes cleanup methods where necessary.
 
@@ -68,7 +72,7 @@ The sections below give more details of each component.
 
 ### UI component
 
-The **API** of this component is specified in [`Ui.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/ui/Ui.java)
+The **API** of this component is specified in [`Ui.java`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/ui/Ui.java)
 
 ![Structure of the UI Component](images/UiClassDiagram.png)
 
@@ -76,7 +80,7 @@ The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDi
 
 `CommandBox` uses `CommandHistory` to record non-empty commands submitted during the current application session and to navigate them with the Up and Down arrow keys. Submitted commands and the unfinished draft are kept in memory only. This history belongs to the UI component because it records command input rather than address-book data; it does not pass through `Logic`, `Model`, or `Storage`.
 
-The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
+The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/ui/MainWindow.java).
 
 The `UI` component,
 
@@ -89,7 +93,7 @@ The `UI` component,
 
 ### Logic component
 
-**API** : [`Logic.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/logic/Logic.java)
+**API** : [`Logic.java`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/logic/Logic.java)
 
 Here's a (partial) class diagram of the `Logic` component:
 
@@ -121,7 +125,7 @@ How the parsing works:
 * All command parsers, including `GroupCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
 ### Model component
-**API** : [`Model.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/model/Model.java)
+**API** : [`Model.java`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/model/Model.java)
 
 <img src="images/ModelClassDiagram.png" width="650" />
 
@@ -144,7 +148,7 @@ The `Model` component,
 
 ### Storage component
 
-**API** : [`Storage.java`](https://github.com/se-edu/addressbook-level3/tree/master/src/main/java/seedu/address/storage/Storage.java)
+**API** : [`Storage.java`](https://github.com/AY2627S1-CS2103T-W11-3/tp/blob/master/src/main/java/seedu/address/storage/Storage.java)
 
 <img src="images/StorageClassDiagram.png" width="550" />
 
@@ -205,6 +209,8 @@ The existing duplicate rules remain owned by contact creation. Deletion removes 
 `DeleteUiTest` checks the empty-list label, renumbered cells, and command-input behavior on the JavaFX application thread. Run it with `./gradlew test --tests '*DeleteUiTest'` on a machine with a graphical display. It is skipped on Linux when `DISPLAY` is absent; logic/storage tests remain independent of the display.
 
 The contact-details panel is owned by the view feature. After a successful command, `MainWindow` clears details if the displayed contact is no longer in the current list, including after deletion or editing. Deleting another contact preserves the details; failed commands leave them unchanged.
+
+`view` also highlights the contact's row. `ViewCommand` returns `CommandResult.withHighlight(...)`, which carries the zero-based list index. `MainWindow.executeCommand` clears any earlier highlight after every successful command and then calls `PersonListPanel.highlight(index)` if the result carries an index, so a stale index can never mark a different contact after the list changes. A failed command does not touch the highlight. `HighlightUiTest` covers the list panel part and is skipped on Linux when `DISPLAY` is absent.
 
 ### Viewing a contact
 

@@ -62,7 +62,8 @@ public class ViewCommand extends Command {
         }
 
         Person personToView = lastShownList.get(targetIndex.intValueExact() - 1);
-        return new CommandResult(String.format(MESSAGE_VIEW_PERSON_SUCCESS, personToView.getName()), personToView);
+        return CommandResult.withHighlight(String.format(MESSAGE_VIEW_PERSON_SUCCESS, personToView.getName()),
+                targetIndex.intValueExact() - 1, personToView);
     }
 
     @Override

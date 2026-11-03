@@ -40,8 +40,8 @@ public class ViewCommandTest {
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
-                model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
+                INDEX_FIRST_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
     }
 
@@ -54,8 +54,8 @@ public class ViewCommandTest {
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
-                model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())), expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
+                INDEX_SECOND_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())), expectedModel);
         assertEquals(personToView, model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased()));
     }
 
@@ -67,8 +67,8 @@ public class ViewCommandTest {
 
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
 
-        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
-                model.getFilteredPersonList().get(INDEX_THIRD_PERSON.getZeroBased())), expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
+                INDEX_THIRD_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_THIRD_PERSON.getZeroBased())), expectedModel);
     }
 
     @Test
@@ -81,7 +81,7 @@ public class ViewCommandTest {
         String expectedMessage = "Viewed person: Amy Bee";
 
         assertCommandSuccess(new ViewCommand(INDEX_FIRST_PERSON), modelWithNote,
-                new CommandResult(expectedMessage, personWithNote), modelWithNote);
+                CommandResult.withHighlight(expectedMessage, 0, personWithNote), modelWithNote);
     }
 
     @Test
@@ -103,8 +103,15 @@ public class ViewCommandTest {
         Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
         showPersonAtIndex(expectedModel, INDEX_FIRST_PERSON);
 
-        assertCommandSuccess(viewCommand, model, new CommandResult(expectedMessage,
-                model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
+        assertCommandSuccess(viewCommand, model, CommandResult.withHighlight(expectedMessage,
+                INDEX_FIRST_PERSON.getZeroBased(), model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())), expectedModel);
+    }
+
+    @Test
+    public void execute_validIndex_requestsHighlightOfThatRow() throws Exception {
+        CommandResult result = new ViewCommand(INDEX_SECOND_PERSON).execute(model);
+
+        assertEquals(1, result.getHighlightedIndex().getAsInt());
     }
 
     @Test

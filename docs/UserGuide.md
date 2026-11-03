@@ -210,6 +210,7 @@ Format: `view INDEX`
 * The feedback box shows `Viewed person: NAME`. Other commands continue to use the same feedback box.
 * Drag the divider to resize the list and details panel. Long details wrap and the panel scrolls vertically.
 * Details stay visible until another `view` command, or until the contact changes or leaves the displayed list. Use `view` again after editing a contact.
+* The contact you viewed is highlighted in the contact list, and the list scrolls to it if it was off screen. The highlight stays until your next successful command. A failed `view` keeps the existing highlight.
 
 Examples:
 
@@ -364,7 +365,7 @@ Format: `exit`
 
 ### Saving the data
 
-AB4 automatically saves the collections and their shared undo history together after a successful `add`, `edit`, `delete`, `clear`, `favourite`, `group`, or `undo`. A collection that failed to load is preserved when a command changes only the other section, including when that change is undone. Commands targeting the failed section can replace its file. Identical edits and clearing a section with no contacts or groups still save without adding undo history, allowing `clear` to replace a corrupted file after startup has opened an empty collection. Both collections, including tags, notes, and groups, and the latest five undo entries persist across restarts. The app starts on Contacts. Missing Contacts data uses sample contacts; a missing favourites file starts with an empty Favourites collection. You do not need to save manually.
+AB4 automatically saves the collections and their shared undo history together after a successful `add`, `edit`, `delete`, `clear`, `favourite`, or `undo`, or a successful `group` command that changes data. A collection that failed to load is preserved when a command changes only the other section, including when that change is undone. Commands targeting the failed section can replace its file. Identical edits and clearing a section with no contacts or groups still save without adding undo history, allowing `clear` to replace a corrupted file after startup has opened an empty collection. Both collections, including tags, notes, and groups, and the latest five undo entries persist across restarts. The app starts on Contacts. Missing Contacts data uses sample contacts; a missing favourites file starts with an empty Favourites collection. You do not need to save manually.
 
 Changes appear only after saving succeeds. If saving fails, contacts, the displayed list, and the previous data file remain unchanged. The command stays in the input box so you can retry.
 

@@ -3,6 +3,7 @@ package seedu.address.logic.commands;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,18 @@ public class CommandResultTest {
 
         // different exit value -> returns false
         assertFalse(commandResult.equals(new CommandResult("feedback", false, true)));
+
+        // different highlighted index -> returns false
+        assertFalse(commandResult.equals(CommandResult.withHighlight("feedback", 0)));
+        assertFalse(CommandResult.withHighlight("feedback", 0).equals(CommandResult.withHighlight("feedback", 1)));
+        assertTrue(CommandResult.withHighlight("feedback", 1).equals(CommandResult.withHighlight("feedback", 1)));
+    }
+
+    @Test
+    public void getHighlightedIndex() {
+        assertTrue(new CommandResult("feedback").getHighlightedIndex().isEmpty());
+        assertEquals(3, CommandResult.withHighlight("feedback", 3).getHighlightedIndex().getAsInt());
+        assertThrows(IllegalArgumentException.class, () -> CommandResult.withHighlight("feedback", -1));
     }
 
     @Test
@@ -70,7 +83,7 @@ public class CommandResultTest {
         CommandResult commandResult = new CommandResult("feedback");
         String expected = CommandResult.class.getCanonicalName() + "{feedbackToUser="
                 + commandResult.getFeedbackToUser() + ", showHelp=" + commandResult.isShowHelp()
-                + ", exit=" + commandResult.isExit() + "}";
+                + ", exit=" + commandResult.isExit() + ", highlightedIndex=-1}";
         assertEquals(expected, commandResult.toString());
     }
 }

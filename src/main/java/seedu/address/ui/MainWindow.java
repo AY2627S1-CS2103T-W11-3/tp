@@ -227,6 +227,8 @@ public class MainWindow extends UiPart<Stage> {
             refreshActiveSection();
             personDetailsPanel.clearIfMissing(logic.getFilteredPersonList());
             commandResult.getPersonToView().ifPresent(personDetailsPanel::showPerson);
+            personListPanel.clearHighlight();
+            commandResult.getHighlightedIndex().ifPresent(personListPanel::highlight);
             logger.info("Result: " + commandResult.getFeedbackToUser());
             resultDisplay.setFeedbackToUser(commandResult.getFeedbackToUser());
 
